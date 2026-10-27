@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
+import ComponentCatalog from './ComponentCatalog';
 import type { ConversationEntry, PreparationPlan, Project, ProjectResponse } from './types';
 
 const EXAMPLE = 'I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, with 1 mL in each tube. I have a pipette and microcentrifuge tubes.';
 const WELCOME = 'Tell me about the preparation you would like to automate. We’ll define the concentrations, final volume and equipment together.';
+const PROPOSED_TARGET_C = 4;
 
 function readableError(message: string) {
   return message.replace(/\b(stock_concentration|target_concentrations|final_volume|workspace_width_mm)\b/g, (field) => ({
@@ -36,7 +38,7 @@ function Icon({ name, size = 18 }: { name: 'send' | 'rotate' | 'spark' | 'check'
     rotate: <><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></>,
     spark: <><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z" /></>,
     check: <path d="m5 12 4 4L19 6" />,
-    cube: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
+    cube: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -45,6 +47,10 @@ function formatDimension(value: number) { return new Intl.NumberFormat('en', { m
 
 function formatVolumeUl(value: number) {
   return `${new Intl.NumberFormat('en', { maximumSignificantDigits: 6 }).format(value)} µL`;
+}
+
+function formatMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat('en', { style: 'currency', currency }).format(amount);
 }
 
 function planStatusLabel(status: PreparationPlan['status']) {
@@ -64,6 +70,8 @@ export default function App() {
   const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [coolingEnabledDraft, setCoolingEnabledDraft] = useState(false);
+  const [coolingTargetDraft, setCoolingTargetDraft] = useState(String(PROPOSED_TARGET_C));
   const lastMessage = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
@@ -92,6 +100,14 @@ export default function App() {
   useEffect(() => {
     if (selectedId && project && !project.design.components.some((part) => part.id === selectedId)) setSelectedId(null);
   }, [project, selectedId]);
+
+  useEffect(() => {
+    if (!project) return;
+    const enabled = Boolean(project.summary?.cooling_enabled ?? project.design?.cooling?.enabled ?? false);
+    const target = project.summary?.cooling_target_c ?? project.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
+    setCoolingEnabledDraft(enabled);
+    setCoolingTargetDraft(target == null ? String(PROPOSED_TARGET_C) : String(target));
+  }, [project]);
 
   const projectId = project?.id;
   const projectRevision = project?.revision;
@@ -157,6 +173,41 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
+  async function applyCooling() {
+    if (!project || busy) return;
+    const parsed = Number(coolingTargetDraft);
+    if (coolingEnabledDraft && (!coolingTargetDraft.trim() || !Number.isFinite(parsed) || parsed < 2 || parsed > 20)) {
+      setError('Enter a target temperature between 2 and 20 °C.');
+      return;
+    }
+    const body: { cooling_enabled: boolean; cooling_target_c?: number } = { cooling_enabled: coolingEnabledDraft };
+    if (coolingTargetDraft.trim() !== '' && Number.isFinite(parsed) && parsed >= 2 && parsed <= 20) body.cooling_target_c = parsed;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/configuration`, body);
+      setProject(result.project);
+      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The cooling settings could not be applied.');
+    } finally { setBusy(false); }
+  }
+
+  async function chooseOption(groupId: string, optionId: string) {
+    if (!project || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/configuration`, {
+        selections: { [groupId]: optionId },
+      });
+      setProject(result.project);
+      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The component choice could not be applied.');
+    } finally { setBusy(false); }
+  }
+
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
@@ -176,8 +227,16 @@ export default function App() {
     { label: 'Equipment', value: summary?.equipment },
     { label: 'Available width', value: summary?.workspace_width_mm != null ? `${formatDimension(summary.workspace_width_mm)} mm` : null },
   ];
-  const amount = project?.design.estimated_cost.amount;
-  const cost = amount == null ? 'Not estimated yet' : new Intl.NumberFormat('en', { style: 'currency', currency: project!.design.estimated_cost.currency }).format(amount);
+  const sourcing = project?.sourcing ?? null;
+  const estimatedAmount = project?.design.estimated_cost.amount;
+  const costCurrency = sourcing?.currency ?? project?.design.estimated_cost.currency ?? 'USD';
+  const costAmount = sourcing ? sourcing.subtotal : estimatedAmount;
+  const costText = costAmount == null
+    ? 'Not estimated yet'
+    : `${sourcing?.is_lower_bound ? 'from ' : ''}${formatMoney(costAmount, costCurrency)}`;
+  const coolingEnabled = Boolean(project?.summary?.cooling_enabled ?? project?.design?.cooling?.enabled ?? false);
+  const effectiveTarget = project?.summary?.cooling_target_c ?? project?.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
+  const coolingNotes = project?.design?.cooling?.notes ?? [];
 
   return (
     <div className="app-shell">
@@ -214,10 +273,65 @@ export default function App() {
           </div>
 
           <div className="below-viewer">
-            <div className="cost-block"><span>Estimated components cost</span><strong>{cost}</strong><small>Pricing is not yet available for this concept.</small></div>
+            <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
             <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
           </div>
           {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
+
+          <section className="cooling-card" aria-labelledby="cooling-title">
+            <div className="cooling-heading">
+              <div>
+                <h2 id="cooling-title">Cold storage</h2>
+                <p>Optional refrigerated bay for samples.</p>
+              </div>
+              <span className="cooling-state">{coolingEnabled ? `Target ${effectiveTarget}°C` : 'Off'}</span>
+            </div>
+            <label className="cooling-toggle" htmlFor="cooling-enabled">
+              <input
+                id="cooling-enabled"
+                type="checkbox"
+                checked={coolingEnabledDraft}
+                onChange={(event) => setCoolingEnabledDraft(event.target.checked)}
+                disabled={!project || busy}
+              />
+              Refrigerated sample bay
+            </label>
+            <div className="cooling-row">
+              <div className="cooling-field">
+                <label htmlFor="cooling-target">Target temperature (°C)</label>
+                <input
+                  id="cooling-target"
+                  type="number"
+                  min={2}
+                  max={20}
+                  step={0.5}
+                  value={coolingTargetDraft}
+                  onChange={(event) => setCoolingTargetDraft(event.target.value)}
+                  disabled={!project || busy}
+                />
+              </div>
+              <button type="button" className="cooling-apply" onClick={() => void applyCooling()} disabled={!project || busy}>
+                Apply cooling settings
+              </button>
+            </div>
+            <p className="cooling-note">
+              Proposed cooling with manual sample transfer. Thermal performance remains to be verified.
+            </p>
+            {coolingNotes.length > 0 && (
+              <details className="cooling-notes"><summary>Design assumptions</summary><ul>
+                {coolingNotes.map((note, index) => (
+                  <li key={index}>{note}</li>
+                ))}
+              </ul></details>
+            )}
+          </section>
+
+          <ComponentCatalog
+            sourcing={sourcing}
+            busy={busy || !project}
+            onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
+            onHighlight={(componentId) => setSelectedId(componentId)}
+          />
         </section>
 
         <aside className="conversation-panel" aria-labelledby="conversation-title">

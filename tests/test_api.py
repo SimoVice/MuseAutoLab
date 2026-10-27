@@ -39,7 +39,8 @@ def test_health_project_and_unknown_id(client):
     assert result.status_code == 201
     project = result.json()["project"]
     assert project["status"] == "draft"
-    assert project["design"]["estimated_cost"]["amount"] is None
+    assert project["design"]["estimated_cost"]["amount"] == pytest.approx(208.28)
+    assert project["sourcing"]["unpriced_count"] > 0
     assert client.post("/api/projects/unknown/messages", json={"message": "Hi"}).status_code == 404
 
 

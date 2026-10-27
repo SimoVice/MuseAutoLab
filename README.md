@@ -4,7 +4,7 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 ## Status
 
-Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. After confirmation it can play an illustrative operating animation. It is an early digital concept: physical simulation, cooling, component sourcing, file exports and persistent projects are not implemented yet.
+Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. It supports a proposed cold-storage bay and source-backed component comparisons with partial pricing. After confirmation it can play an illustrative operating animation. Physical simulation, temperature control, file exports and persistent projects are not implemented yet.
 
 The selected demonstrator is a dilution-and-aliquot workstation with pipette, tube and tip handling. It is intended to design the mechanical/electronic architecture and guide a person through assembly. Digital checks do not establish liquid-handling accuracy or hardware performance.
 
@@ -175,6 +175,14 @@ Supported concentration units are `M`, `mM`, `uM`/`µM`, `nM`, `g/L`, `mg/mL` an
 Up to six targets can use separate units (`1 mM, 200 uM`) or a shared trailing unit (`1, 2 and 3 mg/ml`). Decimal comma without a following space means a decimal (`1,5 mg/ml`); comma followed by a space can separate targets (`1, 5 mg/ml`). Ambiguous lists require clarification. Molar and mass concentrations cannot be mixed. Missing, unsupported, negative and impossible values prevent confirmation; zero target is allowed. Each target represents one independent tube prepared directly from the original stock, with no serial dilution or replicates. Brief chat corrections preserve the other parameters; calculated recipes or actionable errors are returned in the conversation as well as the preparation table.
 
 The plan is arithmetic, not a validated protocol. Tube capacity, pipette range, mixing, dead volume, reagent compatibility and hardware performance are not checked. The preview illustrates visits to tips, stock/diluent, sample rack and waste for nonzero transfers; it is not a physical simulation, collision check or hardware control. Sample and source positions are schematic. Review all parameters and obtain appropriate laboratory and hardware validation before practical use.
+
+### Refrigerated bay and component choices
+
+Ask for refrigerated storage, for example `Add refrigerated storage at 4 C`, or use the Cold storage controls and apply the settings. The proposed bay extends the custom deck in depth while preserving the other component sizes. Its target is requested/proposed, not measured. The supported target entry range is 2–20 °C; the Opentrons alternative cannot be selected for a target below its stated 4 °C minimum. The DIY proposal has no verified cooling performance. Samples are transferred manually to this attached bay; the pipetting animation does not implement a gripper or transfer into cold storage.
+
+The Component catalogue compares real supplier offers, quantities, availability notes and integration tradeoffs. Changing a selected option updates the same project revision, subtotal and relevant cooling envelope, and returns a confirmed project to draft. Choices persist when the width changes or the bay is disabled and re-enabled. Unknown groups remain unpriced. A selected starting price is marked `from`; all displayed totals are partial and exclude unspecified parts, shipping, taxes, import duties, assembly and validation.
+
+Prices are a dated USD catalogue snapshot checked on **2026-10-27**, not a live supplier feed or a delivered quotation. The data is in `app/data/components-2026-10-27.json`; [component sources](docs/component-sources.md) records primary links, price scope, assumptions and refresh instructions. The configuration endpoint is `POST /api/projects/{id}/configuration` with optional `cooling_enabled`, `cooling_target_c` and `selections` fields. It validates changes under the same project lock as chat. It makes no purchases or supplier requests.
 
 ## Test the application
 

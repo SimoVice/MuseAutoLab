@@ -1,0 +1,317 @@
+{
+  "checked_on": "2026-10-27",
+  "currency": "USD",
+  "exclusions": [
+    "Shipping, taxes and import duties",
+    "Assembly and validation",
+    "Unpriced custom groups"
+  ],
+  "defaults": {
+    "motors": "pololu-1209",
+    "drivers": "drv8825",
+    "controller": "pico",
+    "cooling": "diy-peltier",
+    "temperature-sensor": "probe",
+    "frame": "custom",
+    "linear-motion": "custom",
+    "pipette": "custom",
+    "fixtures": "custom",
+    "power": "custom"
+  },
+  "envelopes": {
+    "diy-peltier": [150, 120, 130],
+    "opentrons-gen2": [90, 84, 194]
+  },
+  "groups": [
+    {
+      "id": "motors",
+      "label": "Motors",
+      "component_ids": ["carriage", "crossbar", "pipette"],
+      "quantity": 4,
+      "options": [
+        {
+          "id": "pololu-1209",
+          "label": "Pololu NEMA 14 35x36 mm stepper (1209)",
+          "supplier": "Pololu",
+          "sku": "1209",
+          "unit_price": 35.12,
+          "price_kind": "listed",
+          "source_url": "https://www.pololu.com/product/1209",
+          "checked_on": "2026-10-27",
+          "availability": "backorders allowed",
+          "pros": ["Larger holding torque than 1208 in same frame width", "Standard NEMA 14 mounting pattern"],
+          "cons": ["Higher current draw than 1208", "Mounts and travel need design checks"],
+          "compatibility_note": "Proposed X/Y/Z/plunger use with 4 units; torque, mounts and travel require engineering."
+        },
+        {
+          "id": "pololu-1208",
+          "label": "Pololu NEMA 14 35x28 mm stepper (1208)",
+          "supplier": "Pololu",
+          "sku": "1208",
+          "unit_price": 30.32,
+          "price_kind": "listed",
+          "source_url": "https://www.pololu.com/product/1208",
+          "checked_on": "2026-10-27",
+          "availability": "backorders allowed",
+          "pros": ["Lower price than 1209", "Lower current draw"],
+          "cons": ["Lower holding torque than 1209", "Mounts and travel need design checks"],
+          "compatibility_note": "Proposed X/Y/Z/plunger use with 4 units; torque, mounts and travel require engineering."
+        }
+      ]
+    },
+    {
+      "id": "drivers",
+      "label": "Motor drivers",
+      "component_ids": ["controller"],
+      "quantity": 4,
+      "options": [
+        {
+          "id": "drv8825",
+          "label": "Pololu DRV8825 driver carrier (2133)",
+          "supplier": "Pololu",
+          "sku": "2133",
+          "unit_price": 15.95,
+          "price_kind": "listed",
+          "source_url": "https://www.pololu.com/product/2133",
+          "checked_on": "2026-10-27",
+          "availability": "backorders allowed",
+          "pros": ["Up to 1/32 microstepping", "Wide 8.2 to 45 V supply range"],
+          "cons": ["Current limit needs setup", "Wiring and timing need checks when swapping"],
+          "compatibility_note": "About 1.5 A per phase without extra cooling; swapping driver needs wiring, timing and current checks."
+        },
+        {
+          "id": "a4988",
+          "label": "Pololu A4988 driver carrier (1182)",
+          "supplier": "Pololu",
+          "sku": "1182",
+          "unit_price": 8.95,
+          "price_kind": "listed",
+          "source_url": "https://www.pololu.com/product/1182",
+          "checked_on": "2026-10-27",
+          "availability": "backorders allowed",
+          "pros": ["Lower price than DRV8825", "Step and direction interface"],
+          "cons": ["Limited to 1/16 microstepping", "Current limit and thermal behavior require setup"],
+          "compatibility_note": "Swapping driver needs wiring, timing and current checks."
+        }
+      ]
+    },
+    {
+      "id": "controller",
+      "label": "Controller",
+      "component_ids": ["controller"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "pico",
+          "label": "Raspberry Pi Pico RP2040 without headers (4864)",
+          "supplier": "Adafruit",
+          "sku": "4864",
+          "unit_price": 4.0,
+          "price_kind": "listed",
+          "source_url": "https://www.adafruit.com/product/4864",
+          "checked_on": "2026-10-27",
+          "availability": "listing availability uncertain",
+          "pros": ["Low unit price", "Compact RP2040 board"],
+          "cons": ["Without pre-soldered headers", "Variant pages disagree on availability"],
+          "compatibility_note": "3.3 V logic; firmware and carrier board required."
+        },
+        {
+          "id": "pico-h",
+          "label": "Raspberry Pi Pico with pre-soldered headers (5525)",
+          "supplier": "Adafruit",
+          "sku": "5525",
+          "unit_price": 5.0,
+          "price_kind": "listed",
+          "source_url": "https://www.adafruit.com/product/5525",
+          "checked_on": "2026-10-27",
+          "availability": "out of stock",
+          "pros": ["Pre-soldered headers", "Compact RP2040 board"],
+          "cons": ["Higher price than headerless variant", "Listed as out of stock"],
+          "compatibility_note": "3.3 V logic; firmware and carrier board required."
+        }
+      ]
+    },
+    {
+      "id": "cooling",
+      "label": "Cooling",
+      "component_ids": ["cold-storage"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "diy-peltier",
+          "label": "Adafruit Peltier assembly with heatsink and fan (1335)",
+          "supplier": "Adafruit",
+          "sku": "1335",
+          "unit_price": 34.95,
+          "price_kind": "listed",
+          "source_url": "https://www.adafruit.com/product/1335",
+          "checked_on": "2026-10-27",
+          "availability": "in stock",
+          "pros": ["Low price", "Includes Peltier, heatsink and fan"],
+          "cons": ["Needs supply, control, insulation and drainage work", "No temperature guarantee"],
+          "compatibility_note": "12 V 5 A assembly, nominal 60 W and max 72 W; outer 150x120x130 mm enclosure is an assumption, not supplier dimensions."
+        },
+        {
+          "id": "opentrons-gen2",
+          "label": "Opentrons Temperature Module GEN2",
+          "supplier": "Opentrons",
+          "sku": null,
+          "unit_price": 3975.0,
+          "price_kind": "starting_at",
+          "source_url": "https://opentrons.com/products/categories/modules",
+          "checked_on": "2026-10-27",
+          "availability": "not_checked",
+          "pros": ["Manufacturer lists 4 to 95 C range", "Self-contained module"],
+          "cons": ["High starting-at price", "Custom integration and calibration required"],
+          "compatibility_note": "No drop-in compatibility; block, configuration and quote need confirmation."
+        }
+      ]
+    },
+    {
+      "id": "temperature-sensor",
+      "label": "Temperature sensor",
+      "component_ids": ["cold-storage"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "probe",
+          "label": "Adafruit waterproof DS18B20 probe (381)",
+          "supplier": "Adafruit",
+          "sku": "381",
+          "unit_price": 9.95,
+          "price_kind": "listed",
+          "source_url": "https://www.adafruit.com/product/381",
+          "checked_on": "2026-10-27",
+          "availability": "in stock",
+          "pros": ["Waterproof probe", "Includes remote lead"],
+          "cons": ["Higher price than bare sensor", "Mounting and calibration need checks"],
+          "compatibility_note": "Includes remote probe, not a calibration certificate; mounting and condensation need checks."
+        },
+        {
+          "id": "bare",
+          "label": "Adafruit DS18B20 with resistor (374)",
+          "supplier": "Adafruit",
+          "sku": "374",
+          "unit_price": 3.95,
+          "price_kind": "listed",
+          "source_url": "https://www.adafruit.com/product/374",
+          "checked_on": "2026-10-27",
+          "availability": "in stock",
+          "pros": ["Lower price", "Includes resistor"],
+          "cons": ["Not waterproof", "Mounting and calibration need checks"],
+          "compatibility_note": "Lower cost but not waterproof; mounting and condensation need checks."
+        }
+      ]
+    },
+    {
+      "id": "frame",
+      "label": "Custom frame and deck",
+      "component_ids": ["base", "column-left", "column-right", "crossbar"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "custom",
+          "label": "Custom frame and deck",
+          "supplier": "To be specified",
+          "sku": null,
+          "unit_price": null,
+          "price_kind": "unpriced",
+          "source_url": null,
+          "checked_on": "2026-10-27",
+          "availability": "custom",
+          "pros": [],
+          "cons": [],
+          "compatibility_note": "Custom deck and posts; price excluded from subtotal."
+        }
+      ]
+    },
+    {
+      "id": "linear-motion",
+      "label": "Rails, belts and lead screws",
+      "component_ids": ["carriage", "crossbar"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "custom",
+          "label": "Custom rails, belts and lead screws",
+          "supplier": "To be specified",
+          "sku": null,
+          "unit_price": null,
+          "price_kind": "unpriced",
+          "source_url": null,
+          "checked_on": "2026-10-27",
+          "availability": "custom",
+          "pros": [],
+          "cons": [],
+          "compatibility_note": "Custom motion parts; price excluded from subtotal."
+        }
+      ]
+    },
+    {
+      "id": "pipette",
+      "label": "Pipette and tip handling",
+      "component_ids": ["pipette"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "custom",
+          "label": "Custom pipette and tip handling",
+          "supplier": "To be specified",
+          "sku": null,
+          "unit_price": null,
+          "price_kind": "unpriced",
+          "source_url": null,
+          "checked_on": "2026-10-27",
+          "availability": "custom",
+          "pros": [],
+          "cons": [],
+          "compatibility_note": "Custom pipette parts; price excluded from subtotal."
+        }
+      ]
+    },
+    {
+      "id": "fixtures",
+      "label": "Printed fixtures and labware",
+      "component_ids": ["source-rack", "sample-rack", "tip-rack", "tip-waste"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "custom",
+          "label": "Custom printed fixtures and labware",
+          "supplier": "To be specified",
+          "sku": null,
+          "unit_price": null,
+          "price_kind": "unpriced",
+          "source_url": null,
+          "checked_on": "2026-10-27",
+          "availability": "custom",
+          "pros": [],
+          "cons": [],
+          "compatibility_note": "Printed fixtures and labware; price excluded from subtotal."
+        }
+      ]
+    },
+    {
+      "id": "power",
+      "label": "Power, wiring and protection",
+      "component_ids": ["controller", "cold-storage"],
+      "quantity": 1,
+      "options": [
+        {
+          "id": "custom",
+          "label": "Custom power, wiring and protection",
+          "supplier": "To be specified",
+          "sku": null,
+          "unit_price": null,
+          "price_kind": "unpriced",
+          "source_url": null,
+          "checked_on": "2026-10-27",
+          "availability": "custom",
+          "pros": [],
+          "cons": [],
+          "compatibility_note": "Power and wiring; price excluded from subtotal."
+        }
+      ]
+    }
+  ]
+}

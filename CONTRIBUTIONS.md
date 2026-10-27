@@ -38,3 +38,11 @@ The calculator assumes one tube per target and does not model serial dilution or
 Fixed rejection of equivalent inputs such as `mg/ml`, `250ul`, decimal commas and shared-unit target lists. Quantity normalization preserves numerical meaning and meaningful prefix distinctions, while source checks accept equivalent formatting without accepting invented values. The summary uses canonical units; chat now returns calculated recipes or actionable correction messages and can explain the recorded plan. Follow-up corrections preserve other parameters, and unanswered optional questions are not repeatedly prompted.
 
 Added normalization, source-integrity and API regression tests and exercised informal notation through the browser. Synthetic live Contributor checks covered a three-target request, a volume correction and explanations of the current plan.
+
+## 2026-10-27: Refrigerated bay and sourced component comparison
+
+Added a configurable cold-storage proposal through chat and controls, with an attached 3D bay, explicit temperature target, manual sample transfer and depth changes derived from the selected envelope. Added a dated catalogue of primary supplier prices, selectable alternatives, quantities, pros/cons, availability notes, source links and a partial subtotal. Component choices, cooling geometry, cost and confirmation state share the project revision.
+
+Added catalogue, cooling-domain, API and source-notation regression checks. Browser checks exercise cooling activation, cheaper driver selection, a commercial cooling alternative and its starting price, unsupported-temperature rejection and choice preservation through disable/re-enable. A synthetic live Meta/browser flow exercised the compact layout plus cooling addition. Implementation tasks used Muse Spark Contributor through OpenCode Go; output was reviewed, simplified and integrated locally.
+
+The catalogue is a reproducible snapshot, not a live feed or a complete build quotation. Five groups remain unpriced. Cooling performance, full hardware compatibility, sample transfer automation and physical feasibility remain unverified.

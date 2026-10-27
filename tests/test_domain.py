@@ -42,7 +42,8 @@ def test_compact_layout_repositions_fixed_parts_and_fits_requested_width():
     for part_id in before.keys() - {"base", "crossbar"}:
         assert before[part_id]["size"] == after[part_id]["size"]
     assert before["sample-rack"]["position"] != after["sample-rack"]["position"]
-    assert compact["design"]["estimated_cost"]["amount"] is None
+    assert compact["design"]["estimated_cost"]["amount"] == pytest.approx(208.28)
+    assert compact["sourcing"]["incomplete"] is True
 
 
 def test_infeasible_width_preserves_geometry_and_can_be_revised():

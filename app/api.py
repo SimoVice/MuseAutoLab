@@ -1,14 +1,15 @@
 """Local API for the first interactive design workflow."""
 
 import asyncio
+import math
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.domain import apply_update, confirm_project, new_project
+from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.model_client import ModelClientError, generate_turn
 
 app = FastAPI(title="MuseAutoLab", version="0.1.0")
@@ -24,6 +25,46 @@ class MessageRequest(BaseModel):
         if not value:
             raise ValueError("Enter a message before sending.")
         return value
+
+
+class ConfigurationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    cooling_enabled: Annotated[bool | None, Field(strict=True)] = None
+    cooling_target_c: Annotated[float | None, Field(ge=2, le=20)] = None
+    selections: dict[str, str] | None = None
+
+    @field_validator("cooling_target_c", mode="before")
+    @classmethod
+    def _strict_target(cls, value: float | None) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, bool) or isinstance(value, str):
+            raise ValueError("cooling_target_c must be a number.")
+        return value
+
+    @field_validator("cooling_target_c")
+    @classmethod
+    def _finite_target(cls, value: float | None) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("cooling_target_c must be a number.")
+        if not math.isfinite(float(value)):
+            raise ValueError("cooling_target_c must be finite.")
+        return float(value)
+
+    @field_validator("selections")
+    @classmethod
+    def _valid_selections(cls, value: dict | None) -> dict | None:
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise ValueError("selections must be an object.")
+        for key, item in value.items():
+            if not isinstance(key, str) or not isinstance(item, str):
+                raise ValueError("selections must map strings to strings.")
+        return dict(value)
 
 
 @dataclass
@@ -42,6 +83,28 @@ def session_for(project_id: str) -> ProjectSession:
     if session is None:
         raise HTTPException(status_code=404, detail="Project not found. Start a new project.")
     return session
+
+
+def _configuration_message(project: dict) -> str:
+    cooling = project["design"]["cooling"]
+    sourcing = project["sourcing"]
+    if cooling["enabled"]:
+        status = (
+            f"Refrigerated bay enabled. Target {cooling['target_c']:g} °C; manual sample transfer."
+        )
+    else:
+        status = "Refrigerated bay is off."
+    prefix = "from " if sourcing["is_lower_bound"] else ""
+    return (
+        f"{status} Known parts subtotal: {prefix}${sourcing['subtotal']:.2f} USD. "
+        "Unpriced parts, shipping and taxes are excluded. Cooling performance is unverified."
+    )
+
+
+def _cooling_feedback(patch: dict, project: dict) -> str:
+    if not {"cooling_enabled", "cooling_target_c"}.intersection(patch):
+        return ""
+    return "\n\n" + _configuration_message(project)
 
 
 @app.get("/api/health")
@@ -103,6 +166,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     f"for your {width:g} mm limit. Fixed component dimensions are unchanged; "
                     "custom frame parts adjust. Motion and physical fit remain unverified."
                 )
+        reply += _cooling_feedback(patch, updated)
 
         # Publish state only after model and domain validation both succeed.
         session.project = updated
@@ -111,6 +175,22 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         )
         session.history = session.history[-8:]
         return {"project": deepcopy(updated), "assistant_message": reply, "usage": usage}
+
+
+@app.post("/api/projects/{project_id}/configuration")
+async def update_configuration(project_id: str, request: ConfigurationRequest) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = session.project
+        try:
+            updated = configure_project(current, **request.model_dump(exclude_none=True))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422, detail=f"{exc} The project was not changed."
+            ) from None
+        session.project = updated
+        message = _configuration_message(updated)
+        return {"project": deepcopy(updated), "assistant_message": message}
 
 
 @app.post("/api/projects/{project_id}/confirm")

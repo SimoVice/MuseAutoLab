@@ -59,6 +59,15 @@ async def _fake_generate_turn(
     lowered = user_message.casefold()
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
+    if user_message == "Add refrigerated storage at 4 C.":
+        return _FakeTurn(
+            "Recorded a 4 C refrigerated storage request.",
+            {
+                "cooling_enabled": True,
+                "cooling_target_c": 4,
+            },
+        ), usage
+
     if "20 mg/ml" in lowered:
         return _FakeTurn(
             "Recorded an impossible target concentration for this test.",

@@ -264,6 +264,39 @@ def run_smoke(web_url: str) -> None:
             )
             log("Component inspection via the accessible list shows 'Tip rack'.")
 
+            send_chat(page, "Add refrigerated storage at 4 C.", "Recorded a 4 C")
+            expect(
+                component_list.get_by_role("button", name="Refrigerated sample bay")
+            ).to_be_visible()
+            expect(footprint).to_contain_text("570")
+            expect(page.locator(".cost-block")).to_contain_text("253.18")
+            expect(page.locator(".chat-status")).to_contain_text("Draft")
+
+            page.get_by_label("Choose Motor drivers", exact=True).select_option("a4988")
+            expect(page.locator(".cost-block")).to_contain_text("225.18")
+            page.get_by_label("Choose Cooling", exact=True).select_option("opentrons-gen2")
+            expect(page.locator(".cost-block")).to_contain_text("4,165.23")
+            expect(page.locator(".cost-block")).to_contain_text("from")
+            expect(footprint).to_contain_text("624")
+            page.get_by_label("Target temperature (°C)", exact=True).fill("2")
+            page.get_by_role("button", name="Apply cooling settings").click()
+            expect(page.get_by_role("alert")).to_contain_text("4")
+            expect(page.locator(".cost-block")).to_contain_text("4,165.23")
+            page.get_by_label("Target temperature (°C)", exact=True).fill("4")
+            page.get_by_label("Refrigerated sample bay", exact=True).uncheck()
+            page.get_by_role("button", name="Apply cooling settings").click()
+            expect(footprint).to_contain_text("370")
+            expect(
+                component_list.get_by_role("button", name="Refrigerated sample bay")
+            ).to_have_count(0)
+            expect(page.locator(".cost-block")).to_contain_text("180.28")
+            page.get_by_label("Refrigerated sample bay", exact=True).check()
+            page.get_by_role("button", name="Apply cooling settings").click()
+            expect(page.get_by_label("Choose Cooling", exact=True)).to_have_value("opentrons-gen2")
+            expect(footprint).to_contain_text("624")
+            expect(page.locator(".cost-block")).to_contain_text("4,165.23")
+            log("Cooling, prices, alternatives, rejection and re-enable are coherent.")
+
             screenshot_path = os.environ.get("MUSEAUTOLAB_BROWSER_SCREENSHOT", "").strip()
             if screenshot_path:
                 # Optional only; no fixed files are created otherwise.
@@ -271,6 +304,7 @@ def run_smoke(web_url: str) -> None:
                 if not target.is_absolute():
                     target = ROOT / target
                 target.parent.mkdir(parents=True, exist_ok=True)
+                page.locator(".design-panel").evaluate("element => { element.scrollTop = 0; }")
                 page.screenshot(path=str(target))
                 log(f"Saved optional screenshot to {target}.")
 

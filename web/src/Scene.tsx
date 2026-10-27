@@ -87,6 +87,141 @@ function MachinePart({ part, center, selected, onSelect }: {
   );
 }
 
+function ColdStorageBay({ part, center, selected, onSelect }: {
+  part: Component;
+  center: [number, number, number];
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const position: [number, number, number] = [
+    (part.position[0] - center[0]) / SCALE,
+    (part.position[1] - center[1]) / SCALE,
+    (part.position[2] - center[2]) / SCALE,
+  ];
+  const w = part.size[0] / SCALE;
+  const h = part.size[1] / SCALE;
+  const d = part.size[2] / SCALE;
+  const highlight = selected || hovered;
+  const onClick = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(part.id); };
+  const onOver = (event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); setHovered(true); };
+  const onOut = () => setHovered(false);
+
+  // Split the declared envelope so every detail stays inside it:
+  // insulated shell below, sample inset + framed translucent lid in the top zone.
+  const lidZone = Math.min(0.06, Math.max(0.04, h * 0.08));
+  const shellH = Math.max(0.1, h - lidZone);
+  const shellCenterY = -h / 2 + shellH / 2;
+  const shellTopY = -h / 2 + shellH;
+  const insetH = Math.min(0.03, Math.max(0.015, lidZone * 0.45));
+  const insetW = w * 0.55;
+  const insetD = d * 0.48;
+  const insetCenterY = shellTopY + 0.005 + insetH / 2;
+  const insetTopY = insetCenterY + insetH / 2;
+  const lidThickness = 0.015;
+  const lidY = h / 2 - lidThickness / 2 - 0.001;
+  const lidW = w * 0.82;
+  const lidD = d * 0.76;
+  const frameH = 0.03;
+  const frameY = h / 2 - frameH / 2 - 0.001;
+  const frameBar = 0.04;
+  const ventCount = 3;
+  const ventW = w * 0.5;
+  const ventBaseY = -h / 2 + Math.min(0.18, h * 0.22);
+  const wellCount = 3;
+  const wellSpacing = Math.min(0.2, insetW / (wellCount + 1));
+
+  return (
+    <group name={part.id} position={position}>
+      {/* Insulated light shell: fills the declared footprint, shortened for the lid zone. */}
+      <mesh position={[0, shellCenterY, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
+        <boxGeometry args={[w, shellH, d]} />
+        <meshStandardMaterial
+          color={selected ? '#167d84' : '#e6eef0'}
+          metalness={0.08}
+          roughness={0.6}
+          emissive={highlight ? '#0a5f67' : '#000000'}
+          emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
+        />
+      </mesh>
+      {/* Cyan/aluminum sample inset resting on the shell, below the lid. */}
+      <mesh position={[0, insetCenterY, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
+        <boxGeometry args={[insetW, insetH, insetD]} />
+        <meshStandardMaterial
+          color={selected ? '#7fc4cb' : '#a9d6db'}
+          metalness={0.55}
+          roughness={0.35}
+          emissive={highlight ? '#0a5f67' : '#000000'}
+          emissiveIntensity={selected ? 0.12 : hovered ? 0.05 : 0}
+        />
+      </mesh>
+      {/* Schematic sample wells; positions only, no liquid or temperature implication. */}
+      {Array.from({ length: wellCount }, (_, index) => {
+        const x = (index - (wellCount - 1) / 2) * wellSpacing;
+        return (
+          <mesh key={`cold-well-${index}`} position={[x, insetTopY + 0.001, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
+            <cylinderGeometry args={[0.05, 0.05, 0.008, 16]} />
+            <meshStandardMaterial
+              color="#2f6f77"
+              metalness={0.1}
+              roughness={0.5}
+              emissive={highlight ? '#0a5f67' : '#000000'}
+              emissiveIntensity={selected ? 0.12 : hovered ? 0.05 : 0}
+            />
+          </mesh>
+        );
+      })}
+      {/* Framed translucent lid: transparent panel plus four frame bars, all flush inside the envelope. */}
+      <mesh position={[0, lidY, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
+        <boxGeometry args={[lidW, lidThickness, lidD]} />
+        <meshStandardMaterial
+          color="#cfeef2"
+          metalness={0.05}
+          roughness={0.25}
+          transparent
+          opacity={0.45}
+          depthWrite={false}
+          emissive={highlight ? '#0a5f67' : '#000000'}
+          emissiveIntensity={selected ? 0.1 : hovered ? 0.04 : 0}
+        />
+      </mesh>
+      {[
+        { key: 'front', args: [lidW, frameH, frameBar] as [number, number, number], pos: [0, frameY, lidD / 2 - frameBar / 2] as Vec3 },
+        { key: 'back', args: [lidW, frameH, frameBar] as [number, number, number], pos: [0, frameY, -lidD / 2 + frameBar / 2] as Vec3 },
+        { key: 'left', args: [frameBar, frameH, lidD] as [number, number, number], pos: [-lidW / 2 + frameBar / 2, frameY, 0] as Vec3 },
+        { key: 'right', args: [frameBar, frameH, lidD] as [number, number, number], pos: [lidW / 2 - frameBar / 2, frameY, 0] as Vec3 },
+      ].map((bar) => (
+        <mesh key={`cold-lid-${bar.key}`} position={bar.pos} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
+          <boxGeometry args={bar.args} />
+          <meshStandardMaterial
+            color={selected ? '#167d84' : '#3d545b'}
+            metalness={0.2}
+            roughness={0.5}
+            emissive={highlight ? '#0a5f67' : '#000000'}
+            emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
+          />
+        </mesh>
+      ))}
+      {/* Vent details on the front face, recessed inside the declared depth. */}
+      {Array.from({ length: ventCount }, (_, index) => {
+        const y = ventBaseY + index * 0.08;
+        return (
+          <mesh key={`cold-vent-${index}`} position={[0, y, d / 2 - 0.011]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
+            <boxGeometry args={[ventW, 0.035, 0.02]} />
+            <meshStandardMaterial
+              color={selected ? '#1a7f87' : '#5b7379'}
+              metalness={0.25}
+              roughness={0.6}
+              emissive={highlight ? '#0a5f67' : '#000000'}
+              emissiveIntensity={selected ? 0.12 : hovered ? 0.05 : 0}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 function AnimatedSelectableMesh({ id, kind, selected, onSelect, geometry, offset }: {
   id: string;
   kind: string;
@@ -403,6 +538,9 @@ export default function Scene({ project, selectedId, onSelect, operation }: {
     return components.filter((part) => part.id !== 'carriage' && part.id !== 'pipette');
   }, [components, showAnimation]);
 
+  const coldStoragePart = useMemo(() => staticParts.find((part) => part.id === 'cold-storage'), [staticParts]);
+  const genericStaticParts = useMemo(() => staticParts.filter((part) => part.id !== 'cold-storage'), [staticParts]);
+
   return (
     <>
     <SceneBoundary key={viewKey}>
@@ -419,8 +557,11 @@ export default function Scene({ project, selectedId, onSelect, operation }: {
         <directionalLight position={[-6, 5, -5]} intensity={0.7} />
         <FitCamera width={footprint.width_mm} height={footprint.height_mm} depth={footprint.depth_mm} />
         <group>
-          {staticParts.map((part) => <MachinePart key={part.id} part={part} center={bounds.center} selected={part.id === selectedId} onSelect={onSelect} />)}
+          {genericStaticParts.map((part) => <MachinePart key={part.id} part={part} center={bounds.center} selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
+        {coldStoragePart ? (
+          <ColdStorageBay part={coldStoragePart} center={bounds.center} selected={coldStoragePart.id === selectedId} onSelect={onSelect} />
+        ) : null}
         <RackDetails components={components} center={bounds.center} stepCount={normalizedStepCount} />
         {showAnimation && carriagePart && pipettePart && animationLayout && operation ? (
           <AnimatedPipetteCarriage

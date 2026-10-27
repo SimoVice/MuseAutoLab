@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 import re
 from dataclasses import dataclass
@@ -40,6 +41,14 @@ computed separately. You may explain the supplied current plan and its actual ca
 For new parameter changes the program recomputes the plan after your response; do not predict its
 result or claim laboratory validation, hardware feasibility or protocol execution.
 
+Refrigerated sample storage (cold-storage bay) is supported as an optional concept addition.
+Enabling storage adds an attached refrigerated sample bay with MANUAL sample transfer; the
+operating animation remains the liquid preparation cycle, not a gripper or cold transfer.
+The supported storage Target range is 2 to 20 C. If the user enables cooling without stating a
+target, the program proposes 4 C as the assumed Target; display it as 'Target', never as a
+measured temperature. Never promise an achieved temperature, validated dimensions, ventilation
+clearance, or physical buildability. Prices are a dated curated snapshot, not live feeds; do not
+claim live pricing, ordering, or supplier availability.
 Return the required JSON. For each field, extract a new value only if it was specified or corrected
 in the current user message. Use null for every field that should remain unchanged. Extract a
 workspace width only when the user states a specific maximum width, converting cm or m to mm.
@@ -56,7 +65,7 @@ Do not infer dimensions from words like small, narrow, less, or from a machine's
 ask for a number instead. Do not treat depth, height, a tube dimension, or a volume as width.
 The program handles updates separately: do not claim that a requested change has already happened.
 If the user requests
-capabilities outside this early prototype (including cooling, ordering, hardware operation, saved
+capabilities outside this early prototype (including ordering, hardware operation, saved
 files, or simulation), say that they are not yet implemented instead of claiming success.
 Keep the assistant_message brief and constructive."""
 
@@ -66,12 +75,24 @@ REQUIREMENT_KEYS = (
     "final_volume",
     "equipment",
     "workspace_width_mm",
+    "cooling_enabled",
+    "cooling_target_c",
 )
 
 WIDTH_PATTERN = re.compile(
     r"(?<![\w.+-])(\d+(?:[.,]\d+)?)\s*"
     r"(millimeters?|millimetres?|millimetr(?:o|i)|mm|centimeters?|centimetres?|"
     r"centimetr(?:o|i)|cm|meters?|metres?|metr(?:o|i)|m)\b",
+    re.IGNORECASE,
+)
+
+COOLING_TERM_PATTERN = re.compile(
+    r"cold[\s-]?storage|refrigerat\w*|fridge|frigorifer\w*|frigo\b|raffredd\w*|freezer|cooling|cold[\s-]?bay",
+    re.IGNORECASE,
+)
+
+TARGET_TEMP_PATTERN = re.compile(
+    r"(?<![\w.+-])(-?\d+(?:[.,]\d+)?)\s*(?:°\s*)?(?:degrees?\s*)?(?:celsius|c)\b",
     re.IGNORECASE,
 )
 
@@ -91,11 +112,15 @@ class ExtractedTurn(BaseModel):
     final_volume: Annotated[str | None, Field(max_length=500)]
     equipment: Annotated[str | None, Field(max_length=500)]
     workspace_width_mm: Annotated[float | None, Field(strict=True, gt=0, le=5000)]
+    cooling_enabled: Annotated[bool | None, Field(strict=True)] = None
+    cooling_target_c: Annotated[float | None, Field(strict=True, ge=2, le=20)] = None
     source_stock_concentration: Annotated[str | None, Field(max_length=500)]
     source_target_concentrations: Annotated[str | None, Field(max_length=500)]
     source_final_volume: Annotated[str | None, Field(max_length=500)]
     source_equipment: Annotated[str | None, Field(max_length=500)]
     source_workspace_width_mm: Annotated[str | None, Field(max_length=500)]
+    source_cooling_enabled: Annotated[str | None, Field(max_length=500)] = None
+    source_cooling_target_c: Annotated[str | None, Field(max_length=500)] = None
 
     @field_validator(
         "assistant_message",
@@ -144,6 +169,27 @@ class ExtractedTurn(BaseModel):
             elif key == "equipment":
                 if value.casefold() not in source.casefold():
                     raise ValueError("Equipment must occur in its supporting source")
+            elif key == "cooling_enabled":
+                if not isinstance(value, bool):
+                    raise ValueError("Cooling choice must be boolean")
+                if not COOLING_TERM_PATTERN.search(source):
+                    raise ValueError("Cooling choice must cite explicit cold-storage wording")
+            elif key == "cooling_target_c":
+                if not isinstance(value, (int, float)) or isinstance(value, bool):
+                    raise ValueError("Cooling target must be a number")
+                candidate = float(value)
+                if not math.isfinite(candidate) or candidate < 2 or candidate > 20:
+                    raise ValueError("Cooling target must be within 2..20 C")
+                found: list[float] = []
+                for match in TARGET_TEMP_PATTERN.finditer(source):
+                    try:
+                        found.append(float(match.group(1).replace(",", ".")))
+                    except ValueError:
+                        continue
+                if not any(abs(item - candidate) < 1e-6 for item in found):
+                    raise ValueError(
+                        "Cooling target must match a literal temperature in its source"
+                    )
             elif not re.search(r"(?<![\w.,+\-])" + re.escape(value) + r"(?![\w/])", source):
                 normalizer = {
                     "stock_concentration": normalize_concentration,
@@ -192,6 +238,43 @@ def _safe_usage(response: dict) -> dict[str, int]:
     }
 
 
+def _strict_schema() -> dict:
+    schema = ExtractedTurn.model_json_schema()
+    props = schema.get("properties", {})
+    for prop in props.values():
+        prop.pop("default", None)
+    schema["required"] = sorted(props.keys())
+    schema["additionalProperties"] = False
+    return schema
+
+
+def _catalogue_facts(project: dict) -> dict:
+    sourcing = project["sourcing"]
+    items = []
+    for group in sourcing["groups"]:
+        selected = next(
+            option for option in group["options"] if option["id"] == group["selected_id"]
+        )
+        if selected["unit_price"] is not None:
+            items.append(
+                {
+                    "label": selected["label"],
+                    "quantity": group["quantity"],
+                    "unit_price_usd": selected["unit_price"],
+                    "price_kind": selected["price_kind"],
+                }
+            )
+    return {
+        "checked_on": sourcing["checked_on"],
+        "subtotal_usd": sourcing["subtotal"],
+        "is_lower_bound": sourcing["is_lower_bound"],
+        "incomplete": True,
+        "unpriced_groups": sourcing["unpriced_count"],
+        "selected_items": items,
+        "exclusions": sourcing["exclusions"],
+    }
+
+
 async def generate_turn(
     project: dict,
     user_message: str,
@@ -206,11 +289,14 @@ async def generate_turn(
     backend, and provider errors are sanitized. The caller controls project storage and retries.
     """
     settings = settings or ModelSettings.load()
+    design = project.get("design", {}) if isinstance(project, dict) else {}
     state = {
         "summary": project["summary"],
-        "current_footprint_mm": project["design"]["footprint"],
-        "constraint_status": project["design"]["constraint_status"],
+        "current_footprint_mm": design.get("footprint"),
+        "constraint_status": design.get("constraint_status"),
         "current_plan": project.get("plan"),
+        "cooling": design.get("cooling"),
+        "catalogue": _catalogue_facts(project),
     }
     messages = [
         {"role": "developer", "content": SYSTEM_INSTRUCTIONS},
@@ -231,7 +317,7 @@ async def generate_turn(
             "json_schema": {
                 "name": "requirement_turn",
                 "strict": True,
-                "schema": ExtractedTurn.model_json_schema(),
+                "schema": _strict_schema(),
             },
         },
     }

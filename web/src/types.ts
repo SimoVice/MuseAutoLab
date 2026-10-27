@@ -25,6 +25,55 @@ export type PreparationPlan = {
   assumptions: string[];
 };
 
+export type SourcingPriceKind = 'listed' | 'starting_at' | 'unpriced';
+
+export type SourcingOption = {
+  id: string;
+  label: string;
+  supplier: string;
+  sku: string | null;
+  unit_price: number | null;
+  price_kind: SourcingPriceKind;
+  source_url: string | null;
+  checked_on: string;
+  availability: string;
+  pros: string[];
+  cons: string[];
+  compatibility_note: string;
+};
+
+export type SourcingGroup = {
+  id: string;
+  label: string;
+  component_ids: string[];
+  quantity: number;
+  selected_id: string;
+  options: SourcingOption[];
+};
+
+export type Sourcing = {
+  checked_on: string;
+  currency: string;
+  subtotal: number;
+  is_lower_bound: boolean;
+  incomplete: boolean;
+  unpriced_count: number;
+  groups: SourcingGroup[];
+  exclusions: string[];
+};
+
+export type CoolingTargetSource = 'assumed' | 'user';
+
+export type DesignCooling = {
+  enabled: boolean;
+  target_c: number;
+  target_source: CoolingTargetSource;
+  variant_id: string;
+  transfer_mode: 'manual';
+  validation: 'unverified';
+  notes: string[];
+};
+
 export type Project = {
   id: string;
   revision: number;
@@ -35,12 +84,17 @@ export type Project = {
     final_volume: string | null;
     equipment: string | null;
     workspace_width_mm: number | null;
+    cooling_enabled: boolean;
+    cooling_target_c: number | null;
   };
+  selections: Record<string, string>;
+  sourcing: Sourcing;
   design: {
     footprint: { width_mm: number; depth_mm: number; height_mm: number };
     components: Component[];
     constraint_status: 'unconstrained' | 'fits' | 'infeasible';
     estimated_cost: { amount: number | null; currency: string };
+    cooling: DesignCooling;
   };
   plan?: PreparationPlan | null;
 };
@@ -48,3 +102,9 @@ export type Project = {
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string };
 
 export type ProjectResponse = { project: Project; assistant_message?: string };
+
+export type ConfigurationUpdate = {
+  cooling_enabled?: boolean;
+  cooling_target_c?: number;
+  selections?: Record<string, string>;
+};
