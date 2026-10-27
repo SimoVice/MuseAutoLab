@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
 import ComponentCatalog from './ComponentCatalog';
+import ProjectFiles from './ProjectFiles';
 import type { ConversationEntry, PreparationPlan, Project, ProjectResponse } from './types';
 
 const EXAMPLE = 'I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, with 1 mL in each tube. I have a pipette and microcentrifuge tubes.';
@@ -237,6 +238,7 @@ export default function App() {
   const coolingEnabled = Boolean(project?.summary?.cooling_enabled ?? project?.design?.cooling?.enabled ?? false);
   const effectiveTarget = project?.summary?.cooling_target_c ?? project?.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
   const coolingNotes = project?.design?.cooling?.notes ?? [];
+  const isConfirmed = project?.status === 'confirmed';
 
   return (
     <div className="app-shell">
@@ -249,7 +251,7 @@ export default function App() {
         <div className="topbar-end"><span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}</div>
       </header>
       <main className="workspace">
-        <section className="design-panel" aria-labelledby="design-title">
+        <section className={`design-panel${isConfirmed ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
               <p className="kicker"><span className="kicker-dot" /> Design workspace</p>
@@ -259,9 +261,9 @@ export default function App() {
             <div className="revision"><span>Current design</span><strong>{project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Waiting for project'}</strong></div>
           </div>
 
-          <div className="viewer-shell">
+          <div className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
             <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
-            <div className="viewer-canvas">
+            <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
               {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
               <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
               <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
@@ -276,7 +278,9 @@ export default function App() {
             <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
             <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
           </div>
+          {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
           {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
+
 
           <section className="cooling-card" aria-labelledby="cooling-title">
             <div className="cooling-heading">

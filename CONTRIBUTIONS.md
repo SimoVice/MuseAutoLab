@@ -46,3 +46,13 @@ Added a configurable cold-storage proposal through chat and controls, with an at
 Added catalogue, cooling-domain, API and source-notation regression checks. Browser checks exercise cooling activation, cheaper driver selection, a commercial cooling alternative and its starting price, unsupported-temperature rejection and choice preservation through disable/re-enable. A synthetic live Meta/browser flow exercised the compact layout plus cooling addition. Implementation tasks used Muse Spark Contributor through OpenCode Go; output was reviewed, simplified and integrated locally.
 
 The catalogue is a reproducible snapshot, not a live feed or a complete build quotation. Five groups remain unpriced. Cooling performance, full hardware compatibility, sample transfer automation and physical feasibility remain unverified.
+
+## 2026-10-27: Revision-specific downloads and illustrated assembly sequence
+
+Added asynchronous local project-file generation with real CAD/document/archive stages, revision-gated ZIP and individual downloads, per-file hashes, immutable confirmed snapshots and retryable failures. The interface compacts the viewer after confirmation, presents the generated files and selects components while stepping through assembly guidance.
+
+The package includes labelled STEP concept envelopes, a custom deck blank in STEP/STL, editable build123d source, a geometry report, standalone illustrated HTML, assembly JSON, selected-component and preparation CSV files, runnable logical preview code and proposed camera/arm extension documentation. All derive from the same revision and selections. Edits block older downloads, including work that completes after an edit.
+
+Four implementation tasks explicitly used Muse Spark 1.3 Contributor through OpenCode Go with low effort and public baseline inputs. Their outputs were reviewed and corrected before integration. Verification covered 121 Python tests, lint, frontend build, STEP export/import and measurements, standalone script execution, guide rendering and a real browser flow downloading two packages and checking hashes/stale revisions. The AI provider was stubbed during that browser check.
+
+CAD represents concept envelopes; deck mounting holes, mechanisms, labware fits, wiring, material/process choices and hardware operation remain unresolved. Assembly steps describe a proposed sequence with design gates. The robot arm and camera are future extensions, with no hardware or compatible reserved space demonstrated. Saved-project import is not implemented.

@@ -6,11 +6,19 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.model_client import ModelClientError, generate_turn
+from app.project_exports import (
+    ExportError,
+    export_archive,
+    export_file,
+    export_status,
+    media_type_for,
+    start_export,
+)
 
 app = FastAPI(title="MuseAutoLab", version="0.1.0")
 
@@ -208,3 +216,65 @@ async def confirm(project_id: str) -> dict:
                 "Parameters confirmed for this concept. This does not run a laboratory protocol."
             ),
         }
+
+
+def _export_error_response(exc: ExportError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+
+@app.post("/api/projects/{project_id}/exports", status_code=202)
+async def create_export(project_id: str) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        job = await start_export(current)
+    except ExportError as exc:
+        raise _export_error_response(exc) from None
+    return job
+
+
+@app.get("/api/projects/{project_id}/exports/{job_id}")
+async def get_export(project_id: str, job_id: str) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        return await export_status(current, job_id)
+    except ExportError as exc:
+        raise _export_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/exports/{job_id}/download")
+async def download_export(project_id: str, job_id: str) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        payload = await export_archive(current, job_id)
+        meta = await export_status(current, job_id)
+    except ExportError as exc:
+        raise _export_error_response(exc) from None
+    filename = f"museautolab-{meta['project_id']}-r{meta['revision']}.zip"
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/projects/{project_id}/exports/{job_id}/files/{name:path}")
+async def download_export_file(project_id: str, job_id: str, name: str) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        payload = await export_file(current, job_id, name)
+    except ExportError as exc:
+        raise _export_error_response(exc) from None
+    safe = name.rsplit("/", 1)[-1]
+    return Response(
+        content=payload,
+        media_type=media_type_for(name),
+        headers={"Content-Disposition": f'attachment; filename="{safe}"'},
+    )

@@ -4,7 +4,7 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 ## Status
 
-Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. It supports a proposed cold-storage bay and source-backed component comparisons with partial pricing. After confirmation it can play an illustrative operating animation. Physical simulation, temperature control, file exports and persistent projects are not implemented yet.
+Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. It supports a proposed cold-storage bay and source-backed component comparisons with partial pricing. After confirmation it can play an illustrative operating animation and generate a downloadable project package with concept CAD, an illustrated assembly sequence, selected components and runnable preview code. Physical simulation, hardware/temperature control and persistent in-app projects are not implemented yet.
 
 The selected demonstrator is a dilution-and-aliquot workstation with pipette, tube and tip handling. It is intended to design the mechanical/electronic architecture and guide a person through assembly. Digital checks do not establish liquid-handling accuracy or hardware performance.
 
@@ -17,7 +17,7 @@ The selected demonstrator is a dilution-and-aliquot workstation with pipette, tu
 5. Preview the supported operating cycle and inspect the checks actually performed.
 6. Generate component options, printable parts, human assembly guidance and supported automation code.
 
-The planned light interface reserves roughly 60% of the design view for the 3D model, with estimated cost below and chat on the right. After confirmation, the model compacts upward to reveal actual generation progress and project files. Camera-based tube/tip presence checks are optional.
+The light interface reserves roughly 60% of the design view for the 3D model, with estimated cost below and chat on the right. After confirmation, the model compacts upward to reveal generation progress and project files. Camera-based tube/tip presence checks remain planned.
 
 ## Reproducible toolchain
 
@@ -74,7 +74,7 @@ npm.cmd --version
 
 Repeat the search-path assignment in a new shell if using this local CLI. Do not run a global npm upgrade as part of reproduction.
 
-`uv sync --locked --all-extras` includes the backend, CAD, simulation and default development group. For backend-only use, omit `--all-extras`; the full check below intentionally requires all extras.
+`uv sync --locked --all-extras` includes the backend, CAD, simulation and default development group. For chat-only use, omit `--all-extras`; project-file generation and the full checks below require the CAD extra. No additional dependencies were introduced for project exports.
 
 For an unreliable connection, retry with lower concurrency while preserving the lock:
 
@@ -184,6 +184,31 @@ The Component catalogue compares real supplier offers, quantities, availability 
 
 Prices are a dated USD catalogue snapshot checked on **2026-10-27**, not a live supplier feed or a delivered quotation. The data is in `app/data/components-2026-10-27.json`; [component sources](docs/component-sources.md) records primary links, price scope, assumptions and refresh instructions. The configuration endpoint is `POST /api/projects/{id}/configuration` with optional `cooling_enabled`, `cooling_target_c` and `selections` fields. It validates changes under the same project lock as chat. It makes no purchases or supplier requests.
 
+### Downloadable project files and assembly guide
+
+Confirm the design, then select **Generate project files**. Three completed stages track actual work: CAD generation, document generation and ZIP packaging. Choose **Download project ZIP** or download an individual file. The assembly guide's Previous/Next controls select the corresponding component in the 3D view.
+
+| Package file | Contents |
+| --- | --- |
+| `project.json`, `manifest.json` | Confirmed input snapshot, schema version, revision, input hash and per-file SHA-256 hashes |
+| `cad/workstation.step`, `cad/workstation.svg` | Labelled concept envelopes and top view derived from the same component positions/sizes |
+| `cad/deck.step`, `cad/deck.stl` | Custom deck solid blank; no mounting holes or fabrication-ready interfaces |
+| `cad/deck-model.py`, `cad/geometry-report.json` | Editable parametric source, library/source provenance, measured dimensions, validity and open interfaces |
+| `assembly-guide.html`, `assembly.json` | Standalone print-friendly illustrated assembly sequence, stable component IDs and design gates |
+| `bill-of-materials.csv`, `preparation.csv` | Selected alternatives with quantities, source prices/dates and per-target volumes; unknown prices stay blank |
+| `automation/preview.py` | Standard-library-only logical preparation trace; no hardware commands |
+| `extension-plan.json`, `extensions.md`, `README.md` | Proposed camera/arm interfaces, package usage and limitations |
+
+Extract the ZIP and open `assembly-guide.html` in a browser. Open STEP files in a STEP-compatible CAD viewer. Geometry uses millimetres: application `(x,y,z)` with y up maps to CAD `(x,z,y)` with Z up. Decorative tubes/vents in the viewer are not engineered parts. The planning height is a workspace envelope and can exceed the measured CAD height.
+
+Run the extracted logical preview with `python automation/preview.py` (Python 3, no extra packages). To regenerate CAD with exactly **build123d 0.13.0**, use this repository's locked `.venv` and run its interpreter against the extracted `cad/deck-model.py`. It writes STEP/STL files beside the script; geometry is derived from the editable `COMPONENTS_MM` array. Keep the original downloaded package for provenance: modifying generated source requires new checks and hashes.
+
+Each job uses an immutable copy of one confirmed revision. Edits invalidate confirmation and block old downloads with HTTP 409, including jobs that finish after the edit. Generate again after reconfirming; duplicate requests for the same active or ready revision reuse that job. Failed jobs expose an error and Retry action, never partial downloads. Up to three jobs per project are retained in process memory, with a 50 MB package limit. Restarting the backend loses sessions/jobs. `project.json` preserves the input for inspection; uploading/reopening a saved project in the app is not implemented.
+
+The API exposes `POST /api/projects/{id}/exports`, `GET /api/projects/{id}/exports/{job}`, and the returned download URL; individual attachments use `/api/projects/{id}/exports/{job}/files/{name}`. Generation runs locally without additional Meta requests or supplier calls. The exported snapshot makes inputs and selections inspectable; identical binary output across machines or regeneration is not guaranteed (for example, STEP headers can contain timestamps).
+
+The assembly sequence is a concept design guide. Rail/transmission details, pipette actuation, labware fits, mounting holes, power, wiring and calibration remain unresolved. Process, material and tolerances have not been selected; the deck STL is **not ready for fabrication**. Camera on an upper-frame mount and robot arm on an external sidecar are future proposals: their load, reach, field of view, power and collision clearances require hardware-specific design. No installed camera/arm or reserved compatible physical space is claimed.
+
 ## Test the application
 
 From the repository root, run the backend/domain tests and code checks:
@@ -203,7 +228,7 @@ $env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome
 .\.venv\Scripts\python.exe tests\browser_smoke.py
 ```
 
-The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save an optional screenshot. The suite checks calculated example volumes, an impossible concentration and recovery, width revisions, confirmation, component selection and that the schematic canvas changes while playback runs. It does not establish physical feasibility. Testing with the real API requires valid account access and consumes tokens.
+The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save an optional screenshot. The suite checks calculated example volumes, an impossible concentration and recovery, width revisions, confirmation, component selection and canvas changes during playback. It also generates/downloads two real CAD packages, verifies revisions/hashes/selected cooling geometry, navigates assembly steps and rejects stale downloads. CAD unit tests reopen exported STEP files and measure envelopes; API boundary tests stub CAD bytes to isolate failure/concurrency behavior. None establish physical feasibility. Testing with the real API requires valid account access and consumes tokens.
 
 ## Updating requirements deliberately
 
@@ -263,5 +288,6 @@ Use one versioned design for the viewer, CAD, component list, human assembly ins
 | `tests/` | Domain/API unit tests and local browser smoke test |
 | `.env.example` | Public configuration template with empty credentials |
 | `CONTRIBUTIONS.md` | Implemented contributions and their scope |
+| `docs/software-acknowledgements.md` | Development-tool reference and its scope |
 
 Source, required assets, reproducible checks and submission documentation belong in Git. Secrets, environments, `node_modules`, agent files, local skill provenance and caches are excluded. See [Contributions](CONTRIBUTIONS.md) for what this repository implements.

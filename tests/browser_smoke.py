@@ -40,6 +40,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -264,6 +265,40 @@ def run_smoke(web_url: str) -> None:
             )
             log("Component inspection via the accessible list shows 'Tip rack'.")
 
+            def download_package():
+                page.get_by_role("button", name="Generate project files").click()
+                link = page.get_by_role("link", name="Download project ZIP", exact=True)
+                expect(link).to_be_visible(timeout=45000)
+                href = link.get_attribute("href")
+                with page.expect_download() as download_info:
+                    link.click()
+                download = download_info.value
+                assert download.failure() is None
+                with zipfile.ZipFile(download.path()) as archive:
+                    manifest = json.loads(archive.read("manifest.json"))
+                    snapshot = json.loads(archive.read("project.json"))["project"]
+                    geometry = json.loads(archive.read("cad/geometry-report.json"))
+                    assert snapshot["revision"] == manifest["revision"] == geometry["revision"]
+                    assert geometry["project_id"] == snapshot["id"]
+                    assert {c["id"] for c in geometry["components"]} == {
+                        c["id"] for c in snapshot["design"]["components"]
+                    }
+                    for file in manifest["files"]:
+                        content = archive.read(file["name"])
+                        assert len(content) == file["size"]
+                        assert hashlib.sha256(content).hexdigest() == file["sha256"]
+                    assert b"ISO-10303-21" in archive.read("cad/workstation.step")
+                    assert b"<svg" in archive.read("assembly-guide.html")
+                    assert b"not fabrication-ready" in archive.read("README.md")
+                    assert len(archive.namelist()) == 16
+                return href, snapshot, geometry
+
+            baseline_download, baseline_snapshot, _ = download_package()
+            page.get_by_role("button", name="Next step", exact=True).click()
+            expect(page.locator(".files-step-title")).to_have_text("Frame and custom deck")
+            expect(page.locator(".selection-block")).to_contain_text("Custom deck")
+            log("Real ZIP download, revision, hashes, CAD and assembly selection verified.")
+
             send_chat(page, "Add refrigerated storage at 4 C.", "Recorded a 4 C")
             expect(
                 component_list.get_by_role("button", name="Refrigerated sample bay")
@@ -296,6 +331,21 @@ def run_smoke(web_url: str) -> None:
             expect(footprint).to_contain_text("624")
             expect(page.locator(".cost-block")).to_contain_text("4,165.23")
             log("Cooling, prices, alternatives, rejection and re-enable are coherent.")
+            expect(page.get_by_role("link", name="Download project ZIP", exact=True)).to_have_count(
+                0
+            )
+            assert page.request.get(web_url.rstrip("/") + baseline_download).status == 409
+            page.get_by_role("button", name="Confirm design").click()
+            _, cold_snapshot, cold_geometry = download_package()
+            assert cold_snapshot["revision"] > baseline_snapshot["revision"]
+            assert cold_snapshot["summary"]["cooling_enabled"] is True
+            assert cold_snapshot["selections"]["cooling"] == "opentrons-gen2"
+            deck = next(c for c in cold_geometry["components"] if c["id"] == "base")
+            assert deck["bbox_cad"]["size"] == [600.0, 624.0, 20.0]
+            expect(
+                page.get_by_role("link", name="Download assembly-guide.html", exact=True)
+            ).to_be_visible()
+            log("Old downloads blocked; regenerated cold-bay package matches selection.")
 
             screenshot_path = os.environ.get("MUSEAUTOLAB_BROWSER_SCREENSHOT", "").strip()
             if screenshot_path:

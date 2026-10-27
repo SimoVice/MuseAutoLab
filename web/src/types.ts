@@ -101,6 +101,38 @@ export type Project = {
 
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string };
 
+export type AssemblyStep = {
+  id: string;
+  title: string;
+  component_ids: string[];
+  instructions: string[];
+  checks: string[];
+  requires_design: boolean;
+};
+
+export type ExportFileEntry = {
+  name: string;
+  size: number;
+  media_type: string;
+  sha256: string;
+};
+
+export type ExportStatus = 'queued' | 'running' | 'ready' | 'failed' | 'stale';
+
+export type ExportJob = {
+  id: string;
+  project_id: string;
+  revision: number;
+  status: ExportStatus;
+  stage: string;
+  completed_stages: number;
+  total_stages: number;
+  error: string | null;
+  files: ExportFileEntry[];
+  assembly_steps: AssemblyStep[];
+  download_url: string | null;
+};
+
 export type ProjectResponse = { project: Project; assistant_message?: string };
 
 export type ConfigurationUpdate = {

@@ -65,8 +65,11 @@ Do not infer dimensions from words like small, narrow, less, or from a machine's
 ask for a number instead. Do not treat depth, height, a tube dimension, or a volume as width.
 The program handles updates separately: do not claim that a requested change has already happened.
 If the user requests
-capabilities outside this early prototype (including ordering, hardware operation, saved
-files, or simulation), say that they are not yet implemented instead of claiming success.
+capabilities outside this early prototype (including ordering, hardware operation, persistent
+saved projects or physics simulation), say that they are not yet implemented instead of claiming
+success. Project packages can be generated with the 'Generate project files' control after
+confirmation. They contain a concept assembly guide, selected components, preparation data and
+concept CAD; do not claim a package exists until the interface reports it ready.
 Keep the assistant_message brief and constructive."""
 
 REQUIREMENT_KEYS = (
