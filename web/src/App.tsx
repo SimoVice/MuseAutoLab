@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
-import type { ConversationEntry, Project, ProjectResponse } from './types';
+import type { ConversationEntry, PreparationPlan, Project, ProjectResponse } from './types';
 
 const EXAMPLE = 'I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, with 1 mL in each tube. I have a pipette and microcentrifuge tubes.';
 const WELCOME = 'Tell me about the preparation you would like to automate. We’ll define the concentrations, final volume and equipment together.';
@@ -43,6 +43,16 @@ function Icon({ name, size = 18 }: { name: 'send' | 'rotate' | 'spark' | 'check'
 
 function formatDimension(value: number) { return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value); }
 
+function formatVolumeUl(value: number) {
+  return `${new Intl.NumberFormat('en', { maximumSignificantDigits: 6 }).format(value)} µL`;
+}
+
+function planStatusLabel(status: PreparationPlan['status']) {
+  if (status === 'ready') return 'Ready';
+  if (status === 'invalid') return 'Needs attention';
+  return 'Incomplete';
+}
+
 export default function App() {
   const [project, setProject] = useState<Project | null>(null);
   const [messages, setMessages] = useState<ConversationEntry[]>([{ id: 0, role: 'assistant', text: WELCOME }]);
@@ -52,9 +62,12 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const lastMessage = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const seenRevision = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -79,6 +92,39 @@ export default function App() {
   useEffect(() => {
     if (selectedId && project && !project.design.components.some((part) => part.id === selectedId)) setSelectedId(null);
   }, [project, selectedId]);
+
+  const projectId = project?.id;
+  const projectRevision = project?.revision;
+  useEffect(() => {
+    if (projectId == null || projectRevision == null) return;
+    const key = `${projectId}:${projectRevision}`;
+    if (seenRevision.current === null) {
+      seenRevision.current = key;
+      return;
+    }
+    if (seenRevision.current !== key) {
+      seenRevision.current = key;
+      setPlaying(false);
+      setResetKey((value) => value + 1);
+    }
+  }, [projectId, projectRevision]);
+
+  const handlePreviewComplete = useCallback(() => {
+    setPlaying(false);
+    setResetKey((value) => value + 1);
+  }, []);
+
+  const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready';
+  useEffect(() => {
+    if (!showPreview) setPlaying(false);
+  }, [showPreview]);
+
+  function handlePlay() { setPlaying(true); }
+  function handlePause() { setPlaying(false); }
+  function handleReset() {
+    setPlaying(false);
+    setResetKey((value) => value + 1);
+  }
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
@@ -105,7 +151,7 @@ export default function App() {
     try {
       const result = await request(`/api/projects/${encodeURIComponent(project.id)}/confirm`);
       setProject(result.project);
-      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now(), role: 'assistant', text: result.assistant_message! }]);
+      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The design could not be confirmed.');
     } finally { setBusy(false); }
@@ -122,6 +168,7 @@ export default function App() {
   const dimensions = project?.design.footprint;
   const summary = project?.summary;
   const status = project?.design.constraint_status;
+  const plan = project?.plan ?? null;
   const fields = [
     { label: 'Stock', value: summary?.stock_concentration },
     { label: 'Targets', value: summary?.target_concentrations },
@@ -156,7 +203,7 @@ export default function App() {
           <div className="viewer-shell">
             <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
             <div className="viewer-canvas">
-              {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+              {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
               <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
               <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
             </div>
@@ -190,6 +237,81 @@ export default function App() {
               {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || busy}>Confirm design <span>↗</span></button>}
               <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
             </div>
+            {project && plan == null && (
+              <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
+                <div className="plan-heading">
+                  <div>
+                    <h3 id="plan-title">Preparation plan</h3>
+                    <p>Direct dilution · one tube per target</p>
+                  </div>
+                  <span className="plan-status plan-status-missing">Unavailable</span>
+                </div>
+                <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
+              </div>
+            )}
+            {project && plan && (
+              <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
+                <div className="plan-heading">
+                  <div>
+                    <h3 id="plan-title">Preparation plan</h3>
+                    <p>Direct dilution · one tube per target · no serial dilutions</p>
+                  </div>
+                  <span className={`plan-status plan-status-${plan.status}`}>{planStatusLabel(plan.status)}</span>
+                </div>
+                <p className="plan-message">{plan.message}</p>
+                <div className="plan-meta">
+                  <span><strong>Stock:</strong> {plan.stock ?? 'Not specified'}</span>
+                  <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Not specified'}</span>
+                </div>
+                {plan.steps.length > 0 ? (
+                  <div className="plan-table-wrap">
+                    <table className="plan-table">
+                      <caption className="sr-only">Per-target preparation volumes in microlitres</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Target</th>
+                          <th scope="col">Stock</th>
+                          <th scope="col">Diluent</th>
+                          <th scope="col">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plan.steps.map((step) => (
+                          <tr key={step.id}>
+                            <th scope="row">{step.target}</th>
+                            <td>{formatVolumeUl(step.stock_volume_ul)}</td>
+                            <td>{formatVolumeUl(step.diluent_volume_ul)}</td>
+                            <td>{formatVolumeUl(step.total_volume_ul)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="plan-empty">No per-target volumes to show yet.</p>
+                )}
+                {plan.assumptions.length > 0 && (
+                  <div>
+                    <p className="plan-assumptions-heading">Assumptions</p>
+                    <ul className="plan-assumptions">
+                      {plan.assumptions.map((assumption, index) => (
+                        <li key={index}>{assumption}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {showPreview && (
+                  <div className="preview-block">
+                    <div className="preview-controls" role="group" aria-label="Preparation preview controls">
+                      <button type="button" className="preview-button" onClick={handlePlay} disabled={playing} aria-pressed={playing}>Play preview</button>
+                      <button type="button" className="preview-button" onClick={handlePause} disabled={!playing}>Pause preview</button>
+                      <button type="button" className="preview-button" onClick={handleReset}>Reset preview</button>
+                    </div>
+                    <p className="preview-note">Illustrative animation; motion and dispensing are not validated.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="composer-area">
             {error && <div className="error-message" role="alert"><span>{error}</span>{!project && <button type="button" onClick={() => setConnectionAttempt((value) => value + 1)}>Retry</button>}</div>}

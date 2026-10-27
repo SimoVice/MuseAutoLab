@@ -5,18 +5,17 @@ What this test does:
   (actual FastAPI + domain code; only the Meta model call is stubbed).
 * Starts the actual frontend locally via Node + ``web/node_modules/vite/bin/vite.js``.
 * Drives the UI with Playwright using a locally installed Chrome browser.
-* Verifies the initial 600x370 mm concept, a complete synthetic task, a
-  feasible 450 mm width (400x470 mm), an infeasible 300 mm width with
-  preserved geometry, and a 650 mm width followed by confirmation.
+* Verifies dilution volumes, an impossible concentration and recovery, the
+  initial 600x370 mm concept, width revisions and confirmation.
 * Inspects one component through the accessible component list.
+* Checks playback controls and that canvas pixels change during animation.
 * Captures browser page errors and fails on unexpected errors.
 
 What this test does NOT do:
 * The AI provider is STUBBED (see ``browser_stub_server.py``). No Meta
   request or key is used; assistant replies are deterministic fakes.
-* No physical, motion, collision, dispensing, cost, or WebGL-visual
-  validation is implied. The 3D canvas is only checked for presence, not
-  for rendered pixels.
+* No physical, collision, dispensing, cost, or quantitative motion validation
+  is implied by a change in rendered canvas pixels.
 * No fixed screenshot or artifact files are created, except an optional
   screenshot saved only to the path supplied by MUSEAUTOLAB_BROWSER_SCREENSHOT.
 
@@ -32,6 +31,7 @@ Environment:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -186,7 +186,19 @@ def run_smoke(web_url: str) -> None:
             expect(summary).to_contain_text(EXPECTED_TARGET, timeout=STEP_TIMEOUT_MS)
             expect(summary).to_contain_text(EXPECTED_VOLUME, timeout=STEP_TIMEOUT_MS)
             expect(summary).to_contain_text(EXPECTED_EQUIPMENT, timeout=STEP_TIMEOUT_MS)
+            plan = page.locator(".plan-card")
+            expect(plan).to_contain_text("100 µL", timeout=STEP_TIMEOUT_MS)
+            expect(plan).to_contain_text("900 µL", timeout=STEP_TIMEOUT_MS)
             log("Complete synthetic task is reflected in the displayed summary.")
+
+            send_chat(page, "Change the target to 20 mg/mL", "impossible target")
+            expect(plan).to_contain_text("Needs attention", timeout=STEP_TIMEOUT_MS)
+            page.get_by_role("button", name="Confirm design").click()
+            expect(page.get_by_role("alert")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".chat-status")).to_contain_text("Draft")
+            send_chat(page, COMPLETE_TASK_MESSAGE, EXPECTED_STOCK)
+            expect(plan).to_contain_text("100 µL", timeout=STEP_TIMEOUT_MS)
+            log("Impossible target is rejected; restoring the original target restores the plan.")
 
             # Feasible narrower width: compact 400 x 470 mm layout.
             send_chat(page, WIDTH_450_MESSAGE, "Within requested width")
@@ -223,6 +235,23 @@ def run_smoke(web_url: str) -> None:
                 "Confirmed", timeout=STEP_TIMEOUT_MS
             )
             log("Design confirmed; confirmed state is asserted.")
+
+            play = page.get_by_role("button", name="Play preview")
+            pause = page.get_by_role("button", name="Pause preview")
+            expect(play).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            before = page.locator(".viewer-canvas canvas").screenshot()
+            play.click()
+            expect(pause).to_be_enabled(timeout=STEP_TIMEOUT_MS)
+            page.wait_for_timeout(900)
+            during = page.locator(".viewer-canvas canvas").screenshot()
+            assert hashlib.sha256(before).digest() != hashlib.sha256(during).digest(), (
+                "The schematic canvas did not change after starting the preview."
+            )
+            pause.click()
+            expect(play).to_be_enabled(timeout=STEP_TIMEOUT_MS)
+            page.get_by_role("button", name="Reset preview").click()
+            expect(pause).to_be_disabled(timeout=STEP_TIMEOUT_MS)
+            log("Illustrative preview can be played, paused and reset.")
 
             # Inspect one component through the accessible component list.
             component_list = page.get_by_label("Workstation components")

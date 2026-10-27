@@ -4,7 +4,7 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 ## Status
 
-Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The first runnable prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and supports parameter confirmation. It is an early digital concept: dilution calculations, motion simulation, cooling, component sourcing, file exports and persistent projects are not implemented yet.
+Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. After confirmation it can play an illustrative operating animation. It is an early digital concept: physical simulation, cooling, component sourcing, file exports and persistent projects are not implemented yet.
 
 The selected demonstrator is a dilution-and-aliquot workstation with pipette, tube and tip handling. It is intended to design the mechanical/electronic architecture and guide a person through assembly. Digital checks do not establish liquid-handling accuracy or hardware performance.
 
@@ -166,6 +166,14 @@ For this first milestone, the model extracts only information supported by the l
 
 Project state and chat history live in backend memory for the current process. Restarting the backend, refreshing the page or starting a new project creates a new session; saving and reopening a project are planned but not yet available. Confirmation records user acceptance of the displayed parameters and does not execute a laboratory protocol.
 
+### Direct dilution and operating preview
+
+The deterministic calculator applies **C₁V₁ = C₂V₂**: stock volume is target concentration divided by stock concentration, multiplied by final volume; diluent fills the remainder. For example, a 10 mg/mL stock, 1 mg/mL target and 1 mL final volume yield 100 µL stock and 900 µL diluent. The relationship is described in [Thermo Fisher Scientific's dilution guide](https://assets.thermofisher.com/TFS-Assets/LSG/Application-Notes/cms_043004.pdf).
+
+Enter a number with a unit for every concentration and volume. Supported concentration units are `M`, `mM`, `uM`/`µM`, `nM`, `g/L`, `mg/mL` and `ug/mL`/`µg/mL`; volume units are `mL`, `uL`/`µL` and `nL`. Separate up to six fully specified targets with commas or semicolons, for example `1 mM, 2 mM`. Units are case-sensitive. Molar and mass concentrations cannot be mixed. Missing, unsupported, negative and impossible values prevent confirmation; zero target is allowed. Each target represents one independent tube prepared directly from the original stock, with no serial dilution or replicates.
+
+The plan is arithmetic, not a validated protocol. Tube capacity, pipette range, mixing, dead volume, reagent compatibility and hardware performance are not checked. The preview illustrates visits to tips, stock/diluent, sample rack and waste for nonzero transfers; it is not a physical simulation, collision check or hardware control. Sample and source positions are schematic. Review all parameters and obtain appropriate laboratory and hardware validation before practical use.
+
 ## Test the application
 
 From the repository root, run the backend/domain tests and code checks:
@@ -185,7 +193,7 @@ $env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome
 .\.venv\Scripts\python.exe tests\browser_smoke.py
 ```
 
-The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save an optional screenshot. The suite checks the parameter summary, width revisions, infeasible state, confirmation and component selection; it does not establish physical feasibility. Testing with the real API requires valid account access and consumes tokens.
+The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save an optional screenshot. The suite checks calculated example volumes, an impossible concentration and recovery, width revisions, confirmation, component selection and that the schematic canvas changes while playback runs. It does not establish physical feasibility. Testing with the real API requires valid account access and consumes tokens.
 
 ## Updating requirements deliberately
 

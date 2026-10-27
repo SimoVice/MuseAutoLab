@@ -1,10 +1,18 @@
 import { OrbitControls } from '@react-three/drei';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
-import { Component as ReactComponent, useEffect, useMemo, useState } from 'react';
+import { Component as ReactComponent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import type { OrthographicCamera } from 'three';
+import type { Group } from 'three';
 import type { Component, Project } from './types';
+import {
+  DIP_DOWN_TIME,
+  DWELL_TIME,
+  RETRACT_TIME,
+  TRAVEL_TIME,
+  sampleOperationKeyframes,
+} from './operation';
+import type { OperationKeyframe, OperationSpec, Vec3 } from './operation';
 
 const SCALE = 100;
 const colors: Record<string, string> = {
@@ -19,6 +27,8 @@ const colors: Record<string, string> = {
   controller: '#456772',
 };
 
+const OPERATION_VISIT_ORDER = ['tip-rack', 'source-rack', 'sample-rack', 'tip-waste'] as const;
+
 class SceneBoundary extends ReactComponent<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -30,7 +40,7 @@ class SceneBoundary extends ReactComponent<{ children: ReactNode }, { failed: bo
 }
 
 function FitCamera({ width, height, depth }: { width: number; height: number; depth: number }) {
-  const camera = useThree((state) => state.camera) as OrthographicCamera;
+  const camera = useThree((state) => state.camera) as import('three').OrthographicCamera;
   const size = useThree((state) => state.size);
   useEffect(() => {
     const horizontalSpan = (width + depth * 0.58) / SCALE;
@@ -77,10 +87,233 @@ function MachinePart({ part, center, selected, onSelect }: {
   );
 }
 
-export default function Scene({ project, selectedId, onSelect }: {
+function AnimatedSelectableMesh({ id, kind, selected, onSelect, geometry, offset }: {
+  id: string;
+  kind: string;
+  selected: boolean;
+  onSelect: (meshId: string) => void;
+  geometry: ReactNode;
+  offset: Vec3;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <mesh
+      name={id}
+      position={offset}
+      onClick={(event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(id); }}
+      onPointerOver={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); setHovered(true); }}
+      onPointerOut={() => setHovered(false)}
+    >
+      {geometry}
+      <meshStandardMaterial
+        color={selected ? '#167d84' : colors[kind] ?? '#a8bfc0'}
+        metalness={['rail', 'column', 'carriage'].includes(kind) ? 0.5 : 0.12}
+        roughness={0.5}
+        emissive={selected || hovered ? '#0a5f67' : '#000000'}
+        emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
+      />
+    </mesh>
+  );
+}
+
+function AnimatedPipetteCarriage({ carriage, pipette, home, keyframes, duration, playing, resetKey, revision, stepCount, onComplete, selectedId, onSelect }: {
+  carriage: Component;
+  pipette: Component;
+  home: Vec3;
+  keyframes: OperationKeyframe[];
+  duration: number;
+  playing: boolean;
+  resetKey: number;
+  revision: number;
+  stepCount: number;
+  onComplete: () => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const groupRef = useRef<Group | null>(null);
+  const progressRef = useRef(0);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  // Reset the schematic progress when the operation is reset or the project revision changes.
+  useEffect(() => {
+    progressRef.current = 0;
+    completedRef.current = false;
+    if (groupRef.current) {
+      groupRef.current.position.set(home[0], home[1], home[2]);
+    }
+    invalidate();
+    // Cleanup resets the completion guard so a remount never fires a stale callback.
+    return () => {
+      completedRef.current = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey, revision, stepCount, duration]);
+
+  // Wake the demand render loop only while playing.
+  useEffect(() => {
+    if (playing && !completedRef.current) {
+      invalidate();
+    }
+    return () => {
+      // No leaked loops: animation is driven solely by useFrame.
+    };
+  }, [playing, invalidate, resetKey, revision]);
+
+  // Zero-step operations complete without motion; assume no liquid animation or physical execution.
+  useEffect(() => {
+    if (playing && duration <= 0 && !completedRef.current) {
+      completedRef.current = true;
+      invalidate();
+      onCompleteRef.current();
+    }
+  }, [playing, duration, invalidate, resetKey, revision, stepCount]);
+
+  useFrame((_, delta) => {
+    if (!playing) return;
+    if (completedRef.current) return;
+    if (duration <= 0) return;
+    // Cap the frame delta so tab refocus or slow frames cannot jump the schematic.
+    const cappedDelta = Math.min(delta, 0.05);
+    progressRef.current += cappedDelta;
+    const sampled = sampleOperationKeyframes(keyframes, progressRef.current);
+    if (groupRef.current) {
+      groupRef.current.position.set(sampled[0], sampled[1], sampled[2]);
+    }
+    // Keep the demand loop alive only while the schematic is playing.
+    invalidate();
+    if (progressRef.current >= duration) {
+      completedRef.current = true;
+      onCompleteRef.current();
+    }
+  });
+
+  const carriageSize: Vec3 = [carriage.size[0] / SCALE, carriage.size[1] / SCALE, carriage.size[2] / SCALE];
+  const pipetteDiameter = pipette.size[0] / SCALE;
+  const pipetteHeight = pipette.size[1] / SCALE;
+  const pipetteOffsetY = (pipette.position[1] - carriage.position[1]) / SCALE;
+  const tipHeight = 0.22;
+
+  return (
+    <group ref={groupRef} position={home}>
+      <AnimatedSelectableMesh
+        id={carriage.id}
+        kind={carriage.kind}
+        selected={selectedId === carriage.id}
+        onSelect={onSelect}
+        offset={[0, 0, 0]}
+        geometry={<boxGeometry args={carriageSize} />}
+      />
+      <AnimatedSelectableMesh
+        id={pipette.id}
+        kind={pipette.kind}
+        selected={selectedId === pipette.id}
+        onSelect={onSelect}
+        offset={[0, pipetteOffsetY, 0]}
+        geometry={<cylinderGeometry args={[pipetteDiameter / 2, pipetteDiameter / 2, pipetteHeight, 32]} />}
+      />
+      {/* Restrained schematic disposable tip; illustrative only, not a physical model. */}
+      <mesh position={[0, pipetteOffsetY - pipetteHeight / 2 - tipHeight / 2 + 0.03, 0]}>
+        <cylinderGeometry args={[0.035, 0.012, tipHeight, 16]} />
+        <meshStandardMaterial color="#f7fbfb" metalness={0.05} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+function RackDetails({ components, center, stepCount }: {
+  components: Component[];
+  center: [number, number, number];
+  stepCount: number;
+}) {
+  const details = useMemo(() => {
+    const byId = new Map(components.map((part) => [part.id, part]));
+    const sourceRack = byId.get('source-rack');
+    const sampleRack = byId.get('sample-rack');
+    const tipRack = byId.get('tip-rack');
+    const tipWaste = byId.get('tip-waste');
+    return { sourceRack, sampleRack, tipRack, tipWaste };
+  }, [components]);
+
+  const tubeRow = (rack: Component | undefined, count: number, radius: number, height: number, color: string, prefix: string) => {
+    if (!rack) return null;
+    const safeCount = Math.max(1, Math.min(6, Math.floor(count)));
+    const rackCenterX = (rack.position[0] - center[0]) / SCALE;
+    const rackCenterZ = (rack.position[2] - center[2]) / SCALE;
+    const rackTopY = (rack.position[1] - center[1]) / SCALE + rack.size[1] / SCALE / 2;
+    const spacing = Math.min(0.2, (rack.size[0] / SCALE) / (safeCount + 1));
+    return (
+      <group key={prefix}>
+        {Array.from({ length: safeCount }, (_, index) => {
+          const x = rackCenterX + (index - (safeCount - 1) / 2) * spacing;
+          return (
+            <mesh key={`${prefix}-${index}`} position={[x, rackTopY + height / 2 - 0.02, rackCenterZ]}>
+              <cylinderGeometry args={[radius, radius, height, 16]} />
+              <meshStandardMaterial color={color} metalness={0.05} roughness={0.45} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  };
+
+  const tipRow = (rack: Component | undefined) => {
+    if (!rack) return null;
+    const count = 4;
+    const rackCenterX = (rack.position[0] - center[0]) / SCALE;
+    const rackCenterZ = (rack.position[2] - center[2]) / SCALE;
+    const rackTopY = (rack.position[1] - center[1]) / SCALE + rack.size[1] / SCALE / 2;
+    const spacing = Math.min(0.2, (rack.size[0] / SCALE) / (count + 1));
+    return (
+      <group key="tips">
+        {Array.from({ length: count }, (_, index) => {
+          const x = rackCenterX + (index - (count - 1) / 2) * spacing;
+          return (
+            <mesh key={`tip-${index}`} position={[x, rackTopY + 0.06, rackCenterZ]}>
+              <cylinderGeometry args={[0.045, 0.016, 0.16, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.02} roughness={0.35} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  };
+
+  const wasteOpening = details.tipWaste ? (() => {
+    const rack = details.tipWaste;
+    const x = (rack.position[0] - center[0]) / SCALE;
+    const topY = (rack.position[1] - center[1]) / SCALE + rack.size[1] / SCALE / 2;
+    const z = (rack.position[2] - center[2]) / SCALE;
+    return (
+      <mesh key="waste-opening" position={[x, topY + 0.005, z]}>
+        <boxGeometry args={[rack.size[0] / SCALE * 0.7, 0.02, rack.size[2] / SCALE * 0.7]} />
+        <meshStandardMaterial color="#3d545b" metalness={0.1} roughness={0.7} />
+      </mesh>
+    );
+  })() : null;
+
+  const sampleTubeCount = stepCount > 0 ? Math.min(6, stepCount) : 3;
+
+  return (
+    <group>
+      {tubeRow(details.sourceRack, 2, 0.06, 0.22, '#2f6f77', 'source-tube')}
+      {tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
+      {tipRow(details.tipRack)}
+      {wasteOpening}
+    </group>
+  );
+}
+
+export default function Scene({ project, selectedId, onSelect, operation }: {
   project: Project;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  operation?: OperationSpec;
 }) {
   const { components, footprint } = project.design;
   const [viewKey, setViewKey] = useState(0);
@@ -91,6 +324,85 @@ export default function Scene({ project, selectedId, onSelect }: {
     return { center: [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2] as [number, number, number], height: max[1] - min[1] };
   }, [components]);
   const target: [number, number, number] = [0, bounds.height / SCALE / 2, 0];
+
+  const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
+  const carriagePart = byId.get('carriage');
+  const pipettePart = byId.get('pipette');
+  const showAnimation = Boolean(operation && carriagePart && pipettePart);
+
+  const normalizedStepCount = useMemo(() => {
+    if (!operation) return 0;
+    return operation.steps.length;
+  }, [operation]);
+
+  const animationLayout = useMemo(() => {
+    if (!carriagePart || !pipettePart) return null;
+    const toCentered = (position: [number, number, number]): Vec3 => [
+      (position[0] - bounds.center[0]) / SCALE,
+      (position[1] - bounds.center[1]) / SCALE,
+      (position[2] - bounds.center[2]) / SCALE,
+    ];
+    const carriageCentered = toCentered(carriagePart.position as [number, number, number]);
+    const home: Vec3 = [carriageCentered[0], carriageCentered[1], carriageCentered[2]];
+    const cruiseY = carriageCentered[1] + 0.5;
+    // Illustrative approach only: the travel mechanism and clearance are not modeled.
+    const dipY = cruiseY - 0.4;
+
+    const stationBaseXZ: Record<string, { x: number; z: number }> = {};
+    for (const stationId of OPERATION_VISIT_ORDER) {
+      const station = byId.get(stationId);
+      if (station) {
+        stationBaseXZ[stationId] = {
+          x: (station.position[0] - bounds.center[0]) / SCALE,
+          z: (station.position[2] - bounds.center[2]) / SCALE,
+        };
+      } else {
+        stationBaseXZ[stationId] = { x: home[0], z: home[2] };
+      }
+    }
+
+    const sampleRack = byId.get('sample-rack');
+    const sampleSpacing = sampleRack ? Math.min(0.2, sampleRack.size[0] / SCALE / (normalizedStepCount + 1)) : 0;
+
+    // Two source positions represent stock and diluent. Each non-zero transfer
+    // uses a fresh tip and visits the corresponding destination tube. This is
+    // a visual sequence only, not a validated motion or laboratory protocol.
+    const keyframes: OperationKeyframe[] = [{ position: [...home] as Vec3, time: 0 }];
+    let time = 0;
+    for (let targetIndex = 0; targetIndex < normalizedStepCount; targetIndex += 1) {
+      const step = operation!.steps[targetIndex];
+      const transfers = [step.stock_volume_ul > 0 ? -0.1 : null, step.diluent_volume_ul > 0 ? 0.1 : null];
+      for (const sourceOffset of transfers) {
+        if (sourceOffset === null) continue;
+        for (const stationId of OPERATION_VISIT_ORDER) {
+        const base = stationBaseXZ[stationId];
+        let x = base.x;
+        const z = base.z;
+        if (stationId === 'source-rack') x += sourceOffset;
+        if (stationId === 'sample-rack') x += (targetIndex - (normalizedStepCount - 1) / 2) * sampleSpacing;
+        if (stationId === 'tip-rack') x += ((targetIndex * 2 + (sourceOffset > 0 ? 1 : 0)) % 4 - 1.5) * 0.19;
+        time += TRAVEL_TIME;
+        keyframes.push({ position: [x, cruiseY, z], time });
+        time += DIP_DOWN_TIME;
+        keyframes.push({ position: [x, dipY, z], time });
+        time += DWELL_TIME;
+        keyframes.push({ position: [x, dipY, z], time });
+        time += RETRACT_TIME;
+        keyframes.push({ position: [x, cruiseY, z], time });
+        }
+      }
+    }
+    time += TRAVEL_TIME;
+    keyframes.push({ position: [...home] as Vec3, time });
+    const duration = keyframes.length > 1 ? keyframes[keyframes.length - 1].time : 0;
+    return { home, cruiseY, dipY, keyframes, duration };
+  }, [byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
+
+  const staticParts = useMemo(() => {
+    if (!showAnimation) return components;
+    return components.filter((part) => part.id !== 'carriage' && part.id !== 'pipette');
+  }, [components, showAnimation]);
+
   return (
     <>
     <SceneBoundary key={viewKey}>
@@ -107,8 +419,25 @@ export default function Scene({ project, selectedId, onSelect }: {
         <directionalLight position={[-6, 5, -5]} intensity={0.7} />
         <FitCamera width={footprint.width_mm} height={footprint.height_mm} depth={footprint.depth_mm} />
         <group>
-          {components.map((part) => <MachinePart key={part.id} part={part} center={bounds.center} selected={part.id === selectedId} onSelect={onSelect} />)}
+          {staticParts.map((part) => <MachinePart key={part.id} part={part} center={bounds.center} selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
+        <RackDetails components={components} center={bounds.center} stepCount={normalizedStepCount} />
+        {showAnimation && carriagePart && pipettePart && animationLayout && operation ? (
+          <AnimatedPipetteCarriage
+            carriage={carriagePart}
+            pipette={pipettePart}
+            home={animationLayout.home}
+            keyframes={animationLayout.keyframes}
+            duration={animationLayout.duration}
+            playing={operation.playing}
+            resetKey={operation.resetKey}
+            revision={project.revision}
+            stepCount={normalizedStepCount}
+            onComplete={operation.onComplete}
+            selectedId={selectedId}
+            onSelect={onSelect}
+          />
+        ) : null}
         <gridHelper args={[18, 36, '#cfdddd', '#dbe7e7']} position={[0, -0.025, 0]} />
         <OrbitControls makeDefault target={target} minZoom={15} maxZoom={200} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
       </Canvas>

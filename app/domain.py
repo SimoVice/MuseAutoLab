@@ -11,6 +11,8 @@ import math
 from copy import deepcopy
 from uuid import uuid4
 
+from app.dilution import create_dilution_plan
+
 TEXT_FIELDS = (
     "stock_concentration",
     "target_concentrations",
@@ -110,13 +112,21 @@ def _layout(compact: bool) -> dict:
 
 def new_project() -> dict:
     """Create a draft project with an illustrative wide workstation."""
+    summary = {name: None for name in (*TEXT_FIELDS, "workspace_width_mm")}
     return {
         "id": str(uuid4()),
         "revision": 0,
         "status": "draft",
-        "summary": {name: None for name in (*TEXT_FIELDS, "workspace_width_mm")},
+        "summary": summary,
         "design": _layout(compact=False),
+        "plan": _plan_for(summary),
     }
+
+
+def _plan_for(summary: dict) -> dict:
+    return create_dilution_plan(
+        summary["stock_concentration"], summary["target_concentrations"], summary["final_volume"]
+    )
 
 
 def _validated_patch(patch: dict) -> dict:
@@ -155,6 +165,7 @@ def apply_update(project: dict, patch: dict) -> dict:
     if all(result["summary"][key] == value for key, value in updates.items()):
         return result
     result["summary"].update(updates)
+    result["plan"] = _plan_for(result["summary"])
     width = result["summary"]["workspace_width_mm"]
     if width is not None and width < COMPACT_WIDTH_MM:
         result["design"]["constraint_status"] = "infeasible"
@@ -173,6 +184,8 @@ def confirm_project(project: dict) -> dict:
         raise ValueError(f"Required parameters are missing: {', '.join(missing)}.")
     if project["design"]["constraint_status"] == "infeasible":
         raise ValueError("The requested workspace width is infeasible for the supported layouts.")
+    if project["plan"]["status"] != "ready":
+        raise ValueError(f"Dilution plan needs attention: {project['plan']['message']}")
     result = deepcopy(project)
     if result["status"] != "confirmed":
         result["status"] = "confirmed"

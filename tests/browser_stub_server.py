@@ -10,6 +10,7 @@ understands the four known synthetic English messages sent by
 
 * a complete task filling stock concentration, target, final volume and
   equipment,
+* an impossible 20 mg/mL target request,
 * a 450 mm workspace-width request,
 * a 300 mm workspace-width request,
 * a 650 mm workspace-width request.
@@ -57,6 +58,14 @@ async def _fake_generate_turn(
     """
     lowered = user_message.casefold()
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+    if "20 mg/ml" in lowered:
+        return _FakeTurn(
+            "Recorded an impossible target concentration for this test.",
+            {
+                "target_concentrations": "20 mg/mL",
+            },
+        ), usage
 
     # Complete synthetic task: fills the four required text fields.
     # Expected to contain "10 mg/mL" plus pipette/microcentrifuge wording.

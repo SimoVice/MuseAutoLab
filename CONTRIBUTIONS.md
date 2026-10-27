@@ -26,3 +26,9 @@ Added a FastAPI backend with server-side Meta Contributor integration, bounded s
 Added the React/Three.js workspace with a rotatable, selectable 3D concept, conversation, parameter summary and unknown cost state. Added domain/API tests and a reproducible browser smoke test with a stubbed model; a separate synthetic live test exercised the real Meta endpoint. Playwright was added as a pinned development dependency.
 
 The supported layouts are illustrative assumptions. No physical mechanism, pipetting calculation, cooling system, sourcing, export package or persistent project is validated or implemented in this revision.
+
+## 2026-10-27: Direct dilution and illustrative operation
+
+Added deterministic direct-dilution calculations with explicit concentration and volume units, missing and impossible input handling, and confirmation gated on a valid plan. Added a preparation table and a controllable 3D operating animation showing schematic visits for stock and diluent transfers. Added arithmetic and browser checks, including invalid-input recovery and a rendered-canvas change during playback. Implementation was assisted by Muse Spark 1.3 Contributor through OpenCode Go and reviewed and integrated locally.
+
+The calculator assumes one tube per target and does not model serial dilution or check tube capacity, pipette limits, mixing, dead volume or laboratory feasibility. The animation is illustrative and does not simulate physics, liquid flow or device control.

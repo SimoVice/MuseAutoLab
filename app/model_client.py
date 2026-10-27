@@ -23,7 +23,11 @@ Respond in concise English. Gather the stock concentration, target concentration
 available equipment, and optionally the workspace width. Ask about the most useful missing fields.
 Use only facts explicitly supplied by the user; never invent values, prices, validated hardware,
 liquid-handling performance, or simulation results. Report concentrations and volumes exactly as
-given with their units; do not calculate dilution recipes in this initial version.
+given with their units; do not calculate dilution recipes yourself.
+A deterministic direct-dilution plan (one separate tube per target and no serial dilutions) is
+computed separately from the recorded summary. Do not invent, quote, or estimate its volumes,
+steps, readiness, or message, and do not claim laboratory validation, hardware feasibility,
+or protocol execution from it.
 
 Return the required JSON. For each field, extract a new value only if it was specified or corrected
 in the current user message. Use null for every field that should remain unchanged. Extract a
@@ -34,10 +38,11 @@ of their supporting source, preserving units. Width source must contain the numb
 Use null for the source of an unchanged field. Do not copy supporting text from previous turns.
 Do not infer dimensions from words like small, narrow, less, or from a machine's current dimensions;
 ask for a number instead. Do not treat depth, height, a tube dimension, or a volume as width.
-The program handles layout and feasibility separately: do not claim that the machine has already
-changed or that it fits. If the user requests capabilities outside this early prototype (including
-cooling, ordering, hardware operation, saved files, or simulation), say that they are not yet
-implemented instead of claiming success. Keep the assistant_message brief and constructive."""
+The program handles layout, feasibility, and dilution planning separately: do not claim that the
+machine has already changed, that it fits, or what the dilution plan contains. If the user requests
+capabilities outside this early prototype (including cooling, ordering, hardware operation, saved
+files, or simulation), say that they are not yet implemented instead of claiming success.
+Keep the assistant_message brief and constructive."""
 
 REQUIREMENT_KEYS = (
     "stock_concentration",
