@@ -133,3 +133,29 @@ def test_unsupported_previous_values_and_wrong_unit_conversion_are_rejected():
     wrong_conversion = valid_response(workspace_width_mm=40, source_workspace_width_mm="40 cm")
     with pytest.raises(ModelClientError):
         run_turn(lambda request: httpx.Response(200, json=wrong_conversion))
+
+
+@pytest.mark.parametrize(
+    ("key", "source", "value"),
+    [
+        ("stock_concentration", "10mg/ml", "10 mg/mL"),
+        ("final_volume", "0,5ml", "0.5 mL"),
+        ("target_concentrations", "1, 2 and 3 mg/ml", "1 mg/mL, 2 mg/mL, 3 mg/mL"),
+    ],
+)
+def test_equivalent_quantity_notation_keeps_literal_evidence(key, source, value):
+    body = valid_response(**{key: value, f"source_{key}": source})
+    result, _ = run_turn(lambda request: httpx.Response(200, json=body), message=source)
+    assert result.patch()[key] == value
+
+
+def test_canonicalization_cannot_change_concentration_or_capitalized_prefix():
+    body = valid_response(stock_concentration="1 mM", source_stock_concentration="1 M")
+    with pytest.raises(ModelClientError):
+        run_turn(lambda request: httpx.Response(200, json=body), message="Stock is 1 M")
+    body = valid_response(stock_concentration="1 mM", source_stock_concentration="1 mM")
+    with pytest.raises(ModelClientError):
+        run_turn(lambda request: httpx.Response(200, json=body), message="Stock is 1 MM")
+    body = valid_response(stock_concentration="1 M", source_stock_concentration="11 M")
+    with pytest.raises(ModelClientError):
+        run_turn(lambda request: httpx.Response(200, json=body), message="Stock is 11 M")

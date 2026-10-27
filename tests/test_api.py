@@ -107,3 +107,37 @@ def test_model_errors_and_invalid_changes_preserve_project(client, monkeypatch):
     assert api._sessions[project_id].history == []
     response = client.post(f"/api/projects/{project_id}/messages", json={"message": "   "})
     assert response.status_code == 422
+
+
+def test_natural_quantity_updates_and_invalid_plan_feedback(client, monkeypatch):
+    replies = iter(
+        [
+            turn(
+                stock_concentration="10mg/ml",
+                target_concentrations="1, 2 mg/ml",
+                final_volume="0,5ml",
+                equipment="pipette and tubes",
+            ),
+            turn(final_volume="250ul"),
+            turn(target_concentrations="20mg/ml"),
+        ]
+    )
+
+    async def fake_model(project, message, history):
+        return next(replies)
+
+    monkeypatch.setattr(api, "generate_turn", fake_model)
+    project_id = client.post("/api/projects").json()["project"]["id"]
+    endpoint = f"/api/projects/{project_id}/messages"
+    first = client.post(endpoint, json={"message": "Synthetic task"}).json()
+    assert first["project"]["summary"]["stock_concentration"] == "10 mg/mL"
+    assert first["project"]["plan"]["status"] == "ready"
+    assert "50 µL stock" in first["assistant_message"]
+    updated = client.post(endpoint, json={"message": "Make the volume 250ul"}).json()
+    assert updated["project"]["plan"]["final_volume_ul"] == 250
+    assert updated["project"]["summary"]["stock_concentration"] == "10 mg/mL"
+    assert updated["project"]["plan"]["steps"][0]["stock_volume_ul"] == 25
+    invalid = client.post(endpoint, json={"message": "Change target to 20mg/ml"}).json()
+    assert invalid["project"]["plan"]["status"] == "invalid"
+    assert "needs a correction" in invalid["assistant_message"]
+    assert "exceeds" in invalid["assistant_message"]

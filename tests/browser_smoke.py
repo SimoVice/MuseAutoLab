@@ -51,8 +51,8 @@ VITE_BIN = WEB_DIR / "node_modules" / "vite" / "bin" / "vite.js"
 # stub server understands (matched on the distinctive "10 mg/mL" content and
 # on "450/300/650 mm" width numbers).
 COMPLETE_TASK_MESSAGE = (
-    "I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, "
-    "with 1 mL in each tube. I have a pipette and microcentrifuge tubes."
+    "I need to prepare aliquots from a 10mg/ml stock to a 1mg/ml target, "
+    "with 1ml in each tube. I have a pipette and microcentrifuge tubes."
 )
 WIDTH_450_MESSAGE = "Please limit the workspace width to 450 mm for this synthetic concept."
 WIDTH_300_MESSAGE = "Please limit the workspace width to 300 mm for this synthetic concept."

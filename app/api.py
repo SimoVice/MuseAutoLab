@@ -70,13 +70,25 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             updated = apply_update(current, patch)
         except ModelClientError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from None
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=422,
-                detail="The requested change is invalid. The project was not changed.",
+                detail=f"{exc} The project was not changed.",
             ) from None
 
         reply = turn.assistant_message
+        plan = updated["plan"]
+        if plan != current["plan"]:
+            if plan["status"] == "invalid":
+                reply += f"\n\nThe preparation plan needs a correction: {plan['message']}"
+            elif plan["status"] == "ready":
+                recipes = [
+                    f"{step['target']}: {step['stock_volume_ul']:g} µL stock + "
+                    f"{step['diluent_volume_ul']:g} µL diluent"
+                    for step in plan["steps"]
+                ]
+                reply += "\n\nCalculated preparation per tube:\n" + "\n".join(recipes)
+                reply += "\nReview the plan below before confirming."
         if "workspace_width_mm" in patch:
             width = updated["summary"]["workspace_width_mm"]
             footprint = updated["design"]["footprint"]

@@ -11,6 +11,8 @@ import math
 import re
 from decimal import Decimal, InvalidOperation, localcontext
 
+from app.quantities import normalize_concentration, normalize_targets, normalize_volume
+
 MAX_INPUT_CHARS = 1000
 MAX_TARGETS = 6
 MAX_RAW_MAGNITUDE = Decimal("1E12")
@@ -49,6 +51,12 @@ def _normalize_micro(text: str) -> str:
 
 
 def _empty_result(status: str, message: str) -> dict:
+    for field, label in (
+        ("stock_concentration", "stock concentration"),
+        ("target_concentrations", "target concentrations"),
+        ("final_volume", "final volume"),
+    ):
+        message = message.replace(field, label)
     return {
         "status": status,
         "message": message,
@@ -200,6 +208,13 @@ def create_dilution_plan(
     stock_text = stock_concentration.strip()
     targets_text = target_concentrations.strip()
     volume_text = final_volume.strip()
+
+    try:
+        stock_text = normalize_concentration(stock_text)
+        targets_text = normalize_targets(targets_text)
+        volume_text = normalize_volume(volume_text)
+    except ValueError as exc:
+        return _empty_result("invalid", str(exc))
 
     try:
         _, _, stock_family, stock_base = _parse_concentration(stock_text, "stock_concentration")

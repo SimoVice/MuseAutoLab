@@ -12,6 +12,8 @@ import httpx
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from app.quantities import normalize_concentration, normalize_targets, normalize_volume
+
 ROOT = Path(__file__).resolve().parent.parent
 LOGGER = logging.getLogger("museautolab.model")
 DEFAULT_MODEL = "muse-spark-1.3-contributor"
@@ -19,27 +21,41 @@ DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 
 SYSTEM_INSTRUCTIONS = """You are MuseAutoLab's laboratory workstation design assistant.
 The user is refining an early, simplified digital concept for dilution and aliquot preparation.
-Respond in concise English. Gather the stock concentration, target concentrations, final volume,
-available equipment, and optionally the workspace width. Ask about the most useful missing fields.
+Respond in concise, conversational English. Answer the user's actual question first. Gather stock
+concentration, target concentrations, final volume, equipment and optionally workspace width.
+Use the recorded state and history: do not ask again for information already supplied. Ask one
+focused question when something necessary is missing or ambiguous. A brief correction updates only
+the named parameter; preserve the rest. Explain supported alternatives when a request cannot work.
+Workspace width is optional. Never repeat an unanswered optional question. Do not end every reply
+with a question: when the four required fields are present, invite review/confirmation instead.
+When the user asks why, explain the current plan using the dilution relation C1*V1 = C2*V2 and
+the remaining diluent volume. Answer that question without restarting the requirements interview.
 Use only facts explicitly supplied by the user; never invent values, prices, validated hardware,
 liquid-handling performance, or simulation results. Report concentrations and volumes exactly as
-given with their units; do not calculate dilution recipes yourself.
+given with their units; do not calculate dilution recipes yourself. Common equivalent notations
+such as mg/ml, ul, decimal commas and shared-unit target lists are accepted by the program; do not
+ask the user to change their capitalization, spacing or micro symbol.
 A deterministic direct-dilution plan (one separate tube per target and no serial dilutions) is
-computed separately from the recorded summary. Do not invent, quote, or estimate its volumes,
-steps, readiness, or message, and do not claim laboratory validation, hardware feasibility,
-or protocol execution from it.
+computed separately. You may explain the supplied current plan and its actual calculated volumes.
+For new parameter changes the program recomputes the plan after your response; do not predict its
+result or claim laboratory validation, hardware feasibility or protocol execution.
 
 Return the required JSON. For each field, extract a new value only if it was specified or corrected
 in the current user message. Use null for every field that should remain unchanged. Extract a
 workspace width only when the user states a specific maximum width, converting cm or m to mm.
 For every non-null field also return its paired source field: a short exact substring copied from
-the current user message that supports this value. Text field values must also be exact substrings
-of their supporting source, preserving units. Width source must contain the number and its unit.
+the current user message that supports this value. Prefer copying quantity values verbatim.
+For quantities use the exact quantity or list as source, without surrounding prose. Canonical
+notation is allowed only when it is equivalent to that literal source; never invent a number or
+an unstated unit. Equipment values must occur in their source.
+Width source must contain number and unit.
+For target lists copy the entire list, including a shared trailing unit (e.g. '1, 2 and 3 mg/ml').
+Preserve decimal commas in extracted text if copying the user's original quantity.
 Use null for the source of an unchanged field. Do not copy supporting text from previous turns.
 Do not infer dimensions from words like small, narrow, less, or from a machine's current dimensions;
 ask for a number instead. Do not treat depth, height, a tube dimension, or a volume as width.
-The program handles layout, feasibility, and dilution planning separately: do not claim that the
-machine has already changed, that it fits, or what the dilution plan contains. If the user requests
+The program handles updates separately: do not claim that a requested change has already happened.
+If the user requests
 capabilities outside this early prototype (including cooling, ordering, hardware operation, saved
 files, or simulation), say that they are not yet implemented instead of claiming success.
 Keep the assistant_message brief and constructive."""
@@ -100,14 +116,11 @@ class ExtractedTurn(BaseModel):
     def patch(self) -> dict:
         """Return only explicitly extracted updates, not null placeholders."""
         return {
-            key: getattr(self, key)
-            for key in REQUIREMENT_KEYS
-            if getattr(self, key) is not None
+            key: getattr(self, key) for key in REQUIREMENT_KEYS if getattr(self, key) is not None
         }
 
     def verify_sources(self, user_message: str) -> None:
         """Verify each change against a literal span from the latest user message."""
-        current_message = user_message.casefold()
         for key in REQUIREMENT_KEYS:
             value = getattr(self, key)
             source = getattr(self, f"source_{key}")
@@ -115,7 +128,7 @@ class ExtractedTurn(BaseModel):
                 if source is not None:
                     raise ValueError("A source without a value is not a valid change")
                 continue
-            if not source or source.casefold() not in current_message:
+            if not source or source not in user_message:
                 raise ValueError("Update source must be a literal span from this message")
             if key == "workspace_width_mm":
                 found_values = []
@@ -128,8 +141,17 @@ class ExtractedTurn(BaseModel):
                     found_values.append(number * factor)
                 if not any(abs(candidate - value) < 1e-6 for candidate in found_values):
                     raise ValueError("Workspace width must match a source measurement and unit")
-            elif value.casefold() not in source.casefold():
-                raise ValueError("Text value must occur verbatim in its supporting source")
+            elif key == "equipment":
+                if value.casefold() not in source.casefold():
+                    raise ValueError("Equipment must occur in its supporting source")
+            elif not re.search(r"(?<![\w.,+\-])" + re.escape(value) + r"(?![\w/])", source):
+                normalizer = {
+                    "stock_concentration": normalize_concentration,
+                    "target_concentrations": normalize_targets,
+                    "final_volume": normalize_volume,
+                }[key]
+                if normalizer(value) != normalizer(source):
+                    raise ValueError("Quantity must be equivalent to its literal source")
 
 
 @dataclass(frozen=True, repr=False)
@@ -188,6 +210,7 @@ async def generate_turn(
         "summary": project["summary"],
         "current_footprint_mm": project["design"]["footprint"],
         "constraint_status": project["design"]["constraint_status"],
+        "current_plan": project.get("plan"),
     }
     messages = [
         {"role": "developer", "content": SYSTEM_INSTRUCTIONS},

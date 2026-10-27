@@ -12,6 +12,7 @@ from copy import deepcopy
 from uuid import uuid4
 
 from app.dilution import create_dilution_plan
+from app.quantities import normalize_concentration, normalize_targets, normalize_volume
 
 TEXT_FIELDS = (
     "stock_concentration",
@@ -144,6 +145,17 @@ def _validated_patch(patch: dict) -> dict:
                 value = value.strip() or None
                 if value is not None and len(value) > 1000:
                     raise ValueError(f"{key} must contain at most 1000 characters.")
+                normalizer = {
+                    "stock_concentration": normalize_concentration,
+                    "target_concentrations": normalize_targets,
+                    "final_volume": normalize_volume,
+                }.get(key)
+                if value is not None and normalizer:
+                    try:
+                        value = normalizer(value)
+                    except ValueError:
+                        # Keep the user's requirement so the plan can explain what needs correcting.
+                        pass
         elif value is not None:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ValueError("workspace_width_mm must be a positive number or null.")

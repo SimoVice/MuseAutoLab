@@ -69,15 +69,19 @@ async def _fake_generate_turn(
 
     # Complete synthetic task: fills the four required text fields.
     # Expected to contain "10 mg/mL" plus pipette/microcentrifuge wording.
-    if "10 mg/ml" in lowered and "pipette" in lowered and "microcentrifuge" in lowered:
+    if (
+        ("10 mg/ml" in lowered or "10mg/ml" in lowered)
+        and "pipette" in lowered
+        and "microcentrifuge" in lowered
+    ):
         turn = _FakeTurn(
             "Recorded synthetic parameters for the stubbed smoke test: "
             "10 mg/mL stock, 1 mg/mL target, 1 mL final volume, "
             "pipette and microcentrifuge tubes.",
             {
-                "stock_concentration": "10 mg/mL",
-                "target_concentrations": "1 mg/mL",
-                "final_volume": "1 mL",
+                "stock_concentration": "10mg/ml",
+                "target_concentrations": "1mg/ml",
+                "final_volume": "1ml",
                 "equipment": "pipette and microcentrifuge tubes",
             },
         )

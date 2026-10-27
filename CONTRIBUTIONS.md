@@ -32,3 +32,9 @@ The supported layouts are illustrative assumptions. No physical mechanism, pipet
 Added deterministic direct-dilution calculations with explicit concentration and volume units, missing and impossible input handling, and confirmation gated on a valid plan. Added a preparation table and a controllable 3D operating animation showing schematic visits for stock and diluent transfers. Added arithmetic and browser checks, including invalid-input recovery and a rendered-canvas change during playback. Implementation was assisted by Muse Spark 1.3 Contributor through OpenCode Go and reviewed and integrated locally.
 
 The calculator assumes one tube per target and does not model serial dilution or check tube capacity, pipette limits, mixing, dead volume or laboratory feasibility. The animation is illustrative and does not simulate physics, liquid flow or device control.
+
+## 2026-10-27: Natural quantity notation and conversational corrections
+
+Fixed rejection of equivalent inputs such as `mg/ml`, `250ul`, decimal commas and shared-unit target lists. Quantity normalization preserves numerical meaning and meaningful prefix distinctions, while source checks accept equivalent formatting without accepting invented values. The summary uses canonical units; chat now returns calculated recipes or actionable correction messages and can explain the recorded plan. Follow-up corrections preserve other parameters, and unanswered optional questions are not repeatedly prompted.
+
+Added normalization, source-integrity and API regression tests and exercised informal notation through the browser. Synthetic live Contributor checks covered a three-target request, a volume correction and explanations of the current plan.
