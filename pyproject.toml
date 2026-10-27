@@ -1,0 +1,37 @@
+[project]
+name = "museautolab"
+version = "0.1.0"
+description = "AI-assisted design of modular laboratory workstations"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+    "fastapi==0.162.0",
+    "httpx==0.28.1",
+    "pydantic==2.14.1",
+    "python-dotenv==1.2.4",
+    "uvicorn==0.54.0",
+]
+
+[project.optional-dependencies]
+cad = ["build123d==0.13.0", "matplotlib==3.11.2"]
+simulation = ["mujoco==3.17.0"]
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.17.3", "uv==0.13.6"]
+
+[tool.uv]
+package = false
+required-version = "==0.13.6"
+cache-dir = ".local/uv-cache"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
