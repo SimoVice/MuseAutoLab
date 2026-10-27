@@ -9,7 +9,11 @@
     "npm": "11.18.0"
   },
   "scripts": {
-    "check:environment": "node scripts/check-environment.mjs"
+    "check:environment": "node scripts/check-environment.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",

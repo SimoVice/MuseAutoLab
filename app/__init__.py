@@ -1,0 +1,1 @@
+"""MuseAutoLab application package."""

@@ -4,7 +4,7 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 ## Status
 
-Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. This revision provides a locked development environment, configuration template and environment checks. The application, machine generator, operating preview and project exports are **not implemented yet**. There is no application launch command in this revision.
+Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The first runnable prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and supports parameter confirmation. It is an early digital concept: dilution calculations, motion simulation, cooling, component sourcing, file exports and persistent projects are not implemented yet.
 
 The selected demonstrator is a dilution-and-aliquot workstation with pipette, tube and tip handling. It is intended to design the mechanical/electronic architecture and guide a person through assembly. Digital checks do not establish liquid-handling accuracy or hardware performance.
 
@@ -128,7 +128,7 @@ if (-not (Test-Path -LiteralPath .env)) {
 | `META_API_BASE_URL` | `https://api.meta.ai/v1` | Provider endpoint |
 | `META_MODEL` | `muse-spark-1.3-contributor` | Default for suitable tests |
 
-The eventual backend will read these variables; environment verification does not use them. Keep credentials server-side and out of browser bundles. Never commit `.env` or put an API key in a `VITE_` variable.
+The backend reads these variables; environment verification does not use them. Keep credentials server-side and out of browser bundles. Never commit `.env` or put an API key in a `VITE_` variable.
 
 Contributor is the default for suitable tests; use `muse-wonder-1.0` when complexity or an observed quality failure justifies it. Account/model access and billing are external prerequisites. Contributor inputs/responses may be used for training: use shareable or synthetic inputs. Model access is not included in dependency setup.
 
@@ -139,11 +139,53 @@ Contributor is the default for suitable tests; use `muse-wonder-1.0` when comple
 | Backend | FastAPI 0.162.0, Pydantic 2.14.1, HTTPX 0.28.1, python-dotenv 1.2.4, Uvicorn 0.54.0 |
 | CAD extra | build123d 0.13.0, matplotlib 3.11.2 |
 | Simulation extra | MuJoCo 3.17.0 |
-| Python development | pytest 9.1.1, Ruff 0.17.3, uv 0.13.6 |
+| Python development | Playwright 1.64.1, pytest 9.1.1, Ruff 0.17.3, uv 0.13.6 |
 | Frontend | React/React DOM 19.3.1, React Three Fiber 9.8.2, Drei 10.7.9, Three.js 0.186.1 |
 | Frontend development | Vite 8.3.5, React plugin 6.1.2, TypeScript 7.0.2, Tailwind/Vite plugin 4.3.3; exact type packages in the manifest |
 
-Dependencies are prepared for implementation; their presence does not mean the features exist. Remotion, camera tooling and additional services are not product dependencies in this revision.
+The CAD and simulation dependencies are prepared for later work; their presence does not mean workstation CAD export or physics simulation exists. Remotion, camera tooling and additional services are not product dependencies in this revision.
+
+## Run the prototype
+
+After installing dependencies and configuring `.env`, start the backend in one PowerShell terminal from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000
+```
+
+Start the frontend in a second terminal:
+
+```powershell
+Set-Location web
+npm.cmd run dev
+```
+
+Open `http://127.0.0.1:5173`. The local frontend proxies `/api` to the backend. Enter a task in the chat, review the extracted parameters, and confirm them when complete. Try a width of `45 cm` and then a width below `400 mm` to see an available layout and an infeasible constraint. Meta API calls consume the selected model's allowance; the key is used only by the backend. Stop both development servers with `Ctrl+C` in their respective terminals.
+
+For this first milestone, the model extracts only information supported by the latest message. A deterministic domain module selects between two illustrative layouts: **600 × 370 mm** and **400 × 470 mm**. Widths below 400 mm are marked infeasible for these two concepts and retain the prior geometry. These numbers and component envelopes are assumptions, not supplier specifications. The check concerns modeled width only; real motion, collision clearance, pipetting, cooling and electrical operation have not been validated. Unknown component cost remains unset.
+
+Project state and chat history live in backend memory for the current process. Restarting the backend, refreshing the page or starting a new project creates a new session; saving and reopening a project are planned but not yet available. Confirmation records user acceptance of the displayed parameters and does not execute a laboratory protocol.
+
+## Test the application
+
+From the repository root, run the backend/domain tests and code checks:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\ruff.exe check app tests scripts
+Push-Location web
+npm.cmd run build
+Pop-Location
+```
+
+To exercise the browser flow with a **stubbed AI provider** and the real local frontend/backend domain, install Chrome or point to a local Chromium-compatible executable, then run:
+
+```powershell
+$env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+.\.venv\Scripts\python.exe tests\browser_smoke.py
+```
+
+The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save an optional screenshot. The suite checks the parameter summary, width revisions, infeasible state, confirmation and component selection; it does not establish physical feasibility. Testing with the real API requires valid account access and consumes tokens.
 
 ## Updating requirements deliberately
 
@@ -198,6 +240,9 @@ Use one versioned design for the viewer, CAD, component list, human assembly ins
 | `web/package.json`, `web/package-lock.json`, `web/.npmrc` | Frontend requirements and installation policy |
 | `scripts/check_environment.py` | Offline Python/CAD/physics environment check |
 | `web/scripts/check-environment.mjs` | Offline frontend dependency check |
+| `app/` | Local API, Meta integration and versioned concept model |
+| `web/src/` | Interactive workstation view and chat interface |
+| `tests/` | Domain/API unit tests and local browser smoke test |
 | `.env.example` | Public configuration template with empty credentials |
 | `CONTRIBUTIONS.md` | Implemented contributions and their scope |
 

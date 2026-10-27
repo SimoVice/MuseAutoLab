@@ -18,3 +18,11 @@ No application functionality, simulated assembly result, benchmark, or hardware 
 This revision adds exact interpreter/tool versions, direct dependency pins, Python/npm lockfiles, a generated hashed requirements export, local environment checks, and setup/update instructions. The README reflects the clarified dilution/aliquot demonstrator and human-guided assembly scope. The environment template defaults to Contributor for suitable tests.
 
 The checks exercise dependency installation, a small CAD export/import and a minimal CPU physics step. They do not implement or validate the application or the workstation. External development skills are documented by source revision, while their files and local adaptations remain outside the product repository.
+
+## 2026-10-27: First interactive design prototype
+
+Added a FastAPI backend with server-side Meta Contributor integration, bounded structured extraction and validation of updates against the user's message. Added a versioned, deterministic concept layout that changes with a supported workspace-width constraint, reports infeasible constraints and requires complete parameters for confirmation.
+
+Added the React/Three.js workspace with a rotatable, selectable 3D concept, conversation, parameter summary and unknown cost state. Added domain/API tests and a reproducible browser smoke test with a stubbed model; a separate synthetic live test exercised the real Meta endpoint. Playwright was added as a pinned development dependency.
+
+The supported layouts are illustrative assumptions. No physical mechanism, pipetting calculation, cooling system, sourcing, export package or persistent project is validated or implemented in this revision.
