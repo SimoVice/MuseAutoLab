@@ -4,7 +4,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import type { Group } from 'three';
-import type { Component, Project } from './types';
+import type { Component, PhysicsFrame, PhysicsView, Project } from './types';
 import {
   DIP_DOWN_TIME,
   DWELL_TIME,
@@ -361,6 +361,86 @@ function AnimatedPipetteCarriage({ carriage, pipette, home, keyframes, duration,
   );
 }
 
+function lerp3(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+function samplePhysicsFrames(frames: PhysicsFrame[], time: number): PhysicsFrame | null {
+  if (!frames.length) return null;
+  if (time <= frames[0].time_s) return frames[0];
+  const last = frames[frames.length - 1];
+  if (time >= last.time_s) return last;
+  // Linear scan is fine for <=6500 frames; binary search keeps it lightweight.
+  let lo = 0;
+  let hi = frames.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (frames[mid].time_s <= time) lo = mid;
+    else hi = mid;
+  }
+  const a = frames[lo];
+  const b = frames[hi];
+  const span = b.time_s - a.time_s;
+  const t = span <= 0 ? 0 : (time - a.time_s) / span;
+  return {
+    ...b,
+    carriage_mm: lerp3(a.carriage_mm, b.carriage_mm, t),
+    pipette_mm: lerp3(a.pipette_mm, b.pipette_mm, t),
+    tip_mm: lerp3(a.tip_mm, b.tip_mm, t),
+    target_mm: lerp3(a.target_mm, b.target_mm, t),
+    time_s: time,
+  };
+}
+
+function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }: {
+  carriage: Component;
+  pipette: Component;
+  frame: PhysicsFrame;
+  center: [number, number, number];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const toCentered = (mm: [number, number, number]): Vec3 => [
+    (mm[0] - center[0]) / SCALE,
+    (mm[1] - center[1]) / SCALE,
+    (mm[2] - center[2]) / SCALE,
+  ];
+  const carriagePos = toCentered(frame.carriage_mm);
+  const pipettePos = toCentered(frame.pipette_mm);
+  const tipPos = toCentered(frame.tip_mm);
+  const carriageSize: Vec3 = [carriage.size[0] / SCALE, carriage.size[1] / SCALE, carriage.size[2] / SCALE];
+  const pipetteDiameter = pipette.size[0] / SCALE;
+  const pipetteHeight = pipette.size[1] / SCALE;
+  // tip_mm is the lowest point reported by the engine, not the mesh centre.
+  const tipHeight = 0.19;
+  const tipOffset: Vec3 = [tipPos[0] - carriagePos[0], tipPos[1] + tipHeight / 2 - carriagePos[1], tipPos[2] - carriagePos[2]];
+  const pipetteOffset: Vec3 = [pipettePos[0] - carriagePos[0], pipettePos[1] - carriagePos[1], pipettePos[2] - carriagePos[2]];
+  return (
+    <group position={carriagePos}>
+      <AnimatedSelectableMesh
+        id={carriage.id}
+        kind={carriage.kind}
+        selected={selectedId === carriage.id}
+        onSelect={onSelect}
+        offset={[0, 0, 0]}
+        geometry={<boxGeometry args={carriageSize} />}
+      />
+      <AnimatedSelectableMesh
+        id={pipette.id}
+        kind={pipette.kind}
+        selected={selectedId === pipette.id}
+        onSelect={onSelect}
+        offset={pipetteOffset}
+        geometry={<cylinderGeometry args={[pipetteDiameter / 2, pipetteDiameter / 2, pipetteHeight, 32]} />}
+      />
+      <mesh position={tipOffset}>
+        <cylinderGeometry args={[0.035, 0.035, tipHeight, 16]} />
+        <meshStandardMaterial color="#f7fbfb" metalness={0.05} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
 function RackDetails({ components, center, stepCount }: {
   components: Component[];
   center: [number, number, number];
@@ -444,11 +524,12 @@ function RackDetails({ components, center, stepCount }: {
   );
 }
 
-export default function Scene({ project, selectedId, onSelect, operation }: {
+export default function Scene({ project, selectedId, onSelect, operation, physics }: {
   project: Project;
   selectedId: string | null;
   onSelect: (id: string) => void;
   operation?: OperationSpec;
+  physics?: PhysicsView | null;
 }) {
   const { components, footprint } = project.design;
   const [viewKey, setViewKey] = useState(0);
@@ -463,7 +544,12 @@ export default function Scene({ project, selectedId, onSelect, operation }: {
   const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
   const carriagePart = byId.get('carriage');
   const pipettePart = byId.get('pipette');
-  const showAnimation = Boolean(operation && carriagePart && pipettePart);
+  const physicsActive = Boolean(physics && physics.result.project_id === project.id && physics.result.revision === project.revision && physics.result.frames.length > 0 && carriagePart && pipettePart);
+  const physicsFrame = useMemo(
+    () => (physicsActive && physics ? samplePhysicsFrames(physics.result.frames, physics.time_s) : null),
+    [physicsActive, physics],
+  );
+  const showAnimation = Boolean(!physicsActive && operation && carriagePart && pipettePart);
 
   const normalizedStepCount = useMemo(() => {
     if (!operation) return 0;
@@ -534,9 +620,9 @@ export default function Scene({ project, selectedId, onSelect, operation }: {
   }, [byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
 
   const staticParts = useMemo(() => {
-    if (!showAnimation) return components;
+    if (!showAnimation && !physicsActive) return components;
     return components.filter((part) => part.id !== 'carriage' && part.id !== 'pipette');
-  }, [components, showAnimation]);
+  }, [components, showAnimation, physicsActive]);
 
   const coldStoragePart = useMemo(() => staticParts.find((part) => part.id === 'cold-storage'), [staticParts]);
   const genericStaticParts = useMemo(() => staticParts.filter((part) => part.id !== 'cold-storage'), [staticParts]);
@@ -549,7 +635,7 @@ export default function Scene({ project, selectedId, onSelect, operation }: {
         camera={{ position: [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
         dpr={[1, 1.5]}
         frameloop="demand"
-        aria-label="Interactive schematic 3D workstation model. Drag to rotate and scroll to zoom."
+        aria-label={physicsActive ? 'MuJoCo state replay in the interactive workstation view.' : 'Interactive schematic 3D workstation model. Drag to rotate and scroll to zoom.'}
       >
         <color attach="background" args={['#eef4f4']} />
         <ambientLight intensity={1.2} />
@@ -563,6 +649,22 @@ export default function Scene({ project, selectedId, onSelect, operation }: {
           <ColdStorageBay part={coldStoragePart} center={bounds.center} selected={coldStoragePart.id === selectedId} onSelect={onSelect} />
         ) : null}
         <RackDetails components={components} center={bounds.center} stepCount={normalizedStepCount} />
+        {physicsActive && physics && physics.result.obstacles.map((obstacle) => (
+          <mesh
+            key={obstacle.id}
+            position={[
+              (obstacle.position_mm[0] - bounds.center[0]) / SCALE,
+              (obstacle.position_mm[1] - bounds.center[1]) / SCALE,
+              (obstacle.position_mm[2] - bounds.center[2]) / SCALE,
+            ]}
+          >
+            <boxGeometry args={[obstacle.size_mm[0] / SCALE, obstacle.size_mm[1] / SCALE, obstacle.size_mm[2] / SCALE]} />
+            <meshStandardMaterial color="#e08a2e" transparent opacity={0.75} roughness={0.5} metalness={0.05} />
+          </mesh>
+        ))}
+        {physicsActive && carriagePart && pipettePart && physicsFrame && (
+          <PhysicalHead carriage={carriagePart} pipette={pipettePart} frame={physicsFrame} center={bounds.center} selectedId={selectedId} onSelect={onSelect} />
+        )}
         {showAnimation && carriagePart && pipettePart && animationLayout && operation ? (
           <AnimatedPipetteCarriage
             carriage={carriagePart}

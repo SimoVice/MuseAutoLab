@@ -135,6 +135,84 @@ export type ExportJob = {
 
 export type ProjectResponse = { project: Project; assistant_message?: string };
 
+export type PhysicsScenario = 'nominal' | 'blocked_path';
+
+export type PhysicsFrame = {
+  time_s: number;
+  carriage_mm: [number, number, number];
+  pipette_mm: [number, number, number];
+  tip_mm: [number, number, number];
+  target_mm: [number, number, number];
+  phase: string;
+  station_id: string | null;
+  transfer_id: string | null;
+};
+
+export type PhysicsWaypoint = {
+  time_s: number;
+  carriage_mm: [number, number, number];
+  phase: string;
+  station_id: string | null;
+  transfer_id: string | null;
+  volume_ul: number | null;
+};
+
+export type PhysicsMetrics = {
+  max_tracking_error_mm: number;
+  final_tracking_error_mm: number;
+  peak_actuator_force_n: [number, number, number];
+  max_contact_force_n: number;
+  contact_count: number;
+  completed_waypoints: number;
+  total_waypoints: number;
+};
+
+export type PhysicsContact = { time_s: number; component_id: string; force_n: number };
+
+export type PhysicsCheck = { id: string; label: string; passed: boolean; observed: number | string; limit: number | string };
+
+export type PhysicsObstacle = { id: string; label: string; position_mm: [number, number, number]; size_mm: [number, number, number] };
+
+export type PhysicsResult = {
+  schema_version: 1;
+  project_id: string;
+  revision: number;
+  scenario: PhysicsScenario;
+  engine: string;
+  engine_version: string;
+  input_sha256: string;
+  status: 'passed' | 'blocked' | 'failed';
+  duration_s: number;
+  timestep_s: number;
+  frames: PhysicsFrame[];
+  waypoints: PhysicsWaypoint[];
+  metrics: PhysicsMetrics;
+  contacts: PhysicsContact[];
+  checks: PhysicsCheck[];
+  assumptions: string[];
+  limitations: string[];
+  model_xml: string;
+  obstacles: PhysicsObstacle[];
+};
+
+export type SimulationJobStatus = 'queued' | 'running' | 'ready' | 'failed';
+
+export type SimulationJob = {
+  id: string;
+  project_id: string;
+  revision: number;
+  scenario: PhysicsScenario;
+  status: SimulationJobStatus;
+  stage: string;
+  completed_steps: number;
+  total_steps: number;
+  error: string | null;
+  result_url: string | null;
+  summary: PhysicsMetrics | null;
+};
+
+export type PhysicsView = { result: PhysicsResult; time_s: number };
+
 export type ConfigurationUpdate = {
   cooling_enabled?: boolean;
   cooling_target_c?: number;

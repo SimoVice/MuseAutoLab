@@ -3,7 +3,8 @@ import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
 import ComponentCatalog from './ComponentCatalog';
 import ProjectFiles from './ProjectFiles';
-import type { ConversationEntry, PreparationPlan, Project, ProjectResponse } from './types';
+import PhysicsPanel from './PhysicsPanel';
+import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectResponse } from './types';
 
 const EXAMPLE = 'I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, with 1 mL in each tube. I have a pipette and microcentrifuge tubes.';
 const WELCOME = 'Tell me about the preparation you would like to automate. We’ll define the concentrations, final volume and equipment together.';
@@ -71,6 +72,8 @@ export default function App() {
   const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [physicsView, setPhysicsView] = useState<PhysicsView | null>(null);
+  const [physicsActive, setPhysicsActive] = useState(false);
   const [coolingEnabledDraft, setCoolingEnabledDraft] = useState(false);
   const [coolingTargetDraft, setCoolingTargetDraft] = useState(String(PROPOSED_TARGET_C));
   const lastMessage = useRef<HTMLDivElement>(null);
@@ -122,6 +125,7 @@ export default function App() {
     if (seenRevision.current !== key) {
       seenRevision.current = key;
       setPlaying(false);
+      setPhysicsView(null);
       setResetKey((value) => value + 1);
     }
   }, [projectId, projectRevision]);
@@ -136,12 +140,14 @@ export default function App() {
     if (!showPreview) setPlaying(false);
   }, [showPreview]);
 
-  function handlePlay() { setPlaying(true); }
+  function handlePlay() { setPhysicsActive(false); setPhysicsView(null); setPlaying(true); }
   function handlePause() { setPlaying(false); }
   function handleReset() {
     setPlaying(false);
     setResetKey((value) => value + 1);
   }
+  const handlePhysicsView = useCallback((view: PhysicsView | null) => { setPhysicsView(view); }, []);
+  const handlePhysicsActivate = useCallback(() => { setPlaying(false); setPhysicsActive(true); }, []);
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
@@ -264,7 +270,7 @@ export default function App() {
           <div className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
             <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
             <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-              {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+              {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
               <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
               <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
             </div>
@@ -278,6 +284,9 @@ export default function App() {
             <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
             <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
           </div>
+          {project && showPreview && (
+            <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
+          )}
           {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
           {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
 

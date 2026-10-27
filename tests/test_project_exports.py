@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 import app.api as api
 import app.project_exports as exports
+import app.simulation_jobs as simulations
 from app.domain import apply_update, configure_project, confirm_project, new_project
 
 
@@ -22,6 +23,9 @@ def client(monkeypatch):
     exports._jobs.clear()
     monkeypatch.setattr(
         exports, "build_cad_files", lambda p: {"cad/workstation.step": b"test-only CAD"}
+    )
+    monkeypatch.setattr(
+        simulations, "simulation_files_for_project", lambda p: {"simulation/result.json": b"{}"}
     )
     with TestClient(api.app) as test_client:
         yield test_client
@@ -74,7 +78,7 @@ def test_archive_manifest_hashes_cache_and_attachments(client):
     created = client.post(base).json()
     url = base + "/" + created["id"]
     job = wait_done(client, url)
-    assert job["status"] == "ready" and job["completed_stages"] == 3
+    assert job["status"] == "ready" and job["completed_stages"] == 4
     assert client.post(base).json()["id"] == job["id"]
     response = client.get(job["download_url"])
     assert response.status_code == 200

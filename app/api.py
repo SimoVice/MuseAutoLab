@@ -19,6 +19,13 @@ from app.project_exports import (
     media_type_for,
     start_export,
 )
+from app.simulation_jobs import (
+    SimulationError,
+    simulation_file,
+    simulation_result,
+    simulation_status,
+    start_simulation,
+)
 
 app = FastAPI(title="MuseAutoLab", version="0.1.0")
 
@@ -218,7 +225,24 @@ async def confirm(project_id: str) -> dict:
         }
 
 
+class SimulationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    scenario: str = "nominal"
+
+    @field_validator("scenario")
+    @classmethod
+    def _valid_scenario(cls, value: str) -> str:
+        if value not in ("nominal", "blocked_path"):
+            raise ValueError("scenario must be 'nominal' or 'blocked_path'.")
+        return value
+
+
 def _export_error_response(exc: ExportError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+
+def _simulation_error_response(exc: SimulationError) -> HTTPException:
     return HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
@@ -260,6 +284,56 @@ async def download_export(project_id: str, job_id: str) -> Response:
         content=payload,
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/api/projects/{project_id}/simulations", status_code=202)
+async def create_simulation(project_id: str, request: SimulationRequest) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        return await start_simulation(current, scenario=request.scenario)
+    except SimulationError as exc:
+        raise _simulation_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/simulations/{job_id}")
+async def get_simulation(project_id: str, job_id: str) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        return await simulation_status(current, job_id)
+    except SimulationError as exc:
+        raise _simulation_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/simulations/{job_id}/result")
+async def get_simulation_result(project_id: str, job_id: str) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        return await simulation_result(current, job_id)
+    except SimulationError as exc:
+        raise _simulation_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/simulations/{job_id}/files/{name:path}")
+async def download_simulation_file(project_id: str, job_id: str, name: str) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        payload = await simulation_file(current, job_id, name)
+    except SimulationError as exc:
+        raise _simulation_error_response(exc) from None
+    safe = name.rsplit("/", 1)[-1]
+    return Response(
+        content=payload,
+        media_type=media_type_for(name),
+        headers={"Content-Disposition": f'attachment; filename="{safe}"'},
     )
 
 

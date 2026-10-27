@@ -4,7 +4,7 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 ## Status
 
-Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. It supports a proposed cold-storage bay and source-backed component comparisons with partial pricing. After confirmation it can play an illustrative operating animation and generate a downloadable project package with concept CAD, an illustrated assembly sequence, selected components and runnable preview code. Physical simulation, hardware/temperature control and persistent in-app projects are not implemented yet.
+Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. It supports a proposed cold-storage bay and source-backed component comparisons with partial pricing. After confirmation it can run a bounded MuJoCo motion/contact model, replay the calculated states and generate a downloadable CAD/document/simulation package. The separate illustrative operating preview remains available. Hardware/temperature control, liquid dynamics and persistent in-app projects are not implemented yet.
 
 The selected demonstrator is a dilution-and-aliquot workstation with pipette, tube and tip handling. It is intended to design the mechanical/electronic architecture and guide a person through assembly. Digital checks do not establish liquid-handling accuracy or hardware performance.
 
@@ -74,7 +74,7 @@ npm.cmd --version
 
 Repeat the search-path assignment in a new shell if using this local CLI. Do not run a global npm upgrade as part of reproduction.
 
-`uv sync --locked --all-extras` includes the backend, CAD, simulation and default development group. For chat-only use, omit `--all-extras`; project-file generation and the full checks below require the CAD extra. No additional dependencies were introduced for project exports.
+`uv sync --locked --all-extras` includes the backend, CAD, simulation and default development group. For chat-only use, omit `--all-extras`; project-file generation and the full checks below require both CAD and simulation extras. MuJoCo 3.17.0 was already pinned; this feature adds no dependencies.
 
 For an unreliable connection, retry with lower concurrency while preserving the lock:
 
@@ -184,9 +184,35 @@ The Component catalogue compares real supplier offers, quantities, availability 
 
 Prices are a dated USD catalogue snapshot checked on **2026-10-27**, not a live supplier feed or a delivered quotation. The data is in `app/data/components-2026-10-27.json`; [component sources](docs/component-sources.md) records primary links, price scope, assumptions and refresh instructions. The configuration endpoint is `POST /api/projects/{id}/configuration` with optional `cooling_enabled`, `cooling_target_c` and `selections` fields. It validates changes under the same project lock as chat. It makes no purchases or supplier requests.
 
+### Physical motion and contact simulation
+
+After confirming the design, choose **Run physics** in the Physical simulation panel. **Normal run** evaluates the supported preparation cycle; **Blocked-path test** inserts a clearly identified synthetic obstacle above the first tip station. The run is computed on the backend CPU using the pinned MuJoCo 3.17.0 engine. No API key, model call, GPU service or hardware is needed for this step.
+
+The model represents one rigid carriage/pipette head on three limited prismatic axes, with position servos, gravity and collision constraints. Fixed component envelopes come from the same project revision as CAD. Assumed tube/tip cylinder proxies match the viewer's rack positions. Each nonzero stock or diluent transfer visits tips, source, sample and waste; aspirate/dispense/eject actions are logical holds **above** their station tops. There is no physical insertion, fluid dynamics or detached-tip handling.
+
+The following are **model assumptions**, not measured hardware or supplier motor capabilities:
+
+| Parameter | Model value |
+| --- | --- |
+| Moving masses | Carriage 0.45 kg, pipette 0.15 kg, tip 0.001 kg |
+| Position control | kp 5000 N/m, kv 100 Ns/m; guide damping 5 Ns/m; gravity uncompensated |
+| Actuator force limits | Engine X/Y/Z: 15 / 15 / 20 N |
+| Integration | 0.002 s, implicitfast; recorded output at 20 Hz plus terminal state |
+| Approach and cruise | Tip 5 mm above station/proxy top; cruise 15 mm above non-frame obstacles |
+| Numerical acceptance | Maximum following error 5 mm; stop on unexpected contact above 0.05 N |
+| Runtime bounds | At most 300 simulated seconds, 6500 output frames, six targets |
+
+Travel is inferred from the deck and planning height. The crossbar/carriage contact pair represents an ideal guide interface and is explicitly excluded; head/post, tool/frame, head/deck and head/container contacts remain enabled. Mount clearance, real rails/transmissions, cable paths, backlash, rigidity and actual motor sizing are not verified. Four tip positions are logical stations; consumable capacity and replacement are not validated.
+
+The result reports actual integrated states, actuator/contact forces, following error, completed waypoints, engine version, input/source hashes, assumptions and checks. **passed** means the encoded checks passed under those assumptions. **blocked** means a measured simulated contact interrupted the run; later waypoints are not completed. Engine/model errors fail explicitly. No replacement animation or substitute engine is reported as MuJoCo success. See the official [MuJoCo XML reference](https://mujoco.readthedocs.io/en/stable/XMLreference.html#sensor-contact) for the actuator/contact definitions; compatibility was exercised against installed version 3.17.0.
+
+Play/Pause/Reset, the time slider and explicit 1x/2x/4x controls replay calculated states in the 3D viewer. Linear interpolation between recorded samples is for display only. The separate **Play preview** control returns to the illustrative animation. Changing the design clears replay state and blocks old simulation results/downloads until the current revision is confirmed and run again.
+
+The API is `POST /api/projects/{id}/simulations` with `{"scenario":"nominal"}` or `{"scenario":"blocked_path"}`, then `GET /api/projects/{id}/simulations/{job}` and the returned result URL. File attachments use `/api/projects/{id}/simulations/{job}/files/{name}`. Confirmed snapshots are immutable, progress comes from integrated steps, duplicate requests reuse results and computation runs outside the API event loop. Results/jobs remain process-local and are lost on restart.
+
 ### Downloadable project files and assembly guide
 
-Confirm the design, then select **Generate project files**. Three completed stages track actual work: CAD generation, document generation and ZIP packaging. Choose **Download project ZIP** or download an individual file. The assembly guide's Previous/Next controls select the corresponding component in the 3D view.
+Confirm the design, then select **Generate project files**. Four completed stages track actual work: CAD generation, document generation, nominal physical simulation and ZIP packaging. Choose **Download project ZIP** or download an individual file. The assembly guide's Previous/Next controls select the corresponding component in the 3D view. A failed or blocked model result remains labelled as such; an available ZIP does not establish physical feasibility.
 
 | Package file | Contents |
 | --- | --- |
@@ -197,11 +223,15 @@ Confirm the design, then select **Generate project files**. Three completed stag
 | `assembly-guide.html`, `assembly.json` | Standalone print-friendly illustrated assembly sequence, stable component IDs and design gates |
 | `bill-of-materials.csv`, `preparation.csv` | Selected alternatives with quantities, source prices/dates and per-target volumes; unknown prices stay blank |
 | `automation/preview.py` | Standard-library-only logical preparation trace; no hardware commands |
+| `simulation/model.xml`, `simulation/result.json`, `simulation/trajectory.csv` | Nominal MuJoCo scene, recorded states/checks and flat trajectory for this revision |
+| `simulation/engine.py`, `simulation/run.py`, `simulation/README.md` | Standalone source and rerun instructions using the locked MuJoCo environment |
 | `extension-plan.json`, `extensions.md`, `README.md` | Proposed camera/arm interfaces, package usage and limitations |
 
 Extract the ZIP and open `assembly-guide.html` in a browser. Open STEP files in a STEP-compatible CAD viewer. Geometry uses millimetres: application `(x,y,z)` with y up maps to CAD `(x,z,y)` with Z up. Decorative tubes/vents in the viewer are not engineered parts. The planning height is a workspace envelope and can exceed the measured CAD height.
 
 Run the extracted logical preview with `python automation/preview.py` (Python 3, no extra packages). To regenerate CAD with exactly **build123d 0.13.0**, use this repository's locked `.venv` and run its interpreter against the extracted `cad/deck-model.py`. It writes STEP/STL files beside the script; geometry is derived from the editable `COMPONENTS_MM` array. Keep the original downloaded package for provenance: modifying generated source requires new checks and hashes.
+
+To rerun the packaged simulation, use that same locked interpreter against the extracted `simulation/run.py`. It loads the packaged `project.json` and scenario and writes `simulation/replay-result.json`. The original result/model/source stay intact. A repeat run on the tested Windows environment reproduced the same numerical metrics; cross-platform bitwise identity is not guaranteed.
 
 Each job uses an immutable copy of one confirmed revision. Edits invalidate confirmation and block old downloads with HTTP 409, including jobs that finish after the edit. Generate again after reconfirming; duplicate requests for the same active or ready revision reuse that job. Failed jobs expose an error and Retry action, never partial downloads. Up to three jobs per project are retained in process memory, with a 50 MB package limit. Restarting the backend loses sessions/jobs. `project.json` preserves the input for inspection; uploading/reopening a saved project in the app is not implemented.
 
@@ -228,7 +258,7 @@ $env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome
 .\.venv\Scripts\python.exe tests\browser_smoke.py
 ```
 
-The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save an optional screenshot. The suite checks calculated example volumes, an impossible concentration and recovery, width revisions, confirmation, component selection and canvas changes during playback. It also generates/downloads two real CAD packages, verifies revisions/hashes/selected cooling geometry, navigates assembly steps and rejects stale downloads. CAD unit tests reopen exported STEP files and measure envelopes; API boundary tests stub CAD bytes to isolate failure/concurrency behavior. None establish physical feasibility. Testing with the real API requires valid account access and consumes tokens.
+The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save normal/blocked screenshots. The suite checks calculation/recovery, width revisions, confirmation, component selection, illustrative playback, real MuJoCo normal/obstacle cases, replay controls and mode switching. It downloads two real CAD/simulation packages, verifies revisions/hashes/source provenance/selected cooling geometry, navigates assembly steps and rejects stale downloads/results. Logs use temporary files so Windows pipe buffers cannot block the test server. CAD tests reopen STEP and measure envelopes; physics tests use actual MuJoCo, while job/API boundary tests stub engine functions to isolate concurrency/failure behavior. The exported runtime is rerun and compared in the locked environment. These checks concern the encoded model, not built hardware. Testing with the real Meta API requires account access and consumes tokens.
 
 ## Updating requirements deliberately
 

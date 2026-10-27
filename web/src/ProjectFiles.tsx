@@ -28,7 +28,7 @@ function stageLabel(job: ExportJob): string {
   if (job.status === 'failed') return 'Failed';
   if (job.status === 'stale') return 'Out of date';
   const done = Math.max(0, Math.min(job.completed_stages, job.total_stages));
-  const stage = { queued: 'Queued', cad: 'Building CAD files', documents: 'Preparing documents', archive: 'Packaging downloads' }[job.stage];
+  const stage = { queued: 'Queued', cad: 'Building CAD files', documents: 'Preparing documents', simulation: 'Running physics', archive: 'Packaging downloads' }[job.stage];
   return stage ?? `Stage ${done}/${job.total_stages}`;
 }
 
@@ -148,7 +148,7 @@ export default function ProjectFiles({ project, onSelect }: Props) {
 
   const pending = job !== null && (job.status === 'queued' || job.status === 'running');
   const files: ExportFileEntry[] = job?.files ?? [];
-  const primaryNames = new Set(['assembly-guide.html', 'bill-of-materials.csv', 'cad/workstation.step', 'automation/preview.py']);
+  const primaryNames = new Set(['assembly-guide.html', 'bill-of-materials.csv', 'cad/workstation.step', 'simulation/result.json', 'automation/preview.py']);
   function fileCards(entries: ExportFileEntry[]) {
     return entries.map((file) => (
       <li key={file.name} className="file-card">
@@ -173,7 +173,7 @@ export default function ProjectFiles({ project, onSelect }: Props) {
       <div className="files-heading">
         <div>
           <h2 id="files-title">Project files</h2>
-          <p>CAD, assembly guide and preparation plan for revision {project.revision}.</p>
+          <p>CAD, assembly guide, physics report and preparation plan for revision {project.revision}.</p>
         </div>
         {job && <span className={`files-status files-status-${job.status}`}>{stageLabel(job)}</span>}
       </div>

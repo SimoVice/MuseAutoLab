@@ -1,6 +1,6 @@
 """Project file export orchestration (concept only).
 
-Three real stages: CAD, documents, archive. No timer-faked progress:
+Four real stages: CAD, documents, simulation, archive. No timer-faked progress:
 ``completed_stages`` advances only after actual work completes.
 """
 
@@ -20,7 +20,7 @@ from uuid import uuid4
 from app.assembly import assembly_steps, build_document_files
 from app.cad_exports import build_cad_files
 
-TOTAL_STAGES = 3
+TOTAL_STAGES = 4
 MAX_PACKAGE_BYTES = 50 * 1024 * 1024
 MAX_RETAINED_JOBS_PER_PROJECT = 3
 
@@ -66,6 +66,8 @@ def _check_coherence(project: dict, job: dict) -> None:
 
 def _media_type(name: str) -> str:
     lower = name.lower()
+    if lower.endswith(".xml"):
+        return "application/xml"
     if lower.endswith(".json"):
         return "application/json"
     if lower.endswith(".html"):
@@ -182,6 +184,15 @@ async def _run_job(job_id: str) -> None:
 
         doc_files, steps = await loop.run_in_executor(None, _docs)
         job["completed_stages"] = 2
+        job["stage"] = "simulation"
+
+        def _sim() -> dict[str, bytes]:
+            from app.simulation_jobs import simulation_files_for_project
+
+            return simulation_files_for_project(deepcopy(snapshot))
+
+        sim_files = await loop.run_in_executor(None, _sim)
+        job["completed_stages"] = 3
         job["stage"] = "archive"
 
         def _archive() -> tuple[dict[str, bytes], bytes]:
@@ -190,13 +201,21 @@ async def _run_job(job_id: str) -> None:
             project_payload = json.dumps(
                 {"schema_version": 1, "project": snapshot}, sort_keys=True
             ).encode("utf-8")
+            if not isinstance(sim_files, dict):
+                raise ValueError("Generators must return filename to bytes mappings.")
             interim: dict[str, bytes] = dict(cad_files)
-            if set(cad_files).intersection(doc_files) or {
-                "project.json",
-                "manifest.json",
-            }.intersection(set(cad_files) | set(doc_files)):
+            if (
+                set(cad_files).intersection(doc_files)
+                or set(cad_files).intersection(sim_files)
+                or set(doc_files).intersection(sim_files)
+                or {
+                    "project.json",
+                    "manifest.json",
+                }.intersection(set(cad_files) | set(doc_files) | set(sim_files))
+            ):
                 raise ValueError("Generated filenames overlap.")
             interim.update(doc_files)
+            interim.update({k: bytes(v) for k, v in sim_files.items()})
             interim["project.json"] = project_payload
             _ensure_safe_files(interim)
             manifest = {
@@ -241,7 +260,7 @@ async def _run_job(job_id: str) -> None:
             }
             for name in sorted(all_files)
         ]
-        job["completed_stages"] = 3
+        job["completed_stages"] = 4
         job["stage"] = "done"
         job["status"] = "ready"
         job["download_url"] = f"/api/projects/{job['project_id']}/exports/{job['id']}/download"
