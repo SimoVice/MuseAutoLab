@@ -1,0 +1,82 @@
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Local AI agent instructions, skills, and sessions
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+GEMINI.md
+OPENCODE.md
+SKILL.md
+.agents/
+.codex/
+.claude/
+.opencode/
+.cursor/
+.windsurf/
+.continue/
+.aider*
+.github/agents/
+.github/prompts/
+.github/instructions/
+.github/copilot-instructions.md
+
+# Python environments, caches, and generated packages
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+
+# JavaScript dependencies and generated builds
+node_modules/
+dist/
+build/
+.vite/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Generated test reports
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+test-results/
+playwright-report/
+blob-report/
+
+# Local working material and uncurated generated output
+.local/
+scratch/
+tmp/
+temp/
+output/
+outputs/
+logs/
+*.log
+*.tmp
+*.bak
+*.orig
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+~$*
