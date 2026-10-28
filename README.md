@@ -191,6 +191,14 @@ For this first milestone, the model extracts only information supported by the l
 
 Project state and chat history live in backend memory for the current process. Restarting the backend, refreshing the page or starting a new project creates a new session; saving and reopening a project are planned but not yet available. Confirmation records user acceptance of the displayed parameters and does not execute a laboratory protocol.
 
+### Shared 3D concept geometry
+
+The liquid preparation adapter derives its visible details and workstation CAD from one versioned geometry description in `app/geometry.py`. It includes connected frame sections, a shaped carriage/pipette holder, a cylindrical/tapered pipette, open waste and rack bodies, perforated rack tops, a controller panel and an optional cold enclosure with insert and lid. Appearance roles select viewer colors; they do not specify manufacturing materials. The commercial cooler uses a conceptual shape inside the selected catalogue envelope, not manufacturer mechanical CAD.
+
+Each stable component ID owns local millimetre primitives (`box`, `cylinder`, `frustum`, `tube`, `plate`), serialized in `project.json`. Positions are relative to the component center, with application Y up. Plates have actual through-holes in both the viewer and STEP. The sample insert has one to six holes matching the preparation targets; changing that count proposes a different custom insert, while its outer dimensions remain fixed. Source/tip patterns and the separate assumed consumable proxies match the existing operating positions. Layout revisions preserve fixed component sizes; only custom deck/crossbar lengths and the custom insert pattern vary.
+
+Rack bores, clamp features, transmission and enclosure details remain concept assumptions, with no verified labware fit, sealing, load or fabrication process. The physics model validates that detailed primitives stay inside their declared component envelopes, then uses conservative envelopes and consumable proxies for contacts. Fine openings are not resolved for insertion/contact, and an open-looking space can remain blocked by that conservative model. Older snapshots without detail geometry retain envelope behavior.
+
 ### Direct dilution and operating preview
 
 The deterministic calculator applies **C₁V₁ = C₂V₂**: stock volume is target concentration divided by stock concentration, multiplied by final volume; diluent fills the remainder. For example, a 10 mg/mL stock, 1 mg/mL target and 1 mL final volume yield 100 µL stock and 900 µL diluent. The relationship is described in [Thermo Fisher Scientific's dilution guide](https://assets.thermofisher.com/TFS-Assets/LSG/Application-Notes/cms_043004.pdf).
@@ -242,9 +250,9 @@ Confirm the design, then select **Generate project files**. Four completed stage
 | Package file | Contents |
 | --- | --- |
 | `project.json`, `manifest.json` | Confirmed input snapshot, schema version, revision, input hash and per-file SHA-256 hashes |
-| `cad/workstation.step`, `cad/workstation.svg` | Labelled concept envelopes and top view derived from the same component positions/sizes |
+| `cad/workstation.step`, `cad/workstation.svg` | Labelled detailed concept primitives and top view from the same geometry as the viewer |
 | `cad/deck.step`, `cad/deck.stl` | Custom deck solid blank; no mounting holes or fabrication-ready interfaces |
-| `cad/deck-model.py`, `cad/geometry-report.json` | Editable parametric source, library/source provenance, measured dimensions, validity and open interfaces |
+| `cad/deck-model.py`, `cad/geometry-report.json` | Standalone editable geometry source, library/source provenance, exact primitive manifests, measured bounds, validity and open interfaces |
 | `assembly-guide.html`, `assembly.json` | Standalone print-friendly illustrated assembly sequence, stable component IDs and design gates |
 | `bill-of-materials.csv`, `preparation.csv` | Selected alternatives with quantities, source prices/dates and per-target volumes; unknown prices stay blank |
 | `automation/preview.py` | Standard-library-only logical preparation trace; no hardware commands |
@@ -252,9 +260,11 @@ Confirm the design, then select **Generate project files**. Four completed stage
 | `simulation/engine.py`, `simulation/run.py`, `simulation/README.md` | Standalone source and rerun instructions using the locked MuJoCo environment |
 | `extension-plan.json`, `extensions.md`, `README.md` | Proposed camera/arm interfaces, package usage and limitations |
 
-Extract the ZIP and open `assembly-guide.html` in a browser. Open STEP files in a STEP-compatible CAD viewer. Geometry uses millimetres: application `(x,y,z)` with y up maps to CAD `(x,z,y)` with Z up. Decorative tubes/vents in the viewer are not engineered parts. The planning height is a workspace envelope and can exceed the measured CAD height.
+The main ZIP retains 22 files. Extract it and open `assembly-guide.html` in a browser. Its numbered plan is a simplified component-position guide; the STEP contains the shared detailed concept. Geometry uses millimetres: application `(x,y,z)` with y up maps to CAD `(x,z,y)` with Z up. Tube/tip consumables remain separate viewer/physics proxies and are not exported as engineered parts. Vent markings are concept trim, not functional ventilation. The planning height is a workspace envelope and can exceed the measured CAD height.
 
-Run the extracted logical preview with `python automation/preview.py` (Python 3, no extra packages). To regenerate CAD with exactly **build123d 0.13.0**, use this repository's locked `.venv` and run its interpreter against the extracted `cad/deck-model.py`. It writes STEP/STL files beside the script; geometry is derived from the editable `COMPONENTS_MM` array. Keep the original downloaded package for provenance: modifying generated source requires new checks and hashes.
+The geometry report distinguishes component count from primitive solid count and records each component's exact primitive manifest. Reported volumes sum separate solids and can count overlapping material more than once; they are not net material volumes or mass estimates. Process, material and mating interfaces remain unchecked.
+
+Run the extracted logical preview with `python automation/preview.py` (Python 3, no extra packages). To regenerate CAD with exactly **build123d 0.13.0**, use this repository's locked `.venv` and run its interpreter against the extracted `cad/deck-model.py`. It includes its own primitive builders and writes STEP/STL files beside the script; geometry is derived from the editable `COMPONENTS_MM` array. The running backend freezes builder source and source hashes when importing the modules, so an on-disk edit cannot silently change the exported code/provenance for that process. Restart the backend to load source revisions. Keep the original downloaded package for provenance: modifying generated source requires new checks and hashes.
 
 To rerun the packaged simulation, use that same locked interpreter against the extracted `simulation/run.py`. It loads the packaged `project.json` and scenario and writes `simulation/replay-result.json`. The original result/model/source stay intact. A repeat run on the tested Windows environment reproduced the same numerical metrics; cross-platform bitwise identity is not guaranteed.
 
@@ -283,7 +293,7 @@ $env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome
 .\.venv\Scripts\python.exe tests\browser_smoke.py
 ```
 
-The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save normal/blocked screenshots. The suite checks the empty opening, a greeting with no design changes, a typed first request, fresh-project reset, calculation/recovery, width revisions, confirmation, component selection, illustrative playback, real MuJoCo normal/obstacle cases, replay controls and mode switching. It downloads two real CAD/simulation packages, verifies revisions/hashes/source provenance/selected cooling geometry, navigates assembly steps and rejects stale downloads/results. Logs use temporary files so Windows pipe buffers cannot block the test server. CAD tests reopen STEP and measure envelopes; physics tests use actual MuJoCo, while job/API boundary tests stub engine functions to isolate concurrency/failure behavior. The exported runtime is rerun and compared in the locked environment. These checks concern the encoded model, not built hardware. Testing with the real Meta API requires account access and consumes tokens.
+The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save normal/blocked screenshots. The suite checks the empty opening, a greeting with no design changes, a typed first request, fresh-project reset, calculation/recovery, width revisions, confirmation, component selection, illustrative playback, real MuJoCo normal/obstacle cases, replay controls and mode switching. It downloads two real CAD/simulation packages, verifies revisions/hashes/source provenance/shared primitive manifests/selected cooling geometry, navigates assembly steps and rejects stale downloads/results. Logs use temporary files so Windows pipe buffers cannot block the test server. CAD tests reopen STEP, measure bounds and actual through-holes, check frame connectivity and axis orientation, and regenerate the standalone source. Physics tests use actual MuJoCo, while job/API boundary tests stub engine functions to isolate concurrency/failure behavior. The exported runtime is rerun and compared in the locked environment. These checks concern the encoded model, not built hardware. Testing with the real Meta API requires account access and consumes tokens.
 
 ## Labware photo check
 

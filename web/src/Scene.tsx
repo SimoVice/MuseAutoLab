@@ -5,6 +5,7 @@ import { Component as ReactComponent, useEffect, useMemo, useRef, useState } fro
 import type { ErrorInfo, ReactNode } from 'react';
 import type { Group } from 'three';
 import type { Component, PhysicsFrame, PhysicsView, Project } from './types';
+import GeometryPart from './GeometryPart';
 import {
   DIP_DOWN_TIME,
   DWELL_TIME,
@@ -15,18 +16,6 @@ import {
 import type { OperationKeyframe, OperationSpec, Vec3 } from './operation';
 
 const SCALE = 100;
-const colors: Record<string, string> = {
-  base: '#b6c5c7',
-  rail: '#6c848b',
-  column: '#869ca0',
-  carriage: '#294b59',
-  pipette: '#d7e6e2',
-  rack: '#73aaa7',
-  tiprack: '#edf5f3',
-  waste: '#d7e5e4',
-  controller: '#456772',
-};
-
 const OPERATION_VISIT_ORDER = ['tip-rack', 'source-rack', 'sample-rack', 'tip-waste'] as const;
 
 class SceneBoundary extends ReactComponent<{ children: ReactNode }, { failed: boolean }> {
@@ -49,206 +38,6 @@ function FitCamera({ width, height, depth }: { width: number; height: number; de
     camera.updateProjectionMatrix();
   }, [camera, size.width, size.height, width, height, depth]);
   return null;
-}
-
-function MachinePart({ part, center, selected, onSelect }: {
-  part: Component;
-  center: [number, number, number];
-  selected: boolean;
-  onSelect: (id: string) => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const position: [number, number, number] = [
-    (part.position[0] - center[0]) / SCALE,
-    (part.position[1] - center[1]) / SCALE,
-    (part.position[2] - center[2]) / SCALE,
-  ];
-  const dimensions: [number, number, number] = [part.size[0] / SCALE, part.size[1] / SCALE, part.size[2] / SCALE];
-  const onClick = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(part.id); };
-  return (
-    <mesh
-      name={part.id}
-      position={position}
-      onClick={onClick}
-      onPointerOver={(event) => { event.stopPropagation(); setHovered(true); }}
-      onPointerOut={() => setHovered(false)}
-    >
-      {part.kind === 'pipette' ? (
-        <cylinderGeometry args={[dimensions[0] / 2, dimensions[0] / 2, dimensions[1], 32]} />
-      ) : <boxGeometry args={dimensions} />}
-      <meshStandardMaterial
-        color={selected ? '#167d84' : colors[part.kind] ?? '#a8bfc0'}
-        metalness={['rail', 'column', 'carriage'].includes(part.kind) ? 0.5 : 0.12}
-        roughness={0.5}
-        emissive={selected || hovered ? '#0a5f67' : '#000000'}
-        emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
-      />
-    </mesh>
-  );
-}
-
-function ColdStorageBay({ part, center, selected, onSelect }: {
-  part: Component;
-  center: [number, number, number];
-  selected: boolean;
-  onSelect: (id: string) => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const position: [number, number, number] = [
-    (part.position[0] - center[0]) / SCALE,
-    (part.position[1] - center[1]) / SCALE,
-    (part.position[2] - center[2]) / SCALE,
-  ];
-  const w = part.size[0] / SCALE;
-  const h = part.size[1] / SCALE;
-  const d = part.size[2] / SCALE;
-  const highlight = selected || hovered;
-  const onClick = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(part.id); };
-  const onOver = (event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); setHovered(true); };
-  const onOut = () => setHovered(false);
-
-  // Split the declared envelope so every detail stays inside it:
-  // insulated shell below, sample inset + framed translucent lid in the top zone.
-  const lidZone = Math.min(0.06, Math.max(0.04, h * 0.08));
-  const shellH = Math.max(0.1, h - lidZone);
-  const shellCenterY = -h / 2 + shellH / 2;
-  const shellTopY = -h / 2 + shellH;
-  const insetH = Math.min(0.03, Math.max(0.015, lidZone * 0.45));
-  const insetW = w * 0.55;
-  const insetD = d * 0.48;
-  const insetCenterY = shellTopY + 0.005 + insetH / 2;
-  const insetTopY = insetCenterY + insetH / 2;
-  const lidThickness = 0.015;
-  const lidY = h / 2 - lidThickness / 2 - 0.001;
-  const lidW = w * 0.82;
-  const lidD = d * 0.76;
-  const frameH = 0.03;
-  const frameY = h / 2 - frameH / 2 - 0.001;
-  const frameBar = 0.04;
-  const ventCount = 3;
-  const ventW = w * 0.5;
-  const ventBaseY = -h / 2 + Math.min(0.18, h * 0.22);
-  const wellCount = 3;
-  const wellSpacing = Math.min(0.2, insetW / (wellCount + 1));
-
-  return (
-    <group name={part.id} position={position}>
-      {/* Insulated light shell: fills the declared footprint, shortened for the lid zone. */}
-      <mesh position={[0, shellCenterY, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
-        <boxGeometry args={[w, shellH, d]} />
-        <meshStandardMaterial
-          color={selected ? '#167d84' : '#e6eef0'}
-          metalness={0.08}
-          roughness={0.6}
-          emissive={highlight ? '#0a5f67' : '#000000'}
-          emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
-        />
-      </mesh>
-      {/* Cyan/aluminum sample inset resting on the shell, below the lid. */}
-      <mesh position={[0, insetCenterY, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
-        <boxGeometry args={[insetW, insetH, insetD]} />
-        <meshStandardMaterial
-          color={selected ? '#7fc4cb' : '#a9d6db'}
-          metalness={0.55}
-          roughness={0.35}
-          emissive={highlight ? '#0a5f67' : '#000000'}
-          emissiveIntensity={selected ? 0.12 : hovered ? 0.05 : 0}
-        />
-      </mesh>
-      {/* Schematic sample wells; positions only, no liquid or temperature implication. */}
-      {Array.from({ length: wellCount }, (_, index) => {
-        const x = (index - (wellCount - 1) / 2) * wellSpacing;
-        return (
-          <mesh key={`cold-well-${index}`} position={[x, insetTopY + 0.001, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
-            <cylinderGeometry args={[0.05, 0.05, 0.008, 16]} />
-            <meshStandardMaterial
-              color="#2f6f77"
-              metalness={0.1}
-              roughness={0.5}
-              emissive={highlight ? '#0a5f67' : '#000000'}
-              emissiveIntensity={selected ? 0.12 : hovered ? 0.05 : 0}
-            />
-          </mesh>
-        );
-      })}
-      {/* Framed translucent lid: transparent panel plus four frame bars, all flush inside the envelope. */}
-      <mesh position={[0, lidY, 0]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
-        <boxGeometry args={[lidW, lidThickness, lidD]} />
-        <meshStandardMaterial
-          color="#cfeef2"
-          metalness={0.05}
-          roughness={0.25}
-          transparent
-          opacity={0.45}
-          depthWrite={false}
-          emissive={highlight ? '#0a5f67' : '#000000'}
-          emissiveIntensity={selected ? 0.1 : hovered ? 0.04 : 0}
-        />
-      </mesh>
-      {[
-        { key: 'front', args: [lidW, frameH, frameBar] as [number, number, number], pos: [0, frameY, lidD / 2 - frameBar / 2] as Vec3 },
-        { key: 'back', args: [lidW, frameH, frameBar] as [number, number, number], pos: [0, frameY, -lidD / 2 + frameBar / 2] as Vec3 },
-        { key: 'left', args: [frameBar, frameH, lidD] as [number, number, number], pos: [-lidW / 2 + frameBar / 2, frameY, 0] as Vec3 },
-        { key: 'right', args: [frameBar, frameH, lidD] as [number, number, number], pos: [lidW / 2 - frameBar / 2, frameY, 0] as Vec3 },
-      ].map((bar) => (
-        <mesh key={`cold-lid-${bar.key}`} position={bar.pos} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
-          <boxGeometry args={bar.args} />
-          <meshStandardMaterial
-            color={selected ? '#167d84' : '#3d545b'}
-            metalness={0.2}
-            roughness={0.5}
-            emissive={highlight ? '#0a5f67' : '#000000'}
-            emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
-          />
-        </mesh>
-      ))}
-      {/* Vent details on the front face, recessed inside the declared depth. */}
-      {Array.from({ length: ventCount }, (_, index) => {
-        const y = ventBaseY + index * 0.08;
-        return (
-          <mesh key={`cold-vent-${index}`} position={[0, y, d / 2 - 0.011]} onClick={onClick} onPointerOver={onOver} onPointerOut={onOut}>
-            <boxGeometry args={[ventW, 0.035, 0.02]} />
-            <meshStandardMaterial
-              color={selected ? '#1a7f87' : '#5b7379'}
-              metalness={0.25}
-              roughness={0.6}
-              emissive={highlight ? '#0a5f67' : '#000000'}
-              emissiveIntensity={selected ? 0.12 : hovered ? 0.05 : 0}
-            />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-function AnimatedSelectableMesh({ id, kind, selected, onSelect, geometry, offset }: {
-  id: string;
-  kind: string;
-  selected: boolean;
-  onSelect: (meshId: string) => void;
-  geometry: ReactNode;
-  offset: Vec3;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <mesh
-      name={id}
-      position={offset}
-      onClick={(event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(id); }}
-      onPointerOver={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); setHovered(true); }}
-      onPointerOut={() => setHovered(false)}
-    >
-      {geometry}
-      <meshStandardMaterial
-        color={selected ? '#167d84' : colors[kind] ?? '#a8bfc0'}
-        metalness={['rail', 'column', 'carriage'].includes(kind) ? 0.5 : 0.12}
-        roughness={0.5}
-        emissive={selected || hovered ? '#0a5f67' : '#000000'}
-        emissiveIntensity={selected ? 0.14 : hovered ? 0.06 : 0}
-      />
-    </mesh>
-  );
 }
 
 function AnimatedPipetteCarriage({ carriage, pipette, home, keyframes, duration, playing, resetKey, revision, stepCount, onComplete, selectedId, onSelect }: {
@@ -328,32 +117,21 @@ function AnimatedPipetteCarriage({ carriage, pipette, home, keyframes, duration,
     }
   });
 
-  const carriageSize: Vec3 = [carriage.size[0] / SCALE, carriage.size[1] / SCALE, carriage.size[2] / SCALE];
-  const pipetteDiameter = pipette.size[0] / SCALE;
   const pipetteHeight = pipette.size[1] / SCALE;
-  const pipetteOffsetY = (pipette.position[1] - carriage.position[1]) / SCALE;
+  const pipetteOffset: Vec3 = [
+    (pipette.position[0] - carriage.position[0]) / SCALE,
+    (pipette.position[1] - carriage.position[1]) / SCALE,
+    (pipette.position[2] - carriage.position[2]) / SCALE,
+  ];
   const tipHeight = 0.22;
 
   return (
     <group ref={groupRef} position={home}>
-      <AnimatedSelectableMesh
-        id={carriage.id}
-        kind={carriage.kind}
-        selected={selectedId === carriage.id}
-        onSelect={onSelect}
-        offset={[0, 0, 0]}
-        geometry={<boxGeometry args={carriageSize} />}
-      />
-      <AnimatedSelectableMesh
-        id={pipette.id}
-        kind={pipette.kind}
-        selected={selectedId === pipette.id}
-        onSelect={onSelect}
-        offset={[0, pipetteOffsetY, 0]}
-        geometry={<cylinderGeometry args={[pipetteDiameter / 2, pipetteDiameter / 2, pipetteHeight, 32]} />}
-      />
+      <GeometryPart part={carriage} position={[0, 0, 0]} selected={selectedId === carriage.id} onSelect={onSelect} />
+      <GeometryPart part={pipette} position={pipetteOffset} selected={selectedId === pipette.id} onSelect={onSelect} />
       {/* Restrained schematic disposable tip; illustrative only, not a physical model. */}
-      <mesh position={[0, pipetteOffsetY - pipetteHeight / 2 - tipHeight / 2 + 0.03, 0]}>
+      <mesh position={[pipetteOffset[0], pipetteOffset[1] - pipetteHeight / 2 - tipHeight / 2 + 0.03, pipetteOffset[2]]}
+        onClick={(event) => { event.stopPropagation(); onSelect(pipette.id); }}>
         <cylinderGeometry args={[0.035, 0.012, tipHeight, 16]} />
         <meshStandardMaterial color="#f7fbfb" metalness={0.05} roughness={0.4} />
       </mesh>
@@ -408,32 +186,15 @@ function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }
   const carriagePos = toCentered(frame.carriage_mm);
   const pipettePos = toCentered(frame.pipette_mm);
   const tipPos = toCentered(frame.tip_mm);
-  const carriageSize: Vec3 = [carriage.size[0] / SCALE, carriage.size[1] / SCALE, carriage.size[2] / SCALE];
-  const pipetteDiameter = pipette.size[0] / SCALE;
-  const pipetteHeight = pipette.size[1] / SCALE;
   // tip_mm is the lowest point reported by the engine, not the mesh centre.
   const tipHeight = 0.19;
   const tipOffset: Vec3 = [tipPos[0] - carriagePos[0], tipPos[1] + tipHeight / 2 - carriagePos[1], tipPos[2] - carriagePos[2]];
   const pipetteOffset: Vec3 = [pipettePos[0] - carriagePos[0], pipettePos[1] - carriagePos[1], pipettePos[2] - carriagePos[2]];
   return (
     <group position={carriagePos}>
-      <AnimatedSelectableMesh
-        id={carriage.id}
-        kind={carriage.kind}
-        selected={selectedId === carriage.id}
-        onSelect={onSelect}
-        offset={[0, 0, 0]}
-        geometry={<boxGeometry args={carriageSize} />}
-      />
-      <AnimatedSelectableMesh
-        id={pipette.id}
-        kind={pipette.kind}
-        selected={selectedId === pipette.id}
-        onSelect={onSelect}
-        offset={pipetteOffset}
-        geometry={<cylinderGeometry args={[pipetteDiameter / 2, pipetteDiameter / 2, pipetteHeight, 32]} />}
-      />
-      <mesh position={tipOffset}>
+      <GeometryPart part={carriage} position={[0, 0, 0]} selected={selectedId === carriage.id} onSelect={onSelect} />
+      <GeometryPart part={pipette} position={pipetteOffset} selected={selectedId === pipette.id} onSelect={onSelect} />
+      <mesh position={tipOffset} onClick={(event) => { event.stopPropagation(); onSelect(pipette.id); }}>
         <cylinderGeometry args={[0.035, 0.035, tipHeight, 16]} />
         <meshStandardMaterial color="#f7fbfb" metalness={0.05} roughness={0.4} />
       </mesh>
@@ -441,18 +202,25 @@ function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }
   );
 }
 
-function RackDetails({ components, center, stepCount }: {
+function RackDetails({ components, center, stepCount, selectedId, onSelect }: {
   components: Component[];
   center: [number, number, number];
   stepCount: number;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const events = (id: string) => ({
+    onClick: (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(id); },
+    onPointerOver: (event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); setHoveredId(id); },
+    onPointerOut: () => setHoveredId(null),
+  });
   const details = useMemo(() => {
     const byId = new Map(components.map((part) => [part.id, part]));
     const sourceRack = byId.get('source-rack');
     const sampleRack = byId.get('sample-rack');
     const tipRack = byId.get('tip-rack');
-    const tipWaste = byId.get('tip-waste');
-    return { sourceRack, sampleRack, tipRack, tipWaste };
+    return { sourceRack, sampleRack, tipRack };
   }, [components]);
 
   const tubeRow = (rack: Component | undefined, count: number, radius: number, height: number, color: string, prefix: string) => {
@@ -467,9 +235,10 @@ function RackDetails({ components, center, stepCount }: {
         {Array.from({ length: safeCount }, (_, index) => {
           const x = rackCenterX + (index - (safeCount - 1) / 2) * spacing;
           return (
-            <mesh key={`${prefix}-${index}`} position={[x, rackTopY + height / 2 - 0.02, rackCenterZ]}>
+            <mesh key={`${prefix}-${index}`} position={[x, rackTopY + height / 2 - 0.02, rackCenterZ]} {...events(rack.id)}>
               <cylinderGeometry args={[radius, radius, height, 16]} />
-              <meshStandardMaterial color={color} metalness={0.05} roughness={0.45} />
+              <meshStandardMaterial color={color} metalness={0.05} roughness={0.45}
+                emissive={selectedId === rack.id || hoveredId === rack.id ? '#0a6a71' : '#000000'} emissiveIntensity={selectedId === rack.id ? 0.2 : 0.09} />
             </mesh>
           );
         })}
@@ -489,9 +258,10 @@ function RackDetails({ components, center, stepCount }: {
         {Array.from({ length: count }, (_, index) => {
           const x = rackCenterX + (index - (count - 1) / 2) * spacing;
           return (
-            <mesh key={`tip-${index}`} position={[x, rackTopY + 0.06, rackCenterZ]}>
+            <mesh key={`tip-${index}`} position={[x, rackTopY + 0.06, rackCenterZ]} {...events(rack.id)}>
               <cylinderGeometry args={[0.045, 0.016, 0.16, 12]} />
-              <meshStandardMaterial color="#ffffff" metalness={0.02} roughness={0.35} />
+              <meshStandardMaterial color="#ffffff" metalness={0.02} roughness={0.35}
+                emissive={selectedId === rack.id || hoveredId === rack.id ? '#0a6a71' : '#000000'} emissiveIntensity={selectedId === rack.id ? 0.2 : 0.09} />
             </mesh>
           );
         })}
@@ -499,27 +269,13 @@ function RackDetails({ components, center, stepCount }: {
     );
   };
 
-  const wasteOpening = details.tipWaste ? (() => {
-    const rack = details.tipWaste;
-    const x = (rack.position[0] - center[0]) / SCALE;
-    const topY = (rack.position[1] - center[1]) / SCALE + rack.size[1] / SCALE / 2;
-    const z = (rack.position[2] - center[2]) / SCALE;
-    return (
-      <mesh key="waste-opening" position={[x, topY + 0.005, z]}>
-        <boxGeometry args={[rack.size[0] / SCALE * 0.7, 0.02, rack.size[2] / SCALE * 0.7]} />
-        <meshStandardMaterial color="#3d545b" metalness={0.1} roughness={0.7} />
-      </mesh>
-    );
-  })() : null;
-
-  const sampleTubeCount = stepCount > 0 ? Math.min(6, stepCount) : 3;
+  const sampleTubeCount = Math.max(1, Math.min(6, stepCount));
 
   return (
     <group>
       {tubeRow(details.sourceRack, 2, 0.06, 0.22, '#2f6f77', 'source-tube')}
       {tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
       {tipRow(details.tipRack)}
-      {wasteOpening}
     </group>
   );
 }
@@ -624,9 +380,6 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     return components.filter((part) => part.id !== 'carriage' && part.id !== 'pipette');
   }, [components, showAnimation, physicsActive]);
 
-  const coldStoragePart = useMemo(() => staticParts.find((part) => part.id === 'cold-storage'), [staticParts]);
-  const genericStaticParts = useMemo(() => staticParts.filter((part) => part.id !== 'cold-storage'), [staticParts]);
-
   return (
     <>
     <SceneBoundary key={viewKey}>
@@ -634,21 +387,22 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         orthographic
         camera={{ position: [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
         dpr={[1, 1.5]}
+        shadows="percentage"
         frameloop="demand"
         aria-label={physicsActive ? 'MuJoCo state replay in the interactive workstation view.' : 'Interactive schematic 3D workstation model. Drag to rotate and scroll to zoom.'}
       >
         <color attach="background" args={['#eef4f4']} />
         <ambientLight intensity={1.2} />
-        <directionalLight position={[8, 12, 7]} intensity={2.1} />
+        <directionalLight position={[8, 12, 7]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]}
+          shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
         <directionalLight position={[-6, 5, -5]} intensity={0.7} />
         <FitCamera width={footprint.width_mm} height={footprint.height_mm} depth={footprint.depth_mm} />
         <group>
-          {genericStaticParts.map((part) => <MachinePart key={part.id} part={part} center={bounds.center} selected={part.id === selectedId} onSelect={onSelect} />)}
+          {staticParts.map((part) => <GeometryPart key={part.id} part={part}
+            position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
+            selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
-        {coldStoragePart ? (
-          <ColdStorageBay part={coldStoragePart} center={bounds.center} selected={coldStoragePart.id === selectedId} onSelect={onSelect} />
-        ) : null}
-        <RackDetails components={components} center={bounds.center} stepCount={normalizedStepCount} />
+        <RackDetails components={components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} />
         {physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh
             key={obstacle.id}
@@ -681,6 +435,10 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
             onSelect={onSelect}
           />
         ) : null}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
+          <planeGeometry args={[18, 18]} />
+          <meshStandardMaterial color="#eef4f4" roughness={1} />
+        </mesh>
         <gridHelper args={[18, 36, '#cfdddd', '#dbe7e7']} position={[0, -0.025, 0]} />
         <OrbitControls makeDefault target={target} minZoom={15} maxZoom={200} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
       </Canvas>

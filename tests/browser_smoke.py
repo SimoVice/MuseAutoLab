@@ -411,6 +411,13 @@ def run_smoke(web_url: str) -> None:
                     assert {c["id"] for c in geometry["components"]} == {
                         c["id"] for c in snapshot["design"]["components"]
                     }
+                    entries = {c["id"]: c for c in geometry["components"]}
+                    primitive_count = 0
+                    for component in snapshot["design"]["components"]:
+                        primitives = component["geometry"]["primitives"]
+                        assert entries[component["id"]]["primitive_manifest"] == primitives
+                        primitive_count += len(primitives)
+                    assert geometry["solid_count"] == primitive_count
                     for file in manifest["files"]:
                         content = archive.read(file["name"])
                         assert len(content) == file["size"]
@@ -433,6 +440,11 @@ def run_smoke(web_url: str) -> None:
                     assert sim_result["revision"] == snapshot["revision"]
                     assert sim_result["scenario"] == "nominal"
                     assert sim_result["status"] == "passed"
+                    assert sim_result["geometry_scope"] == {
+                        "components_with_details": len(snapshot["design"]["components"]),
+                        "primitives_validated": primitive_count,
+                        "collision_model": "component envelopes and consumable proxies",
+                    }
                     assert (
                         hashlib.sha256(archive.read("simulation/engine.py")).hexdigest()
                         == sim_result["engine_source_sha256"]

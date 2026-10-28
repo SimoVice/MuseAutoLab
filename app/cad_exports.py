@@ -1,8 +1,7 @@
-"""Concept CAD envelopes built parametrically from the project snapshot.
+"""Concept CAD geometry built parametrically from the project snapshot.
 
 Application coordinates use y as UP (mm). CAD export uses Z as UP with the
-mapping app(x, y, z) -> CAD(x, z, y). The pipette is a schematic cylinder;
-every other component is a schematic centred box matching its envelope.
+mapping app(x, y, z) -> CAD(x, z, y). Components use shared primitives.
 The deck (component id ``base``) is a solid blank for concept review only.
 """
 
@@ -10,12 +9,17 @@ from __future__ import annotations
 
 import hashlib
 import html
+import inspect
 import json
 import math
 from importlib import metadata
+from pathlib import Path
 from pprint import pformat
 from tempfile import TemporaryDirectory
 
+from app.geometry import GEOMETRY_SOURCE_SHA256, geometry_for_component
+
+_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 COORDINATE_MAPPING = "app(x,y,z)->CAD(x,z,y); CAD Z is UP"
 UNITS = "mm"
 DECK_ID = "base"
@@ -44,6 +48,9 @@ def _components(project: dict) -> list[dict]:
             raise ValueError("Component coordinates must be finite.")
         if any(s <= 0 for s in size):
             raise ValueError(f"Component '{comp['id']}' has non-positive size.")
+        geometry = comp.get("geometry") or geometry_for_component(comp)
+        if geometry.get("schema_version") != "1" or not geometry.get("primitives"):
+            raise ValueError(f"Invalid geometry for {comp['id']}.")
         out.append(
             {
                 "id": str(comp["id"]),
@@ -51,6 +58,12 @@ def _components(project: dict) -> list[dict]:
                 "label": str(comp["label"]),
                 "position": pos,
                 "size": size,
+                "geometry": geometry,
+                **(
+                    {"rack_slot_count": comp["rack_slot_count"]}
+                    if "rack_slot_count" in comp
+                    else {}
+                ),
             }
         )
     ids = [c["id"] for c in out]
@@ -69,22 +82,59 @@ def _cad_box_size(comp: dict) -> tuple[float, float, float]:
     return (sx, sz, sy)
 
 
-def _build_solid(comp: dict):
-    """Build one centred solid in CAD (Z-up) coordinates."""
-    from build123d import Align, Box, Cylinder, Location
+def _primitive_solid(comp, primitive):
+    """Create one primitive in CAD coordinates from the serialized geometry."""
+    from build123d import Align, Box, Cone, Cylinder, Pos, Rot
 
-    cx, cy, cz = _cad_center(comp)
-    if comp["kind"] == PIPETTE_KIND:
-        sx, sy, sz = comp["size"]
-        radius = min(float(sx), float(sz)) / 2.0
-        height = float(sy)
-        solid = Cylinder(radius, height, align=(Align.CENTER, Align.CENTER, Align.CENTER))
+    x, y, z = primitive["position"]
+    sx, sy, sz = primitive["size"]
+    shape = primitive["kind"]
+    align = (Align.CENTER,) * 3
+    if shape in ("box", "plate"):
+        solid = Box(sx, sz, sy, align=align)
+        if shape == "plate":
+            for hole in primitive.get("holes", []):
+                cutter = Pos(hole["x_mm"], hole["z_mm"], 0) * Cylinder(
+                    hole["radius_mm"], sy + 2, align=align
+                )
+                solid = solid - cutter
+    elif shape in ("cylinder", "frustum", "tube"):
+        axis = primitive.get("axis", "y")
+        dims = {"x": (sx, sy), "y": (sy, sx), "z": (sz, sx)}
+        height, diameter = dims[axis]
+        if shape == "frustum":
+            solid = Cone(
+                primitive["radius_bottom_mm"], primitive["radius_top_mm"], height, align=align
+            )
+        else:
+            solid = Cylinder(diameter / 2, height, align=align)
+            if shape == "tube":
+                solid = solid - Cylinder(primitive["inner_radius_mm"], height + 2, align=align)
+        if axis == "x":
+            solid = Rot(0, 90, 0) * solid
+        elif axis == "z":
+            solid = Rot(-90, 0, 0) * solid
     else:
-        lx, ly, lz = _cad_box_size(comp)
-        solid = Box(lx, ly, lz, align=(Align.CENTER, Align.CENTER, Align.CENTER))
-    solid = solid.located(Location((cx, cy, cz)))
-    solid.label = comp["id"]
+        raise ValueError(f"Unsupported geometry primitive: {shape}")
+    cx, cy, cz = comp["position"]
+    solid = Pos(cx + x, cz + z, cy + y) * solid
+    solid.label = primitive["id"]
     return solid
+
+
+def _build_solid(comp):
+    """Group the exact shared primitives, retaining component and primitive IDs."""
+    from build123d import Compound
+
+    return Compound(
+        children=[_primitive_solid(comp, p) for p in comp["geometry"]["primitives"]],
+        label=comp["id"],
+    )
+
+
+# Freeze the imported builder for self-contained exports throughout this process.
+_PRIMITIVE_BUILDER_SOURCE = inspect.getsource(_primitive_solid)
+_COMPONENT_BUILDER_SOURCE = inspect.getsource(_build_solid)
 
 
 def _bbox_of(solid) -> dict:
@@ -103,48 +153,32 @@ def _build123d_version() -> str:
         return "unknown"
 
 
-def _source_sha256() -> str:
-    try:
-        with open(__file__, "rb") as fh:
-            return hashlib.sha256(fh.read()).hexdigest()
-    except OSError:
-        return "unknown"
-
-
 def _deck_model_source(components: list[dict], project_id, revision) -> str:
     return (
-        '"""Parametric concept envelopes. Requires build123d==0.13.0.\n'
-        "Process and material: not selected. Deck is a solid blank, not fabrication-ready.\n"
-        "Interfaces: labware, rails, pipette, cooling and mounts remain unchecked.\n"
-        'Dimensions in mm; application y-up maps to CAD Z-up.\n"""\n'
+        '"""Shared concept primitives, mm. Requires build123d==0.13.0.\n'
+        "Process, material and all interfaces unchecked; not fabrication-ready.\n"
+        'Application Y-up maps to CAD Z-up; deck is a solid blank.\n"""\n'
         "from pathlib import Path\n"
-        "from build123d import Align, Box, Compound, Cylinder, Location, Unit, export_step, "
-        "export_stl\n"
+        "from build123d import Compound, Unit, export_step, export_stl\n"
         f"PROJECT_ID = {project_id!r}\nREVISION = {revision!r}\n"
-        "# INTERFACE: none specified against a standard or vendor drawing.\n"
-        "# DESIGN: component position/size arrays are editable millimetre parameters.\n"
         f"COMPONENTS_MM = {pformat(components, width=88, sort_dicts=False)}\n\n"
-        "def interfaces():\n    return []\n\n"
-        "def component_solid(comp):\n"
-        "    x, y, z = comp['position']\n    sx, sy, sz = comp['size']\n"
-        "    if comp['kind'] == 'pipette':\n"
-        "        solid = Cylinder(min(sx, sz) / 2, sy, align=(Align.CENTER,) * 3)\n"
-        "    else:\n        solid = Box(sx, sz, sy, align=(Align.CENTER,) * 3)\n"
-        "    solid = solid.located(Location((x, z, y)))\n"
-        "    solid.label = comp['id']\n    return solid\n\n"
-        "def build():\n"
-        "    return Compound(children=[component_solid(c) for c in COMPONENTS_MM], "
-        "label='MuseAutoLab concept')\n\n"
-        "def build_deck():\n"
-        "    return component_solid(next(c for c in COMPONENTS_MM if c['id'] == 'base'))\n\n"
-        "if __name__ == '__main__':\n"
-        "    output = Path(__file__).resolve().parent\n    workstation = build()\n    deck = "
-        "build_deck()\n"
-        "    if not workstation.is_valid or not deck.is_valid:\n"
-        "        raise ValueError('Invalid concept geometry')\n"
-        "    export_step(workstation, output / 'workstation.step', unit=Unit.MM)\n"
-        "    export_step(deck, output / 'deck.step', unit=Unit.MM)\n"
-        "    export_stl(deck, output / 'deck.stl')\n"
+        + _PRIMITIVE_BUILDER_SOURCE
+        + "\n\n"
+        + _COMPONENT_BUILDER_SOURCE
+        + "\n\n"
+        + "def interfaces():\n    return []\n\n"
+        + "def build():\n    return Compound(children=[_build_solid(c) for c in COMPONENTS_MM], "
+        + 'label="MuseAutoLab concept")\n\n'
+        + "def build_deck():\n    return _build_solid(next(c for c in COMPONENTS_MM "
+        + 'if c["id"] == "base"))\n\n'
+        + 'if __name__ == "__main__":\n'
+        + "    output = Path(__file__).resolve().parent\n"
+        + "    workstation, deck = build(), build_deck()\n"
+        + "    if not workstation.is_valid or not deck.is_valid:\n"
+        + '        raise ValueError("Invalid concept geometry")\n'
+        + '    export_step(workstation, output / "workstation.step", unit=Unit.MM)\n'
+        + '    export_step(deck, output / "deck.step", unit=Unit.MM)\n'
+        + '    export_stl(deck, output / "deck.stl")\n'
     )
 
 
@@ -174,26 +208,43 @@ def _workstation_svg(components: list[dict], project_id, revision) -> bytes:
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" '
         f'width="{width:.1f}" height="{height:.1f}" role="img">',
-        f"<title>{html.escape('Concept envelopes ' + str(project_id))}</title>",
+        f"<title>{html.escape('Concept geometry ' + str(project_id))}</title>",
         f"<desc>{html.escape('Top view app X right, app Z up; revision ' + str(revision))}</desc>",
     ]
-    palette = ["#dbeafe", "#e0e7ff", "#ede9fe", "#fce7f3", "#fef3c7", "#dcfce7"]
-    for i, comp in enumerate(components):
+    palette = {
+        "deck": "#e2e8f0",
+        "rack": "#8db9c9",
+        "rack-top": "#c9e2e8",
+        "frame": "#8a9aa6",
+        "rail": "#d4dce2",
+        "cooling": "#aecddd",
+        "lid": "#d6e9ee",
+        "vent": "#57717e",
+        "pipette": "#e1e6e9",
+    }
+    for comp in components:
         x, _y, z = comp["position"]
-        sx, _sy, sz = comp["size"]
-        rx, ry = px(x - sx / 2.0), py(z + sz / 2.0)
-        rw, rh = sx * scale, sz * scale
-        fill = palette[i % len(palette)]
-        stroke = "#1e3a8a" if comp["id"] == DECK_ID else "#334155"
+        for primitive in comp["geometry"]["primitives"]:
+            dx, _dy, dz = primitive["position"]
+            sx, _sy, sz = primitive["size"]
+            rx, ry = px(x + dx - sx / 2), py(z + dz + sz / 2)
+            fill = palette.get(primitive["appearance"], "#b8c4ca")
+            parts.append(
+                f'<rect x="{rx:.2f}" y="{ry:.2f}" width="{sx * scale:.2f}" '
+                f'height="{sz * scale:.2f}" '
+                f'fill="{fill}" stroke="#526772" stroke-width="0.5">'
+                f"<title>{html.escape(comp['id'] + '/' + primitive['id'])}</title></rect>"
+            )
+            if primitive["kind"] == "plate":
+                for hole in primitive.get("holes", []):
+                    parts.append(
+                        f'<circle cx="{px(x + dx + hole["x_mm"]):.2f}" '
+                        f'cy="{py(z + dz + hole["z_mm"]):.2f}" '
+                        f'r="{hole["radius_mm"] * scale:.2f}" fill="#f8fafc" stroke="#526772"/>'
+                    )
         parts.append(
-            f'<rect x="{rx:.2f}" y="{ry:.2f}" width="{rw:.2f}" height="{rh:.2f}" '
-            f'fill="{fill}" stroke="{stroke}" stroke-width="1.5">'
-            f"<title>{html.escape(comp['id'] + ' ' + comp['label'])}</title></rect>"
-        )
-        parts.append(
-            f'<text x="{rx + 3:.2f}" y="{ry + 13:.2f}" font-size="10" '
-            f'font-family="sans-serif" fill="#0f172a">'
-            f"{html.escape(comp['id'])}</text>"
+            f'<text x="{px(x):.2f}" y="{py(z):.2f}" font-size="9" '
+            f'font-family="sans-serif" fill="#0f172a">{html.escape(comp["id"])}</text>'
         )
     parts.append("</svg>")
     return "\n".join(parts).encode("utf-8")
@@ -232,12 +283,20 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 "app_size": list(comp["size"]),
                 "cad_center": list(_cad_center(comp)),
                 "cad_size": list(_cad_box_size(comp)),
-                "shape": "cylinder" if comp["kind"] == PIPETTE_KIND else "box",
+                "shape": "shared primitives",
+                "primitive_manifest": comp["geometry"]["primitives"],
+                **(
+                    {"rack_slot_count": comp["rack_slot_count"]}
+                    if "rack_slot_count" in comp
+                    else {}
+                ),
                 "valid": True,
                 "volume_mm3": volume,
+                "volume_scope": "Sum of primitive solid volumes; "
+                "overlaps may be counted more than once.",
                 "bbox_cad": bbox,
                 "solids": len(solid.solids()),
-                "provenance": "parametric from project.design.components envelope",
+                "provenance": "project.design.components geometry primitives",
             }
         )
 
@@ -286,19 +345,24 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
         "process": "not selected; concept only",
         "material": "not selected; concept only",
         "notes": [
-            "Concept envelopes only; not fabrication-ready.",
+            "Concept details and dimensions are illustrative; not fabrication-ready.",
             "Custom deck is a solid blank for concept review.",
-            "Decorative scene tubes/vents are not engineering CAD.",
-            "Pipette is a schematic cylinder; others are schematic boxes.",
+            "Consumables remain separate visual and physics proxies; "
+            "sample insert pattern follows the target count.",
+            "Details and openings do not establish fit, process, or performance.",
+            "Reported volumes sum separate primitive solids and may count overlaps; "
+            "they are not material volume or mass.",
         ],
         "components": entries,
         "deck_component_id": DECK_ID,
-        "solid_count": len(solids),
+        "component_count": len(solids),
+        "solid_count": sum(len(s.solids()) for s in solids),
         "source": {
             "generator": "app.cad_exports.build_cad_files",
-            "source_sha256": _source_sha256(),
+            "source_sha256": _SOURCE_SHA256,
+            "geometry_source_sha256": GEOMETRY_SOURCE_SHA256,
             "build123d_version": _build123d_version(),
-            "input": "project.design.components (position/size in mm, y is UP)",
+            "input": "project.design.components geometry primitives (mm, y is UP)",
         },
     }
     report_bytes = json.dumps(report, indent=2).encode("utf-8")

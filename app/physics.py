@@ -333,7 +333,94 @@ def _obstacle(project, info):
     }
 
 
-def _validate(project: dict, scenario: str) -> None:
+def _validate_details(part: dict) -> int:
+    """Check serialized concept geometry against its local envelope, without CAD imports."""
+    if "geometry" not in part:
+        return 0  # Older snapshots use only the component envelope.
+    geometry = part["geometry"]
+    label = f"Component {part['id']} geometry"
+    if not isinstance(geometry, dict) or geometry.get("schema_version") != "1":
+        raise ValueError(f"{label}: unsupported schema version.")
+    primitives = geometry.get("primitives")
+    if not isinstance(primitives, list) or not 1 <= len(primitives) <= 256:
+        raise ValueError(f"{label}: expected 1 to 256 primitives.")
+
+    def number(value, name, positive=False):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{label}: {name} must be a finite number.")
+        value = float(value)
+        if not math.isfinite(value) or (positive and value <= 0):
+            raise ValueError(
+                f"{label}: {name} must be finite and positive."
+                if positive
+                else f"{label}: {name} must be finite."
+            )
+        return value
+
+    def vector(value, name, positive=False):
+        if not isinstance(value, (list, tuple)) or len(value) != 3:
+            raise ValueError(f"{label}: {name} must contain three coordinates.")
+        return [number(v, name, positive) for v in value]
+
+    envelope = vector(part["size"], "envelope size", True)
+    seen = set()
+    for primitive in primitives:
+        if not isinstance(primitive, dict):
+            raise ValueError(f"{label}: invalid primitive.")
+        pid, kind = primitive.get("id"), primitive.get("kind")
+        if not isinstance(pid, str) or not pid or pid in seen:
+            raise ValueError(f"{label}: primitive IDs must be unique nonempty strings.")
+        seen.add(pid)
+        if kind not in ("box", "plate", "cylinder", "frustum", "tube"):
+            raise ValueError(f"{label}, primitive {pid}: unsupported shape {kind!r}.")
+        pos = vector(primitive.get("position"), f"{pid} position")
+        size = vector(primitive.get("size"), f"{pid} size", True)
+        tolerance = 1e-7
+        if kind in ("cylinder", "frustum", "tube"):
+            axis = primitive.get("axis", "y")
+            if axis not in ("x", "y", "z"):
+                raise ValueError(f"{label}, primitive {pid}: invalid axis.")
+            transverse = [i for i in range(3) if i != "xyz".index(axis)]
+            diameters = [size[i] for i in transverse]
+            if not math.isclose(diameters[0], diameters[1], rel_tol=1e-9, abs_tol=tolerance):
+                raise ValueError(f"{label}, primitive {pid}: transverse diameters disagree.")
+            radius = diameters[0] / 2
+            if kind == "frustum":
+                radii = [
+                    number(primitive.get(key), f"{pid} {key}")
+                    for key in ("radius_top_mm", "radius_bottom_mm")
+                ]
+                if min(radii) < 0 or not math.isclose(
+                    max(radii), radius, rel_tol=1e-9, abs_tol=tolerance
+                ):
+                    raise ValueError(
+                        f"{label}, primitive {pid}: radii contradict its bounding size."
+                    )
+            if kind == "tube":
+                inner = number(primitive.get("inner_radius_mm"), f"{pid} inner_radius_mm")
+                if not 0 <= inner < radius:
+                    raise ValueError(f"{label}, primitive {pid}: invalid inner radius.")
+        if any(abs(pos[i]) + size[i] / 2 > envelope[i] / 2 + tolerance for i in range(3)):
+            raise ValueError(f"{label}, primitive {pid}: extends outside the component envelope.")
+        if kind == "plate":
+            holes = primitive.get("holes", [])
+            if not isinstance(holes, list) or len(holes) > 256:
+                raise ValueError(f"{label}, primitive {pid}: invalid holes list.")
+            for hole in holes:
+                if not isinstance(hole, dict):
+                    raise ValueError(f"{label}, primitive {pid}: invalid hole.")
+                x = number(hole.get("x_mm"), f"{pid} hole x")
+                z = number(hole.get("z_mm"), f"{pid} hole z")
+                radius = number(hole.get("radius_mm"), f"{pid} hole radius", True)
+                if (
+                    abs(x) + radius > size[0] / 2 + tolerance
+                    or abs(z) + radius > size[2] / 2 + tolerance
+                ):
+                    raise ValueError(f"{label}, primitive {pid}: hole extends outside its plate.")
+    return len(primitives)
+
+
+def _validate(project: dict, scenario: str) -> dict:
     if scenario not in ("nominal", "blocked_path"):
         raise ValueError("Unsupported physics scenario.")
     if project.get("status") != "confirmed" or project.get("plan", {}).get("status") != "ready":
@@ -360,6 +447,7 @@ def _validate(project: dict, scenario: str) -> None:
                 raise ValueError("Component geometry must contain three finite coordinates.")
         if min(part["size"]) <= 0:
             raise ValueError("Component sizes must be positive.")
+    primitive_count = sum(_validate_details(part) for part in components)
     steps = project["plan"]["steps"]
     if not 1 <= len(steps) <= 6:
         raise ValueError("Physics supports one to six preparation targets.")
@@ -367,6 +455,11 @@ def _validate(project: dict, scenario: str) -> None:
         volumes = [step["stock_volume_ul"], step["diluent_volume_ul"]]
         if not all(math.isfinite(v) and v >= 0 for v in volumes) or sum(volumes) <= 0:
             raise ValueError("Preparation transfers must have finite nonnegative volumes.")
+    return {
+        "components_with_details": sum(part.get("geometry") is not None for part in components),
+        "primitives_validated": primitive_count,
+        "collision_model": "component envelopes and consumable proxies",
+    }
 
 
 def _proxy_boxes(project: dict, _info=None) -> list[tuple]:
@@ -519,6 +612,7 @@ def _assumptions() -> list[str]:
         "Crossbar/carriage contact omitted as an ideal guide interface; head/post and "
         "tool/frame contacts remain enabled.",
         "Tube/tip cylinders are assumed fixed proxies, matching the displayed rack arrangement.",
+        "Collision checks use component envelopes and consumable proxies, not visual details.",
         "Approaches stop 5 mm above proxy tops/rim; cruise is 15 mm above non-frame obstacles.",
         "Tip positions cycle through four logical stations; consumable capacity/replacement "
         "is unverified.",
@@ -533,13 +627,15 @@ def _limitations() -> list[str]:
         "No rails/transmission, backlash, cable routing, material deformation or hardware control.",
         "No measured motor torque, mount strength, cooling performance or laboratory validation.",
         "Cold storage is an obstacle envelope with manual transfer; no robotic sample transfer.",
+        "Fine bores, vents and cutouts are not resolved for contact; full envelopes can "
+        "conservatively block visually open spaces.",
         "The diagnostic obstacle is a synthetic test object, not a selected project component.",
     ]
 
 
 def simulate_project(project: dict, scenario: str = "nominal", on_progress=None) -> dict:
     """Integrate the bounded plan; measured state and declarative sensors determine the result."""
-    _validate(project, scenario)
+    geometry_scope = _validate(project, scenario)
     import mujoco
 
     snapshot = deepcopy(project)
@@ -734,6 +830,7 @@ def simulate_project(project: dict, scenario: str = "nominal", on_progress=None)
         "checks": checks,
         "assumptions": _assumptions(),
         "limitations": _limitations(),
+        "geometry_scope": geometry_scope,
         "model_xml": spec.to_xml(),
         "obstacles": [_obstacle(snapshot, info)] if scenario == "blocked_path" else [],
         "integration_steps": tick,
@@ -797,6 +894,10 @@ print(result["status"], result["metrics"])
         "Coordinates in results are app millimetres (Y up); XML uses metres (Z up):\n"
         "app(x,y,z) maps to engine(x,z,y)/1000. Recorded forces use engine X,Y,Z.\n\n"
         "Real forward dynamics with assumed masses/ideal servos and collision envelopes.\n"
+        "Concept primitives are checked against component envelopes when present, but are\n"
+        "not used for contacts. Older snapshots without them use the same envelopes.\n"
+        "Fine bores, vents and cutouts are unresolved; full envelopes may conservatively\n"
+        "block visually open spaces. Tube and tip contacts use separate assumed proxies.\n"
         "Crossbar/carriage guide contact is excluded; head/post and tool/frame contacts "
         "remain enabled.\n"
         "Actions at stations are logical holds above their tops, without insertion,\n"

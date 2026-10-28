@@ -1,9 +1,28 @@
+export type GeometryPrimitive = {
+  id: string;
+  kind: 'box' | 'cylinder' | 'frustum' | 'tube' | 'plate';
+  position: [number, number, number];
+  size: [number, number, number];
+  appearance: string;
+  axis?: 'x' | 'y' | 'z';
+  radius_top_mm?: number;
+  radius_bottom_mm?: number;
+  inner_radius_mm?: number;
+  holes?: { x_mm: number; z_mm: number; radius_mm: number }[];
+};
+
+export type ComponentGeometry = {
+  schema_version: '1';
+  primitives: GeometryPrimitive[];
+};
+
 export type Component = {
   id: string;
   kind: string;
   label: string;
   position: [number, number, number];
   size: [number, number, number];
+  geometry?: ComponentGeometry;
 };
 
 export type PlanStep = {

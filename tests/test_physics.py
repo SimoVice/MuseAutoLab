@@ -152,7 +152,67 @@ def test_exported_source_reruns_and_preserves_input_hash(nominal_cases, tmp_path
     assert replay["status"] == result["status"] == "passed"
     assert replay["metrics"] == result["metrics"]
     assert replay["input_sha256"] == result["input_sha256"]
+    assert replay["geometry_scope"] == result["geometry_scope"]
+    assert b"not used for contacts" in files["simulation/README.md"]
     changed = deepcopy(project)
     changed["summary"]["equipment"] = "Different equipment"
     with pytest.raises(ValueError, match="hash"):
         physics.build_simulation_files(changed, result)
+
+
+def test_concept_details_cannot_escape_or_contradict_the_envelope():
+    project = confirmed()
+    part = next(c for c in project["design"]["components"] if c["id"] == "pipette")
+    original = deepcopy(part["geometry"])
+    part["geometry"]["primitives"][0]["position"][0] = part["size"][0]
+    with pytest.raises(ValueError, match="pipette.*outside the component envelope"):
+        physics._validate(project, "nominal")
+
+    part["geometry"] = original
+    frustum = next(p for p in part["geometry"]["primitives"] if p["kind"] == "frustum")
+    frustum["radius_top_mm"] = part["size"][0]
+    with pytest.raises(ValueError, match="pipette.*radii contradict"):
+        physics._validate(project, "nominal")
+
+    part["geometry"] = deepcopy(original)
+    tube = part["geometry"]["primitives"][0]
+    tube["kind"] = "tube"
+    tube["inner_radius_mm"] = tube["size"][0]
+    with pytest.raises(ValueError, match="pipette.*invalid inner radius"):
+        physics._validate(project, "nominal")
+
+
+def test_old_snapshot_without_details_retains_envelope_simulation(nominal_cases):
+    project, detailed = nominal_cases[0]
+    old = deepcopy(project)
+    for part in old["design"]["components"]:
+        part.pop("geometry", None)
+    old["design"].pop("geometry_model", None)
+    result = physics.simulate_project(old)
+    assert result["geometry_scope"]["components_with_details"] == 0
+    assert detailed["geometry_scope"]["primitives_validated"] > 0
+    assert result["status"] == detailed["status"]
+    assert result["metrics"] == detailed["metrics"]
+    assert result["frames"] == detailed["frames"]
+
+
+def test_six_target_motion_with_concept_geometry():
+    project = confirmed(targets="1, 2, 3, 4, 5, 6 mM")
+    proxies = physics._proxy_boxes(project)
+    for component_id in ("source-rack", "sample-rack", "tip-rack"):
+        part = next(c for c in project["design"]["components"] if c["id"] == component_id)
+        plate = next(p for p in part["geometry"]["primitives"] if p["kind"] == "plate")
+        relevant = [p for p in proxies if p[0].startswith(component_id + "-proxy-")]
+        assert len(plate["holes"]) == len(relevant)
+        for hole, proxy in zip(plate["holes"], relevant, strict=True):
+            assert part["position"][0] + plate["position"][0] + hole["x_mm"] == pytest.approx(
+                proxy[1]
+            )
+            assert part["position"][2] + plate["position"][2] + hole["z_mm"] == pytest.approx(
+                proxy[3]
+            )
+            assert hole["radius_mm"] >= proxy[4]
+    result = physics.simulate_project(project)
+    assert result["status"] == "passed"
+    assert result["metrics"]["contact_count"] == 0
+    assert result["metrics"]["completed_waypoints"] == result["metrics"]["total_waypoints"]

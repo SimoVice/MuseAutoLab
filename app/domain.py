@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from app.catalog import build_sourcing, cooling_envelope, default_selections
 from app.dilution import create_dilution_plan
+from app.geometry import add_geometry
 from app.quantities import normalize_concentration, normalize_targets, normalize_volume
 from app.workflows import current_kind, describe_workflow, new_brief
 
@@ -251,7 +252,7 @@ def new_project() -> dict:
         "workflow": {"kind": "unclassified"},
     }
     project["workflow"] = describe_workflow(project)
-    return project
+    return add_geometry(project)
 
 
 def _plan_for(summary: dict) -> dict:
@@ -518,7 +519,7 @@ def apply_update(project: dict, patch: dict) -> dict:
     result["revision"] += 1
     result["status"] = "draft"
     result["workflow"] = describe_workflow(result)
-    return result
+    return add_geometry(result)
 
 
 def confirm_project(project: dict) -> dict:

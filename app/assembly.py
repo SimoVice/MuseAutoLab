@@ -525,6 +525,13 @@ svg{max-width:640px}table{font-size:9pt}th,td{overflow-wrap:anywhere}}
 <p>Concept assembly sequence. Mounts, wiring and hardware performance remain to be engineered.</p>
 <p>Footprint FP &middot; cooling COOLING &middot; target TARGET<br>Sources checked CHECKED.</p>
 <div>OVERVIEW_SVG</div></div>
+<div class="card"><h2>Shared concept geometry</h2>
+<p>The interactive model and workstation STEP use the same component primitive geometry.
+The custom sample insert follows the target count without changing its outside dimensions.
+Tube and tip consumables remain separate assumed proxies. The numbered plan below is a
+simplified position guide; mechanical fits, materials and fabrication remain unverified.</p>
+<p>Physics uses conservative component envelopes. Fine openings and visual details do not
+establish insertion clearance, material mass or collision-safe hardware.</p></div>
 <div class="card"><h2>Components (mm, y up)</h2>
 <table><tr><th>id</th><th>label</th><th>position</th><th>size</th></tr>ROWS</table></div>
 STEPS
@@ -604,7 +611,8 @@ def build_readme(project: dict) -> bytes:
         "camera work.\n\n"
         "- Open cad/workstation.step in a STEP-compatible CAD viewer (millimetres, Z up).\n"
         "  cad/deck.step and cad/deck.stl contain a solid blank, without mounts or holes.\n"
-        "- cad/geometry-report.json records measured envelopes, validity and open interfaces.\n"
+        "- cad/geometry-report.json records shared primitive geometry, measured bounds, validity\n"
+        "  and open interfaces. Primitive-sum volumes are not material mass estimates.\n"
         "  cad/workstation.svg is a standalone top-view drawing.\n"
         "- project.json preserves the confirmed input snapshot; manifest.json records its hash\n"
         "  and the SHA-256 of each other file. In-app reopening is not implemented yet.\n"
@@ -616,6 +624,8 @@ def build_readme(project: dict) -> bytes:
         "  A blocked/failed result does not establish a successful operating cycle.\n"
         "- Read simulation/README.md and run `python simulation/run.py` with the locked\n"
         "  .venv (mujoco==3.17.0) to rerun the packaged inputs. No hardware is operated.\n"
+        "- Detailed concept shapes are checked inside their declared envelopes; contact tests\n"
+        "  still use envelopes, without resolving fine bores, vents or cutouts.\n"
         "- The model assumes rigid guides, masses, force limits and contact proxies;\n"
         "  station actions are logical holds above containers, without liquid simulation.\n\n"
         "## Logical preview\n\n"
@@ -625,6 +635,8 @@ def build_readme(project: dict) -> bytes:
         "  operate hardware and does not claim mixing or pipetting validation.\n\n"
         "## Limitations\n\n"
         "- Custom deck is a solid blank for review, not fabrication-ready.\n"
+        "- Rack holes and clamp details are concept assumptions, not verified labware fits.\n"
+        "  The sample insert pattern follows the number of targets; validate before fabrication.\n"
         "- Rails, mounts, pipette actuation, power, wiring, and firmware are unverified.\n"
         "- Cold target is a requested setting with manual transfer, never a measured result.\n"
     )
