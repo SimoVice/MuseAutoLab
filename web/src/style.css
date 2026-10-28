@@ -339,3 +339,24 @@ a { color: inherit; text-decoration: none; }
 .workspace-empty-grid { position: absolute; inset: 0; background-image: linear-gradient(#dce9e7 1px, transparent 1px), linear-gradient(90deg, #dce9e7 1px, transparent 1px); background-size: 28px 28px; opacity: .45; mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); }
 .workspace-empty h2 { position: relative; margin: 0; font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif; font-weight: 400; letter-spacing: -.02em; color: #224b54; font-size: clamp(24px, 2.2vw, 32px); }
 .workspace-empty p { position: relative; margin: 0; max-width: 420px; color: #718a90; font-size: 13px; line-height: 1.6; }
+.planning-panel { border: 1px solid #d8e6e5; border-radius: 15px; background: #fbfefd; padding: 28px 30px; }
+.planning-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.planning-heading h2 { margin: 0; font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif; font-weight: 400; letter-spacing: -.02em; color: #224b54; font-size: 26px; }
+.planning-heading p { margin: 6px 0 0; color: #8aa3a1; font-size: 12px; }
+.planning-status { font-size: 10px; font-weight: 700; color: #628984; background: #f1f7f5; border-radius: 100px; padding: 5px 10px; white-space: nowrap; }
+.planning-panel dl { margin: 0; }
+.planning-panel dl div { display: grid; grid-template-columns: minmax(110px,.7fr) 1.3fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf2f1; font-size: 12px; }
+.planning-panel dt { color: #849a9a; }
+.planning-panel dd { margin: 0; color: #2c515a; font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; }
+.planning-note { margin: 14px 0 0; color: #7d9494; font-size: 11px; line-height: 1.55; }
+.brief-card { border: 1px solid #e0ebe9; border-radius: 10px; padding: 16px 17px; background: #fcfefd; margin-top: 12px; }
+.brief-download { display: inline-block; margin-bottom: 10px; font-size: 11px; font-weight: 700; color: #16837e; text-decoration: underline; text-underline-offset: 2px; }
+.brief-heading h3 { margin: 0; color: #31565c; font-size: 12px; font-weight: 700; }
+.brief-heading p { margin: 5px 0 0; color: #91a6a3; font-size: 10px; }
+.brief-card dl { margin: 10px 0 0; }
+.brief-card dl div { display: grid; grid-template-columns: minmax(88px,.75fr) 1.25fr; gap: 8px; padding: 8px 0; border-bottom: 1px solid #edf2f1; font-size: 11px; }
+.brief-card dt { color: #849a9a; }
+.brief-card dd { margin: 0; color: #3b5b61; font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; }
+.brief-note { color: #92a4a2; font-size: 10px; line-height: 1.5; margin: 10px 0 0; }
+.generic-confirm-note { margin-top: 12px; border: 1px dashed #cfdfdb; border-radius: 10px; padding: 10px 12px; background: #f6fbfa; }
+.generic-confirm-note p { margin: 0; color: #5d7776; font-size: 11px; line-height: 1.55; }

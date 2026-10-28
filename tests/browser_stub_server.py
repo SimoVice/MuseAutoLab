@@ -57,7 +57,55 @@ async def _fake_generate_turn(
     call and only matches the synthetic messages used by the smoke test.
     """
     if user_message == "Hello.":
-        return _FakeTurn("What would you like to prepare?", {}), {}
+        return _FakeTurn("What would you like to automate?", {}), {}
+
+    general_turns = {
+        "I spend hours transferring capped vials between racks and an inspection station.": (
+            "Let's map the transfer workflow. Which racks and inspection equipment do you use?",
+            {
+                "workflow_kind": "general",
+                "brief_objective": "transferring capped vials between racks "
+                "and an inspection station",
+                "brief_process": "transferring capped vials between racks "
+                "and an inspection station",
+            },
+        ),
+        "I have a microscope and two racks; I need to inspect the labels.": (
+            "How are the vials presented to the microscope?",
+            {
+                "workflow_kind": "general",
+                "brief_equipment": "a microscope and two racks",
+                "brief_process": "inspect the labels",
+            },
+        ),
+        "The available space is 450 mm wide.": (
+            "Recorded the available space for the inspection concept.",
+            {"workspace_width_mm": 450, "brief_constraints": "450 mm wide"},
+        ),
+        "I keep making dilutions manually and want to automate pipetting.": (
+            "Which equipment would you like to keep using?",
+            {
+                "workflow_kind": "liquid_preparation",
+                "brief_objective": "automate pipetting",
+                "brief_process": "making dilutions manually",
+            },
+        ),
+        "I have a pipette and microcentrifuge tubes.": (
+            "What volumes will the liquid preparation need to handle?",
+            {"brief_equipment": "a pipette and microcentrifuge tubes"},
+        ),
+        "Actually, switch this project to inspecting vial labels with a microscope.": (
+            "Let's plan the label inspection workflow. How are the vials held?",
+            {
+                "workflow_kind": "general",
+                "brief_objective": "inspecting vial labels",
+                "brief_equipment": "a microscope",
+            },
+        ),
+    }
+    if user_message in general_turns:
+        text, patch = general_turns[user_message]
+        return _FakeTurn(text, patch), {}
 
     lowered = user_message.casefold()
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}

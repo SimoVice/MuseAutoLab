@@ -177,7 +177,7 @@ def run_smoke(web_url: str) -> None:
                 page.locator(".cost-block, .summary-card, .plan-card, .camera-card")
             ).to_have_count(0)
             expect(page.get_by_role("button", name="Try an example")).to_have_count(0)
-            send_chat(page, "Hello.", "What would you like to prepare?")
+            send_chat(page, "Hello.", "What would you like to automate?")
             expect(page.locator(".workspace-empty")).to_be_visible()
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
             log("Blank workspace remains blank until an actual requirement is recorded.")

@@ -74,10 +74,32 @@ export type DesignCooling = {
   notes: string[];
 };
 
+export type WorkflowKind = 'unclassified' | 'general' | 'liquid_preparation';
+
+export type WorkflowStatus = 'discovery' | 'planning' | 'supported_concept';
+
+export type ProjectBrief = {
+  objective: string | null;
+  process: string | null;
+  materials: string | null;
+  equipment: string | null;
+  constraints: string | null;
+};
+
+export type ProjectWorkflow = {
+  kind: WorkflowKind;
+  label: string;
+  status: WorkflowStatus;
+  design_available: boolean;
+  parameters_started: boolean;
+};
+
 export type Project = {
   id: string;
   revision: number;
   status: 'draft' | 'confirmed';
+  brief: ProjectBrief;
+  workflow: ProjectWorkflow;
   summary: {
     stock_concentration: string | null;
     target_concentrations: string | null;

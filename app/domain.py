@@ -14,6 +14,7 @@ from uuid import uuid4
 from app.catalog import build_sourcing, cooling_envelope, default_selections
 from app.dilution import create_dilution_plan
 from app.quantities import normalize_concentration, normalize_targets, normalize_volume
+from app.workflows import current_kind, describe_workflow, new_brief
 
 TEXT_FIELDS = (
     "stock_concentration",
@@ -25,6 +26,14 @@ SUMMARY_FIELDS = frozenset(
     (*TEXT_FIELDS, "workspace_width_mm", "cooling_enabled", "cooling_target_c")
 )
 PATCH_FIELDS = frozenset((*SUMMARY_FIELDS, "selections"))
+BRIEF_FIELDS = ("objective", "process", "materials", "equipment", "constraints")
+BRIEF_PATCH_FIELDS = frozenset(
+    ("brief_objective", "brief_process", "brief_materials", "brief_equipment", "brief_constraints")
+)
+WORKFLOW_PATCH_FIELDS = frozenset(("workflow_kind",))
+EXTENDED_PATCH_FIELDS = frozenset((*PATCH_FIELDS, *BRIEF_PATCH_FIELDS, *WORKFLOW_PATCH_FIELDS))
+WORKFLOW_KINDS = ("unclassified", "general", "liquid_preparation")
+LIQUID_QUANTITY_KEYS = ("stock_concentration", "target_concentrations", "final_volume")
 WIDE_WIDTH_MM = 600
 COMPACT_WIDTH_MM = 400
 HEIGHT_MM = 400
@@ -229,7 +238,7 @@ def new_project() -> dict:
     info = _cooling_info(False, None, selections)
     design["cooling"] = info
     design["estimated_cost"] = {"amount": sourcing["subtotal"], "currency": "USD"}
-    return {
+    project = {
         "id": str(uuid4()),
         "revision": 0,
         "status": "draft",
@@ -238,7 +247,11 @@ def new_project() -> dict:
         "sourcing": deepcopy(sourcing),
         "design": design,
         "plan": _plan_for(summary),
+        "brief": new_brief(),
+        "workflow": {"kind": "unclassified"},
     }
+    project["workflow"] = describe_workflow(project)
+    return project
 
 
 def _plan_for(summary: dict) -> dict:
@@ -250,7 +263,7 @@ def _plan_for(summary: dict) -> dict:
 def _validated_patch(patch: dict) -> dict:
     if not isinstance(patch, dict):
         raise ValueError("The project update must be an object.")
-    unknown = set(patch) - PATCH_FIELDS
+    unknown = set(patch) - EXTENDED_PATCH_FIELDS
     if unknown:
         raise ValueError(f"Unsupported project fields: {', '.join(sorted(unknown))}.")
     validated = {}
@@ -273,6 +286,18 @@ def _validated_patch(patch: dict) -> dict:
                     except ValueError:
                         # Keep the user's requirement so the plan can explain what needs correcting.
                         pass
+        elif key in BRIEF_PATCH_FIELDS:
+            if value is not None and not isinstance(value, str):
+                raise ValueError(f"{key} must be text or null.")
+            if isinstance(value, str):
+                value = value.strip() or None
+                if value is not None and len(value) > 1000:
+                    raise ValueError(f"{key} must contain at most 1000 characters.")
+        elif key == "workflow_kind":
+            if value not in WORKFLOW_KINDS:
+                raise ValueError(
+                    "workflow_kind must be one of unclassified, general, liquid_preparation."
+                )
         elif key == "workspace_width_mm":
             if value is not None:
                 if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -317,22 +342,88 @@ def configure_project(
     return apply_update(project, patch)
 
 
+def _current_brief(project: dict) -> dict:
+    brief = new_brief()
+    stored = project.get("brief")
+    if isinstance(stored, dict):
+        for field in BRIEF_FIELDS:
+            value = stored.get(field)
+            if value is None:
+                brief[field] = None
+            elif isinstance(value, str):
+                brief[field] = value.strip() or None
+            else:
+                brief[field] = None
+    return brief
+
+
+def _resolve_workflow_kind(project: dict, updates: dict) -> str:
+    old_kind = current_kind(project)
+    if "workflow_kind" in updates:
+        return updates["workflow_kind"]
+    if old_kind == "unclassified":
+        for key in LIQUID_QUANTITY_KEYS:
+            if key in updates and updates[key] is not None:
+                value = updates[key]
+                if isinstance(value, str) and value.strip():
+                    return "liquid_preparation"
+                if not isinstance(value, str) and value is not None:
+                    return "liquid_preparation"
+    return old_kind
+
+
 def apply_update(project: dict, patch: dict) -> dict:
     """Apply a validated patch without mutating the original project.
 
     An impossible width is retained as a requirement and marked infeasible; the
     last displayed geometry is preserved so it is not presented as a solution.
+    Generic brief fields never intrude into summary; workflow switches refresh.
     """
     updates = _validated_patch(patch)
     current_selections = _project_selections(project)
+    old_kind = current_kind(project)
+    new_kind = _resolve_workflow_kind(project, updates)
 
-    summary_updates = {k: v for k, v in updates.items() if k != "selections"}
+    summary_updates = {k: v for k, v in updates.items() if k in SUMMARY_FIELDS}
     selections_patch = updates.get("selections")
+    brief_patch = {}
+    for key in BRIEF_PATCH_FIELDS:
+        if key in updates:
+            brief_patch[key[len("brief_") :]] = updates[key]
 
-    # Fast no-op check including selections.
+    current_brief = _current_brief(project)
+    # A width grounded by the model is a project constraint even without a
+    # machine adapter. Preserve it in generic planning rather than losing it
+    # when only the general brief is sent to the model in later turns.
+    if new_kind != "liquid_preparation" and "constraints" not in brief_patch:
+        width = summary_updates.get("workspace_width_mm")
+        if width is not None:
+            old_lines = (current_brief.get("constraints") or "").splitlines()
+            kept = [line for line in old_lines if not line.startswith("Available width:")]
+            brief_patch["constraints"] = "\n".join([*kept, f"Available width: {width:g} mm"])
+    # Resolve equipment mirroring in liquid mode.
+    if new_kind == "liquid_preparation":
+        liquid_equipment = None
+        equipment_touched = False
+        if "equipment" in brief_patch:
+            liquid_equipment = brief_patch["equipment"]
+            equipment_touched = True
+        elif "equipment" in summary_updates:
+            liquid_equipment = summary_updates["equipment"]
+            equipment_touched = True
+        if equipment_touched:
+            brief_patch["equipment"] = liquid_equipment
+            summary_updates["equipment"] = liquid_equipment
+
+    # Fast no-op check including selections, brief and workflow kind.
     summary_noop = all(
         project["summary"].get(key) == value for key, value in summary_updates.items()
     )
+    brief_noop = all(current_brief.get(k) == v for k, v in brief_patch.items())
+    kind_noop = new_kind == old_kind
+    # Switching liquid -> generic always clears scoped fields, so it is effective
+    # unless already cleared.
+    switching_away = old_kind == "liquid_preparation" and new_kind != "liquid_preparation"
     if selections_patch is not None:
         merged = dict(current_selections)
         merged.update(selections_patch)
@@ -340,8 +431,10 @@ def apply_update(project: dict, patch: dict) -> dict:
     else:
         merged = dict(current_selections)
         selections_noop = True
-    if summary_noop and selections_noop:
-        return deepcopy(project)
+    if summary_noop and brief_noop and kind_noop and selections_noop:
+        result = deepcopy(project)
+        result["workflow"] = describe_workflow(result)
+        return result
 
     # Validate selections (even while inactive) before mutating.
     new_enabled_for_check = summary_updates.get(
@@ -370,13 +463,37 @@ def apply_update(project: dict, patch: dict) -> dict:
         )
 
     result = deepcopy(project)
+    if "brief" not in result or not isinstance(result["brief"], dict):
+        result["brief"] = new_brief()
+    for field in BRIEF_FIELDS:
+        if field not in result["brief"]:
+            result["brief"][field] = None
+    result["brief"].update(brief_patch)
     result["summary"].update(summary_updates)
+    if switching_away:
+        for key in ("stock_concentration", "target_concentrations", "final_volume", "equipment"):
+            result["summary"][key] = None
+        result["summary"]["cooling_enabled"] = False
+        result["summary"]["cooling_target_c"] = None
     if selections_patch is not None:
         new_full = dict(current_selections)
         new_full.update(selections_patch)
         result["selections"] = new_full
     elif "selections" not in result:
         result["selections"] = deepcopy(current_selections)
+    # Brief equipment mirror for liquid consumers.
+    if new_kind == "liquid_preparation":
+        if (
+            result["brief"].get("equipment") is None
+            and result["summary"].get("equipment") is not None
+        ):
+            result["brief"]["equipment"] = result["summary"]["equipment"]
+        elif (
+            result["summary"].get("equipment") is None
+            and result["brief"].get("equipment") is not None
+        ):
+            result["summary"]["equipment"] = result["brief"]["equipment"]
+    result["workflow"] = {"kind": new_kind}
     result["plan"] = _plan_for(result["summary"])
 
     width = result["summary"]["workspace_width_mm"]
@@ -400,11 +517,18 @@ def apply_update(project: dict, patch: dict) -> dict:
         result["design"] = design
     result["revision"] += 1
     result["status"] = "draft"
+    result["workflow"] = describe_workflow(result)
     return result
 
 
 def confirm_project(project: dict) -> dict:
     """Confirm a complete feasible draft; this does not execute a protocol."""
+    kind = current_kind(project)
+    if kind != "liquid_preparation":
+        raise ValueError(
+            "Describe the automation workflow first. Concept planning is available; "
+            "3D simulation and build packages require a supported workflow."
+        )
     missing = [name for name in TEXT_FIELDS if not project["summary"].get(name)]
     if missing:
         raise ValueError(f"Required parameters are missing: {', '.join(missing)}.")

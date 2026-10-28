@@ -5,10 +5,11 @@ import ComponentCatalog from './ComponentCatalog';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
 import CameraPanel from './CameraPanel';
-import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectResponse } from './types';
+import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectBrief, ProjectResponse } from './types';
 
-const WELCOME = 'Tell me about the preparation you would like to automate. We’ll define the concentrations, final volume and equipment together.';
+const WELCOME = 'What would you like to automate in your lab? Describe the task and what makes it difficult.';
 const PROPOSED_TARGET_C = 4;
+const LIQUID_NOTE = 'This workflow is at the concept stage. 3D previews and build files are currently available for liquid preparation.';
 
 function readableError(message: string) {
   return message.replace(/\b(stock_concentration|target_concentrations|final_volume|workspace_width_mm)\b/g, (field) => ({
@@ -59,6 +60,22 @@ function planStatusLabel(status: PreparationPlan['status']) {
   if (status === 'ready') return 'Ready';
   if (status === 'invalid') return 'Needs attention';
   return 'Incomplete';
+}
+
+function workflowStage(value: string | undefined) { return value === 'supported_concept' ? 'Concept available' : value === 'planning' ? 'Concept planning' : 'Workflow discovery'; }
+
+function briefEntries(brief: ProjectBrief | null | undefined): { key: keyof ProjectBrief; label: string; value: string }[] {
+  if (!brief) return [];
+  const labels: { key: keyof ProjectBrief; label: string }[] = [
+    { key: 'objective', label: 'Objective' },
+    { key: 'process', label: 'Process' },
+    { key: 'materials', label: 'Materials' },
+    { key: 'equipment', label: 'Equipment' },
+    { key: 'constraints', label: 'Constraints' },
+  ];
+  return labels
+    .map(({ key, label }) => ({ key, label, value: (brief[key] ?? '').trim() }))
+    .filter((entry) => entry.value !== '');
 }
 
 export default function App() {
@@ -149,7 +166,15 @@ export default function App() {
     setResetKey((value) => value + 1);
   }, []);
 
-  const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready';
+  const workflow = project?.workflow;
+  const designAvailable = Boolean(workflow?.design_available);
+  const parametersStarted = Boolean(workflow?.parameters_started);
+  const recordedBrief = briefEntries(project?.brief);
+  const hasBrief = recordedBrief.length > 0;
+  const showLiquidParams = parametersStarted || (project?.status === 'confirmed' && project?.plan?.status === 'ready');
+  const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
+
+  const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && designAvailable;
   useEffect(() => {
     if (!showPreview) setPlaying(false);
   }, [showPreview]);
@@ -254,21 +279,11 @@ export default function App() {
     }
   }
 
-  const part = project?.design.components.find((component) => component.id === selectedId);
-  const dimensions = project?.design.footprint;
+  const part = designAvailable ? project?.design.components.find((component) => component.id === selectedId) : undefined;
+  const dimensions = designAvailable ? project?.design.footprint : undefined;
   const summary = project?.summary;
   const status = project?.design.constraint_status;
-  const plan = project?.plan ?? null;
-  const hasDesign = Boolean(
-    project?.summary && (
-      project.summary.stock_concentration != null ||
-      project.summary.target_concentrations != null ||
-      project.summary.final_volume != null ||
-      project.summary.equipment != null ||
-      project.summary.workspace_width_mm != null ||
-      project.summary.cooling_enabled === true
-    ),
-  );
+  const plan = designAvailable ? (project?.plan ?? null) : null;
   const fields = [
     { label: 'Stock', value: summary?.stock_concentration },
     { label: 'Targets', value: summary?.target_concentrations },
@@ -276,17 +291,18 @@ export default function App() {
     { label: 'Equipment', value: summary?.equipment },
     { label: 'Available width', value: summary?.workspace_width_mm != null ? `${formatDimension(summary.workspace_width_mm)} mm` : null },
   ];
-  const sourcing = project?.sourcing ?? null;
+  const sourcing = designAvailable ? (project?.sourcing ?? null) : null;
   const estimatedAmount = project?.design.estimated_cost.amount;
   const costCurrency = sourcing?.currency ?? project?.design.estimated_cost.currency ?? 'USD';
-  const costAmount = sourcing ? sourcing.subtotal : estimatedAmount;
+  const costAmount = designAvailable ? (sourcing ? sourcing.subtotal : estimatedAmount) : null;
   const costText = costAmount == null
     ? 'Not estimated yet'
     : `${sourcing?.is_lower_bound ? 'from ' : ''}${formatMoney(costAmount, costCurrency)}`;
   const coolingEnabled = Boolean(project?.summary?.cooling_enabled ?? project?.design?.cooling?.enabled ?? false);
   const effectiveTarget = project?.summary?.cooling_target_c ?? project?.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
-  const coolingNotes = project?.design?.cooling?.notes ?? [];
+  const coolingNotes = designAvailable ? (project?.design?.cooling?.notes ?? []) : [];
   const isConfirmed = project?.status === 'confirmed';
+  const headerLabel = hasBrief || designAvailable ? 'Lab automation project' : 'New automation project';
 
   return (
     <div className="app-shell">
@@ -295,29 +311,47 @@ export default function App() {
           <span className="brand-mark"><span /><span /><span /><span /></span>
           <span>Muse<span className="brand-accent">Auto</span>Lab</span>
         </a>
-        <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{hasDesign ? 'Aliquot workstation' : 'New workstation'}</strong></div>
+        <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{headerLabel}</strong></div>
         <div className="topbar-end">
           <button type="button" className="new-project-button" onClick={handleNewProject} disabled={busy || initializing}>New project</button>
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
         </div>
       </header>
       <main className="workspace">
-        <section className={`design-panel${isConfirmed ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
+        <section className={`design-panel${isConfirmed && designAvailable ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
               <p className="kicker"><span className="kicker-dot" /> Design workspace</p>
-              <h1 id="design-title">{hasDesign ? 'Your experiment, taking shape.' : 'New workstation'}</h1>
-              <p className="design-intro">A workstation built around the way you work.</p>
+              <h1 id="design-title">{headerLabel}</h1>
+              <p className="design-intro">Automation designed around your lab.</p>
             </div>
-            <div className="revision"><span>Current design</span><strong>{hasDesign && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
+            <div className="revision"><span>Project revision</span><strong>{(hasBrief || designAvailable) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
           </div>
 
-          {!hasDesign ? (
-            <div className="workspace-empty" aria-labelledby="design-title">
-              <div className="workspace-empty-grid" aria-hidden="true" />
-              <h2>Start with your experiment</h2>
-              <p>{initializing ? 'Preparing your workspace…' : !project ? 'Connect to the local server using Retry to begin your project.' : 'Describe your dilutions, volumes and equipment in the chat and your workstation concept will appear here.'}</p>
-            </div>
+          {!designAvailable ? (
+            hasBrief ? (
+              <div className="planning-panel" aria-labelledby="design-title">
+                <div className="planning-heading">
+                  <div>
+                    <h2>Project brief</h2>
+                    <p>{workflow?.label ?? 'General automation'} · {workflowStage(workflow?.status)}</p>
+                  </div>
+                  <span className="planning-status">{workflowStage(workflow?.status)}</span>
+                </div>
+                <dl>
+                  {recordedBrief.map((entry) => (
+                    <div key={entry.key}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>
+                  ))}
+                </dl>
+                <p className="planning-note">{LIQUID_NOTE}</p>
+              </div>
+            ) : (
+              <div className="workspace-empty" aria-labelledby="design-title">
+                <div className="workspace-empty-grid" aria-hidden="true" />
+                <h2>Start with your goal</h2>
+                <p>{initializing ? 'Preparing your workspace…' : !project ? 'Connect to the local server using Retry to begin your project.' : 'Describe the task you want to automate and what makes it difficult. Your project brief will appear here as we clarify the process, materials, equipment and constraints.'}</p>
+              </div>
+            )
           ) : (
             <>
               <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
@@ -413,7 +447,15 @@ export default function App() {
             </div>)}
             {busy && <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span> Working on your request…</div>}
             <div ref={lastMessage} />
-            {hasDesign && (
+            {hasBrief && project && (
+              <div className="brief-card" aria-labelledby="brief-title">
+                <a className="brief-download" href={briefHref} download="project-brief.json">Download brief</a>
+                <div className="brief-heading"><div><h3 id="brief-title">Project brief</h3><p>{workflow?.label ?? 'General automation'}</p></div></div>
+                <dl>{recordedBrief.map((entry) => <div key={entry.key}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>)}</dl>
+                <p className="brief-note">Your requirements for this project revision.</p>
+              </div>
+            )}
+            {designAvailable && showLiquidParams && (
               <div className="summary-card">
                 <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
                 <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
@@ -421,7 +463,7 @@ export default function App() {
                 <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
               </div>
             )}
-            {hasDesign && project && plan == null && (
+            {designAvailable && showLiquidParams && project && plan == null && (
               <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
                 <div className="plan-heading">
                   <div>
@@ -433,7 +475,7 @@ export default function App() {
                 <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
               </div>
             )}
-            {hasDesign && project && plan && (
+            {designAvailable && showLiquidParams && project && plan && (
               <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
                 <div className="plan-heading">
                   <div>
@@ -501,7 +543,7 @@ export default function App() {
             {error && <div className="error-message" role="alert"><span>{error}</span>{!project && <button type="button" onClick={() => setConnectionAttempt((value) => value + 1)}>Retry</button>}</div>}
             <form className="composer" onSubmit={(event) => void send(event)}>
               <label className="sr-only" htmlFor="message">Describe your workflow or request a change</label>
-              <textarea id="message" ref={field} rows={2} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={keyDown} placeholder="Describe your workflow or request a change…" disabled={!project || busy} />
+              <textarea id="message" ref={field} rows={2} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={keyDown} placeholder="Describe the task you want to automate…" disabled={!project || busy} />
               <div className="composer-bottom"><span>Enter to send <span className="hide-small">· Shift + Enter for a new line</span></span><button type="submit" aria-label="Send message" disabled={!project || busy || !input.trim()}><Icon name="send" size={18} /></button></div>
             </form>
             <p className="composer-caption">Designed with Meta AI <span>·</span> Review all suggested parameters</p>

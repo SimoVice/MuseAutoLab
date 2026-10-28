@@ -82,7 +82,7 @@ def test_message_updates_design_and_confirmation_requires_complete_inputs(client
 
 def test_infeasible_width_retains_geometry_and_cannot_confirm(client, monkeypatch):
     async def fake_model(project, message, history):
-        return turn(workspace_width_mm=300)
+        return turn(workflow_kind="liquid_preparation", workspace_width_mm=300)
 
     monkeypatch.setattr(api, "generate_turn", fake_model)
     project = client.post("/api/projects").json()["project"]

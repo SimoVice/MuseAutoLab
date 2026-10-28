@@ -4,32 +4,45 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 ## Status
 
-Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. The prototype collects task parameters through Meta, displays a selectable 3D workstation concept, adapts its layout to a requested width and calculates direct-dilution volumes for review. It supports a proposed cold-storage bay and source-backed component comparisons with partial pricing. After confirmation it can run a bounded MuJoCo motion/contact model, replay the calculated states and generate a downloadable CAD/document/simulation package. The separate illustrative operating preview remains available. Hardware/temperature control, liquid dynamics and persistent in-app projects are not implemented yet.
+Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. MuseAutoLab is a general laboratory automation platform: describe a repetitive task, map the process and constraints, and develop a project brief through conversation. Volumes, concentrations and other task-specific parameters are collected only when relevant to the chosen workflow.
 
-The selected demonstrator is a dilution-and-aliquot workstation with pipette, tube and tip handling. It is intended to design the mechanical/electronic architecture and guide a person through assembly. Digital checks do not establish liquid-handling accuracy or hardware performance.
+The first complete engineering demonstrator is a **liquid preparation workstation** for aliquots and dilutions. Its current adapter provides a selectable parametric 3D concept, smaller-footprint/cold-bay revisions, sourced partial costs, direct-dilution arithmetic, image-based labware inspection, bounded MuJoCo motion/contact simulation and revision-specific CAD/document/simulation downloads. Other workflows support discovery, conceptual discussion and brief export. Mechanical execution, liquid/thermal dynamics, arbitrary machine CAD, robot-arm integration and saved-project import are not implemented. Digital outputs do not establish hardware or laboratory performance.
 
-## Intended experience
+## Project flow
 
-1. Start with a blank workspace and type your own preparation request. No machine, parts subtotal or preset task is displayed before a supported requirement is recorded.
-2. Review missing requirements and refine the proposal through conversation.
-3. Confirm the parameter summary when the supported 3D proposal and preparation plan are ready.
-4. Request a smaller footprint or refrigerated storage; update the design and component data together.
-5. Preview the supported operating cycle and inspect the checks actually performed.
-6. Generate component options, printable parts, human assembly guidance and supported automation code.
+1. Start with a blank workspace and describe **what you want to automate and why**. There is no default dilution interview or preset machine on the opening screen.
+2. Discuss the process, materials, existing equipment and constraints. The app records a general project brief; it does not treat mentioning a microscope, pipette, tube or bench width as a complete machine specification.
+3. The model proposes a workflow classification. A generic project stays in concept planning; the currently supported liquid preparation adapter reveals its 3D proposal and component options.
+4. Supply task-specific parameters when needed. For liquid preparation, concentration/volume details and the preparation table appear after quantities have actually been supplied. If a request already contains those values, they are used directly.
+5. Review the module's parameters, confirm the design and run its available simulations or exports. Changes invalidate older revision-specific outputs.
 
-The light interface reserves roughly 60% of the design view for the 3D model, with estimated cost below and chat on the right. After confirmation, the model compacts upward to reveal generation progress and project files. The labware photo check analyzes an uploaded image or a captured camera frame with Meta vision, with editable regions and explicit human review.
+The interface keeps the design/planning area on the left and conversation on the right. A generic project shows its recorded brief without fabricated geometry, machine prices or dilution questions. The liquid adapter provides the interactive 3D workspace, costs and camera; confirmation exposes its physics and build-file controls. **New project** resets visible state, stops camera capture and focuses a fresh composer without making a model call. Older projects remain process-local; there is no saved-project import.
 
-## Start the demo from your own prompt
+## Supported workflows
 
-The opening screen contains an empty design area and the chat. A greeting alone keeps it empty. Once Meta extracts a supported concentration, volume, equipment, width or explicit cooling requirement, the workstation proposal, partial price, details and optional panels appear. The prototype still uses the supported parametric dilution/aliquot architecture; a blank opening does not imply arbitrary machine/CAD generation. Confirmation gates simulation and project-file generation.
+| Workflow | Implemented experience | Current boundary |
+| --- | --- | --- |
+| Discovery / unclassified | General conversation, goal/process/material/equipment/constraint collection | No preset task, quantities, 3D or parts prices |
+| General lab automation, such as transport or label inspection | Concept discussion, a revisioned brief and **Download brief** | No automatic CAD, physical simulation or fabricated machine BOM for that workflow |
+| Liquid preparation demonstrator | Parametric XYZ workstation, arithmetic, camera review, partial sourced components, MuJoCo and engineering package | One supported architecture; hardware, thermal and liquid-handling performance remain unvalidated |
 
-Use **New project** in the header to restart with a fresh project, empty conversation and composer. It clears the visible design, selections, cooling edits, previews, generated panels and camera results, stops camera tracks and focuses the composer. It makes no model call. Older projects remain process-local on the server; there is no save/import workflow. The control is disabled during initialization or a foreground project update.
+The capability registry is [`app/workflows.py`](app/workflows.py). Project state has a generic `brief` (`objective`, `process`, `materials`, `equipment`, `constraints`) and a `workflow` descriptor (`kind`, `label`, `status`, `design_available`, `parameters_started`). The older `summary`/`design`/`plan` fields support the liquid adapter; their retained internal template is not presented as evidence of a generic machine. Non-liquid context sent to the model excludes that template's plan, prices and geometry. Generic updates increment the same project revision, and changing away from liquid preparation clears its quantities/confirmation. Brief equipment is mirrored to the legacy equipment field only for that adapter.
 
-A shareable demonstration prompt tested with Contributor on 2026-10-28:
+`GET /api/projects/{id}/brief?revision=N` downloads a readable `project-brief.json` containing project ID/revision/status, the generic brief and workflow descriptor. Stale revisions return 409. This is a planning artifact and contains no invented CAD/BOM. Generic projects cannot confirm a hardware design or unlock its simulation/build controls by filling irrelevant dilution fields. The registry is an extension point; additional machinery still needs actual design/simulation/export implementations.
 
-> I spend too much time pipetting by hand. Help me design a workstation to prepare three dilutions from a 10 mg/mL stock to target concentrations of 1, 0.5 and 0.1 mg/mL, with a final volume of 1 mL per tube. I have a pipette and microcentrifuge tubes.
+## Demonstrate the platform from a problem statement
 
-Then ask **"Fit the workstation into a 450 mm wide space."** and **"Add refrigerated sample storage at 4 C."** as separate visible revisions. Review/confirm the parameters before running physics or generating files. These are synthetic demo requests; model responses remain variable. The tested opening prompt produced stock volumes of 100, 50 and 10 µL, with diluent to 1 mL per tube, and the blank-state reset passed. No example button, seeded user message, timed model reveal or automatic API replay is used in this route.
+Begin with a natural request, without quantities. For the liquid demonstrator, a tested synthetic opening is:
+
+> I spend most of my day pipetting aliquots by hand. I want to automate that repetitive work.
+
+The assistant first asks about the process. In a later message, provide the actual preparation details, for example:
+
+> I have a pipette and microcentrifuge tubes. The stock is 10 mg/ml, the target is 1 mg/ml, and I need 1 ml per tube.
+
+The expected deterministic recipe is 100 µL stock plus 900 µL diluent. Then ask **"Fit the workstation into a 450 mm wide space."** and **"Add refrigerated sample storage at 4 C."** as separate revisions. Confirm before running physics or generating files. Another fully specified demonstration can use targets 1, 0.5 and 0.1 mg/mL to show three preparations; parameters need not be in the opening prompt.
+
+For a different workflow, describe moving capped vials between racks and a microscope to inspect labels. The app asks relevant handling/inspection questions and records a general brief, without requiring stock concentrations or revealing the pipetting rig. Scope and available artifacts are visible when relevant. No seeded user message, automatic example request, timed model reveal or hidden API replay is used.
 
 ## Reproducible toolchain
 
@@ -172,7 +185,7 @@ Set-Location web
 npm.cmd run dev
 ```
 
-Open `http://127.0.0.1:5173`. The local frontend proxies `/api` to the backend. Enter a task in the chat, review the extracted parameters, and confirm them when complete. Try a width of `45 cm` and then a width below `400 mm` to see an available layout and an infeasible constraint. Meta API calls consume the selected model's allowance; the key is used only by the backend. Stop both development servers with `Ctrl+C` in their respective terminals.
+Open `http://127.0.0.1:5173`. The local frontend proxies `/api` to the backend. Describe your automation problem in the chat and refine the general brief. Task-specific design confirmation is available when a supported workflow has its required parameters. Try a width of `45 cm` and then a width below `400 mm` to see an available layout and an infeasible constraint. Meta API calls consume the selected model's allowance; the key is used only by the backend. Stop both development servers with `Ctrl+C` in their respective terminals.
 
 For this first milestone, the model extracts only information supported by the latest message. A deterministic domain module selects between two illustrative layouts: **600 × 370 mm** and **400 × 470 mm**. Widths below 400 mm are marked infeasible for these two concepts and retain the prior geometry. These numbers and component envelopes are assumptions, not supplier specifications. The check concerns modeled width only; real motion, collision clearance, pipetting, cooling and electrical operation have not been validated. Unknown component cost remains unset.
 
@@ -274,7 +287,7 @@ The browser test uses temporary localhost ports, synthetic messages and a determ
 
 ## Labware photo check
 
-1. Start the backend and frontend above and open the workspace. Photo inspection works on a draft or confirmed project.
+1. Start the backend and frontend above and open the workspace. Photo inspection is available on a draft or confirmed liquid preparation project after that adapter has been selected.
 2. In **Labware photo check**, choose **Upload labware photo**, **Load example photo**, or **Use camera**. Camera access requires a secure browser context (localhost is supported), browser permission and a camera. **Capture** freezes a frame and stops the video tracks; **Stop camera**, project changes and leaving the panel also stop them. No microphone or continuous inference is used.
 3. Click **Analyze photo** explicitly. Preview/capture/example loading alone makes no Meta request. This sends the normalized photo to the configured Meta model, Contributor by default; Contributor inputs/responses may be used for training. Use photos you can share. No project chat, simulated object list or design geometry is sent with the photo.
 4. Select a numbered image region or its card. Review the category, label, normalized bounding box and, for a tip rack, visible contents. **Accept** or **Reject**, then **Save decisions**; corrections can be saved together. **Add missed object** creates a human-authored region. **Accept visible regions** is an explicit bulk human decision, not an automatic confidence filter. Click **Review scene** after all objects have decisions; an empty detection list can also be acknowledged.
@@ -298,6 +311,14 @@ For repeatable browser verification with **stubbed chat/vision and a synthetic c
 The real image preparation, jobs, human review and archive generation run in that test. It exercises photo upload/example loading, no automatic analysis, corrections and 3D association, original/audit preservation and hashes, stale versions/revisions, zero-object acknowledgement and video-track shutdown. It uses real browser MediaStream tracks backed by a synthetic canvas feed, not the user's webcam; it never contacts Meta. The built-in headless Chrome fake device ended before its first frame on the tested Windows machine, so the repeatable camera test supplies the source at getUserMedia. Actual webcam/driver compatibility remains to be checked on the target device. Set `MUSEAUTOLAB_VISION_SCREENSHOT` for an optional screenshot. The main `browser_smoke.py` remains the regression test for design/CAD/physics.
 
 A bounded live Contributor check on 2026-10-28 returned 24 approximate regions with partial coverage for the crowded example photo, and zero regions for a synthetic white negative control. The first photo response failed validation with a 2400-token output cap; a single retry with a 6000-token cap succeeded. The discarded response does not establish the exact failure cause. These limited checks establish integration, not detection precision/recall, camera calibration or operation in a laboratory. Results are not deterministic; more varied labeled photos and hardware calibration are future work.
+
+To verify generic discovery, relevant equipment/space context, revisioned brief downloads, deferred liquid parameters and switching workflows, run:
+
+```powershell
+.\.venv\Scripts\python.exe tests\browser_platform.py
+```
+
+This uses the real API/domain/frontend with deterministic model fixtures and makes no Meta call. Model/source tests also ensure that a general inspection workflow does not receive a hidden liquid preparation plan or accept unrelated liquid parameters. The original CAD/physics and camera browser suites remain regression checks for the liquid adapter. Real model responses are probabilistic and can fail strict source validation; failed turns leave the project unchanged and require a user retry.
 
 ## Updating requirements deliberately
 

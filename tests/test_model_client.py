@@ -65,7 +65,7 @@ def test_request_uses_meta_schema_budget_and_preserves_zero_cost_usage():
     assert captured["authorization"] == "Bearer test-only-key"
     assert payload["model"] == "muse-spark-1.3-contributor"
     assert payload["reasoning_effort"] == "minimal"
-    assert payload["max_completion_tokens"] == 900
+    assert payload["max_completion_tokens"] == 1400
     assert len(payload["messages"]) == 11  # Two instructions, eight history entries, current input.
     schema = payload["response_format"]["json_schema"]
     assert schema["strict"] is True
@@ -149,6 +149,69 @@ def test_equivalent_quantity_notation_keeps_literal_evidence(key, source, value)
     assert result.patch()[key] == value
 
 
+def test_brief_fields_are_grounded_in_literal_message():
+    body = valid_response(
+        brief_objective="move vials across the bench",
+        source_brief_objective="move vials across the bench",
+        brief_constraints="avoid shaking",
+        source_brief_constraints="avoid shaking",
+    )
+    message = "I want to move vials across the bench and avoid shaking"
+    result, _ = run_turn(lambda request: httpx.Response(200, json=body), message=message)
+    assert result.patch()["brief_objective"] == "move vials across the bench"
+    invented = valid_response(brief_objective="move vials", source_brief_objective="move vials")
+    with pytest.raises(ModelClientError):
+        run_turn(lambda request: httpx.Response(200, json=invented), message="Do something else")
+    mismatched = valid_response(brief_process="transport vials", source_brief_process="other words")
+    with pytest.raises(ModelClientError):
+        run_turn(
+            lambda request: httpx.Response(200, json=mismatched),
+            message="We will transport vials daily",
+        )
+
+
+def test_workflow_kind_source_is_literal_but_classification_is_inference():
+    body = valid_response(workflow_kind="general", source_workflow_kind="move vials between racks")
+    result, _ = run_turn(
+        lambda request: httpx.Response(200, json=body),
+        message="Please help move vials between racks",
+    )
+    assert result.patch()["workflow_kind"] == "general"
+    with pytest.raises(ModelClientError):
+        run_turn(lambda request: httpx.Response(200, json=body), message="Unrelated request")
+    bad_kind = valid_response(workflow_kind="robot", source_workflow_kind="robot work")
+    with pytest.raises(ModelClientError):
+        run_turn(lambda request: httpx.Response(200, json=bad_kind), message="robot work please")
+
+
+def test_general_workflow_rejects_legacy_quantities():
+    body = valid_response(
+        workflow_kind="general",
+        source_workflow_kind="move vials",
+        stock_concentration="10 mM",
+        source_stock_concentration="10 mM",
+    )
+    with pytest.raises(ModelClientError):
+        run_turn(
+            lambda request: httpx.Response(200, json=body),
+            message="move vials with stock 10 mM",
+        )
+
+
+def test_general_context_hides_liquid_template_and_catalogue():
+    captured = {}
+
+    def handler(request):
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json=valid_response())
+
+    run_turn(handler, message="I want to move vials between racks")
+    state_text = captured["body"]["messages"][1]["content"]
+    assert "move vials between racks" not in state_text or "brief" in state_text
+    for token in ("concentration", "aliquot", "C1*V1", "catalogue", "subtotal_usd"):
+        assert token not in state_text
+
+
 def test_canonicalization_cannot_change_concentration_or_capitalized_prefix():
     body = valid_response(stock_concentration="1 mM", source_stock_concentration="1 M")
     with pytest.raises(ModelClientError):
@@ -159,3 +222,36 @@ def test_canonicalization_cannot_change_concentration_or_capitalized_prefix():
     body = valid_response(stock_concentration="1 M", source_stock_concentration="11 M")
     with pytest.raises(ModelClientError):
         run_turn(lambda request: httpx.Response(200, json=body), message="Stock is 11 M")
+
+
+def test_generic_workflow_cannot_receive_liquid_parameters_without_routing():
+    from app.domain import apply_update
+
+    project = apply_update(
+        new_project(),
+        {
+            "workflow_kind": "general",
+            "brief_objective": "inspect vial labels",
+        },
+    )
+
+    async def run():
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=valid_response(final_volume="1 mL", source_final_volume="1 mL"),
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await generate_turn(
+                project,
+                "The inspected tubes contain 1 mL.",
+                [],
+                client=client,
+                settings=TEST_SETTINGS,
+            )
+
+    with pytest.raises(ModelClientError, match="invalid response"):
+        asyncio.run(run())
+    assert project["summary"]["final_volume"] is None
+    assert project["workflow"]["kind"] == "general"

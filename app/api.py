@@ -1,6 +1,7 @@
-"""Local API for the first interactive design workflow."""
+"""Local API for the general laboratory automation platform."""
 
 import asyncio
+import json
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -35,6 +36,7 @@ from app.vision_jobs import (
     review_inspection,
     start_inspection,
 )
+from app.workflows import describe_workflow
 
 app = FastAPI(title="MuseAutoLab", version="0.1.0")
 
@@ -164,33 +166,38 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ) from None
 
         reply = turn.assistant_message
-        plan = updated["plan"]
-        if plan != current["plan"]:
-            if plan["status"] == "invalid":
-                reply += f"\n\nThe preparation plan needs a correction: {plan['message']}"
-            elif plan["status"] == "ready":
-                recipes = [
-                    f"{step['target']}: {step['stock_volume_ul']:g} µL stock + "
-                    f"{step['diluent_volume_ul']:g} µL diluent"
-                    for step in plan["steps"]
-                ]
-                reply += "\n\nCalculated preparation per tube:\n" + "\n".join(recipes)
-                reply += "\nReview the plan below before confirming."
-        if "workspace_width_mm" in patch:
-            width = updated["summary"]["workspace_width_mm"]
-            footprint = updated["design"]["footprint"]
-            if updated["design"]["constraint_status"] == "infeasible":
-                reply += (
-                    f"\n\nA {width:g} mm width is below this concept's supported minimum. "
-                    "The previous geometry is retained; revise the constraint before confirming."
-                )
-            else:
-                reply += (
-                    f"\n\nThe modeled footprint is {footprint['width_mm']:g} mm wide "
-                    f"for your {width:g} mm limit. Fixed component dimensions are unchanged; "
-                    "custom frame parts adjust. Motion and physical fit remain unverified."
-                )
-        reply += _cooling_feedback(patch, updated)
+        workflow = describe_workflow(updated)
+        design_available = bool(workflow.get("design_available"))
+        if design_available:
+            plan = updated.get("plan")
+            previous_plan = current.get("plan")
+            if plan is not None and plan != previous_plan:
+                if plan["status"] == "invalid":
+                    reply += f"\n\nThe preparation plan needs a correction: {plan['message']}"
+                elif plan["status"] == "ready":
+                    recipes = [
+                        f"{step['target']}: {step['stock_volume_ul']:g} µL stock + "
+                        f"{step['diluent_volume_ul']:g} µL diluent"
+                        for step in plan["steps"]
+                    ]
+                    reply += "\n\nCalculated preparation per tube:\n" + "\n".join(recipes)
+                    reply += "\nReview the plan below before confirming."
+            if "workspace_width_mm" in patch:
+                width = updated["summary"]["workspace_width_mm"]
+                footprint = updated["design"]["footprint"]
+                if updated["design"]["constraint_status"] == "infeasible":
+                    reply += (
+                        f"\n\nA {width:g} mm width is below this concept's supported minimum. "
+                        "The previous geometry is retained; "
+                        "revise the constraint before confirming."
+                    )
+                else:
+                    reply += (
+                        f"\n\nThe modeled footprint is {footprint['width_mm']:g} mm wide "
+                        f"for your {width:g} mm limit. Fixed component dimensions are unchanged; "
+                        "custom frame parts adjust. Motion and physical fit remain unverified."
+                    )
+            reply += _cooling_feedback(patch, updated)
 
         # Publish state only after model and domain validation both succeed.
         session.project = updated
@@ -215,6 +222,35 @@ async def update_configuration(project_id: str, request: ConfigurationRequest) -
         session.project = updated
         message = _configuration_message(updated)
         return {"project": deepcopy(updated), "assistant_message": message}
+
+
+@app.get("/api/projects/{project_id}/brief")
+async def get_brief(project_id: str, revision: int) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    current_revision = current.get("revision")
+    if revision != current_revision:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Revision {revision} is not current (expected {current_revision}).",
+        )
+    payload = {
+        "project_id": current.get("id", project_id),
+        "project_revision": current_revision,
+        "status": current.get("status"),
+        "brief": deepcopy(current.get("brief", {})),
+        "workflow": describe_workflow(current),
+    }
+    content = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="project-brief.json"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.post("/api/projects/{project_id}/confirm")

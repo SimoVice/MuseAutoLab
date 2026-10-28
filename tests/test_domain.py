@@ -75,5 +75,5 @@ def test_unknown_field_and_incomplete_confirmation_are_rejected():
     project = new_project()
     with pytest.raises(ValueError, match="Unsupported project fields"):
         apply_update(project, {"discount": 100})
-    with pytest.raises(ValueError, match="Required parameters are missing"):
+    with pytest.raises(ValueError, match="automation workflow first"):
         confirm_project(project)
