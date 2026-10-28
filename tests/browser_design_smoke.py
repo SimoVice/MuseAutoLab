@@ -48,6 +48,23 @@ def main():
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 page.goto(web_url, wait_until="networkidle")
+                page.evaluate("""() => {
+                    window.designRevealTrace = [];
+                    let waiting = false, complete = false, model = false;
+                    new MutationObserver(() => {
+                        const bar = document.querySelector('[role="progressbar"]');
+                        if (bar && !waiting) {
+                            waiting = true; window.designRevealTrace.push('waiting');
+                        }
+                        if (bar?.getAttribute('aria-valuenow') === '100' && !complete) {
+                            complete = true; window.designRevealTrace.push('complete');
+                        }
+                        if (document.querySelector('.viewer-canvas canvas') && !model) {
+                            model = true; window.designRevealTrace.push('model');
+                        }
+                    }).observe(document.body, {childList: true, subtree: true,
+                                              attributes: true});
+                }""")
                 expect(page.get_by_text("Workspace ready")).to_be_visible()
                 expect(page.locator(".design-agent-card")).to_have_count(0)
                 # Generic planning plus completed quantities reveal no geometry.
@@ -80,6 +97,8 @@ def main():
 
                 expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
                 accepted = design("Exercise a correction with the offline fixture.", "accepted")
+                trace = page.evaluate("window.designRevealTrace")
+                assert trace.index("waiting") < trace.index("complete") < trace.index("model")
                 assert len(accepted["design_run"]["attempts"]) == 2
                 assert not all(c["passed"] for c in accepted["design_run"]["attempts"][0]["checks"])
                 assert all(c["passed"] for c in accepted["design_run"]["attempts"][1]["checks"])

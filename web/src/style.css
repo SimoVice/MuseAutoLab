@@ -11,6 +11,15 @@
   --accent: #087d7d;
   --pale: #e7f2f0;
 }
+.design-progress { margin-top: 14px; padding: 14px; border: 1px solid #cfe3df; border-radius: 10px; background: #f3f9f7; }
+.design-progress-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 11px; font-size: 12px; color: #245059; }
+.design-progress-heading span { color: #69818a; font-size: 11px; }
+.design-progress-track { height: 8px; overflow: hidden; background: #dcebe7; border-radius: 8px; }
+.design-progress-track span { display: block; width: 30%; height: 100%; background: #087d7d; border-radius: inherit; transition: width 650ms ease; }
+.design-progress-track.waiting span { animation: design-progress-wait 1.5s ease-in-out infinite alternate; }
+.design-progress-track.complete span { width: 100%; }
+@keyframes design-progress-wait { from { transform: translateX(0); } to { transform: translateX(230%); } }
+@media (prefers-reduced-motion: reduce) { .design-progress-track span { transition: none; animation: none !important; } }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 button, textarea { font: inherit; }

@@ -140,3 +140,9 @@ Run these with the locked environment; no key or provider request is needed:
 For an independent live check, use the UI steps above with your own API key.
 Live model responses, latency and provider availability are nondeterministic;
 reported token counts are not a billing statement. No hardware was built or run.
+
+The design panel shows an indeterminate progress bar while the actual request is
+pending. After acceptance/checks it fills, then reveals the project once the short
+completion animation ends. This transition is presentation, not an estimate of
+model progress or additional CAD work. Errors/rejections never complete the bar;
+reset cancels the reveal and reduced-motion settings are respected.

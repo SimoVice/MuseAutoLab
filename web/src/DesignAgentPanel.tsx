@@ -10,6 +10,19 @@ type Props = {
 const DEFAULT_INSTRUCTION =
   'Propose a workstation layout for the recorded workflow, keeping sample access clear and respecting the equipment.';
 
+async function finishReveal(signal: AbortSignal, element: HTMLSpanElement | null): Promise<void> {
+  // Presentation transition only: the server has already accepted the layout.
+  if (!element || signal.aborted || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const animation = element.animate(
+    [{ width: '30%', transform: 'none' }, { width: '100%', transform: 'none' }],
+    { duration: 650, easing: 'ease', fill: 'forwards' },
+  );
+  const cancel = () => animation.cancel();
+  signal.addEventListener('abort', cancel, { once: true });
+  try { await animation.finished; } catch { /* Reset cancels the presentation. */ }
+  finally { signal.removeEventListener('abort', cancel); }
+}
+
 function readDetail(data: unknown, status: number): string {
   if (data && typeof data === 'object' && 'detail' in data && typeof (data as { detail: unknown }).detail === 'string') {
     return (data as { detail: string }).detail;
@@ -28,9 +41,11 @@ function attemptRationale(attempt: DesignRun['attempts'][number]): string | null
 export default function DesignAgentPanel({ project, onProject, onBusy }: Props) {
   const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION);
   const [pending, setPending] = useState(false);
+  const [layoutReady, setLayoutReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storedRun, setRun] = useState<DesignRun | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const progressFillRef = useRef<HTMLSpanElement | null>(null);
   const projectKey = `${project.id}:${project.revision}`;
   const hasAccepted = Boolean(project.engineering_design);
   const run = storedRun && (storedRun.status === 'accepted'
@@ -41,6 +56,7 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
     controllerRef.current?.abort();
     controllerRef.current = null;
     setPending(false);
+    setLayoutReady(false);
     setError(null);
     onBusy?.(false);
     return () => {
@@ -60,6 +76,7 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
     controllerRef.current = controller;
     const requestKey = projectKey;
     setPending(true);
+    setLayoutReady(false);
     setError(null);
     onBusy?.(true);
     try {
@@ -79,6 +96,11 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
       }
       if (!data || typeof data !== 'object' || !data.project || !data.design_run) {
         throw new Error('The server returned an incomplete response. Please try again.');
+      }
+      if (data.design_run.status === 'accepted') {
+        setLayoutReady(true);
+        await finishReveal(controller.signal, progressFillRef.current);
+        if (controller.signal.aborted) return;
       }
       setRun(data.design_run);
       onProject(data.project);
@@ -131,12 +153,25 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
         >
           {pending ? 'Developing design…' : hasAccepted ? 'Revise design with Meta' : 'Develop design with Meta'}
         </button>
-        {pending && (
-          <span className="design-agent-busy" role="status">
-            <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span> Working on your request…
-          </span>
-        )}
       </div>
+
+      {pending && (
+        <div className="design-progress" aria-live="polite">
+          <div className="design-progress-heading">
+            <strong>{layoutReady ? 'Layout accepted' : 'Developing your workstation'}</strong>
+            <span>{layoutReady ? 'Opening the 3D view…' : 'Waiting for Meta and geometry checks…'}</span>
+          </div>
+          <div
+            className={`design-progress-track${layoutReady ? ' complete' : ' waiting'}`}
+            role="progressbar"
+            aria-label="Workstation design progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={layoutReady ? 100 : undefined}
+            aria-valuetext={layoutReady ? 'Layout accepted. Opening the 3D view.' : 'Waiting for Meta and geometry checks.'}
+          ><span ref={progressFillRef} /></div>
+        </div>
+      )}
 
       {error && (
         <div className="design-agent-error" role="alert">

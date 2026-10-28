@@ -1,6 +1,7 @@
 """Offline browser fixture: real design loop/compiler, deterministic model proposals."""
 
 import argparse
+import asyncio
 from copy import deepcopy
 
 import browser_stub_server
@@ -26,6 +27,8 @@ def candidate():
 
 
 async def fake_proposal(project, instruction, feedback, **kwargs):
+    # Controlled offline delay lets the UI exercise real pending/progress states.
+    await asyncio.sleep(0.2)
     limit = project.get("summary", {}).get("workspace_width_mm")
     raw = deepcopy(
         browser_stub_server._fixture_layout(project) if limit and limit < 500 else candidate()
