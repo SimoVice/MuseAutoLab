@@ -78,3 +78,10 @@ Pillow 13.0.0 is now a direct pinned backend requirement; Python lock/hash files
 
 
 Final verification: 168 Python tests passed, including image/EXIF/caps/strict-schema boundaries and atomic human-review/version checks; lint, frontend build and locked-environment checks passed. The camera browser flow used a synthetic canvas-backed MediaStream (the Windows headless Chrome fake device ended immediately), with real capture, track shutdown, API jobs, reviews and ZIP downloads. The baseline CAD/physics browser flow also passed. Visual review used a replay of the recorded live Meta response and the actual downloaded annotated SVG. Two successful direct Meta checks consumed a reported 2,762 prompt and 2,825 completion tokens; the earlier invalid attempt's usage was unavailable. No accuracy benchmark or physical camera/hardware result is claimed.
+
+
+## 2026-10-28: Start the demonstration from an empty workspace
+
+Changed the opening to an empty design area and chat, with no preset 3D machine, price, component list or task details. A supported requirement recorded by the real API reveals the existing parametric concept; an unstructured greeting does not. Added New project to clear the visible workspace, stop camera capture and focus a fresh composer. Removed the seeded example button. The underlying supported machine architecture and backend initialization are unchanged.
+
+OpenCode Go Contributor low effort produced the bounded UI revision; Codex reviewed it, adjusted first-load focus/offline messaging/header, updated browser checks and integrated documentation. Both browser suites passed: typed-request reveal, existing CAD/MuJoCo/export flow and camera reset/track cleanup. Lint and frontend build passed. One synthetic real Meta Contributor request from the blank screen produced three deterministic dilution recipes after extraction; usage reported 2,093 prompt and 470 completion tokens. This is a supported flow check, not arbitrary CAD generation or laboratory validation.

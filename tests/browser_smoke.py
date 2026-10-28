@@ -169,20 +169,27 @@ def run_smoke(web_url: str) -> None:
             log(f"Opening {web_url} (AI provider is stubbed; no Meta call occurs).")
             page.goto(web_url, wait_until="domcontentloaded", timeout=STEP_TIMEOUT_MS)
 
-            # Initial state: project created, wide concept visible, canvas present.
+            # Start with no preset concept or pricing; the user types the first request.
             expect(page.get_by_text("Workspace ready")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".workspace-empty")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(
+                page.locator(".cost-block, .summary-card, .plan-card, .camera-card")
+            ).to_have_count(0)
+            expect(page.get_by_role("button", name="Try an example")).to_have_count(0)
+            send_chat(page, "Hello.", "What would you like to prepare?")
+            expect(page.locator(".workspace-empty")).to_be_visible()
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            log("Blank workspace remains blank until an actual requirement is recorded.")
+
+            send_chat(page, COMPLETE_TASK_MESSAGE, EXPECTED_STOCK)
+            expect(page.locator(".workspace-empty")).to_have_count(0)
             footprint = page.locator(".footprint strong")
             expect(footprint).to_contain_text("600", timeout=STEP_TIMEOUT_MS)
             expect(footprint).to_contain_text("370", timeout=STEP_TIMEOUT_MS)
-            expect(page.get_by_text("No width constraint yet")).to_be_visible(
-                timeout=STEP_TIMEOUT_MS
-            )
-            # Presence only: this does not validate WebGL pixels or physical fit.
             expect(page.locator(".viewer-canvas canvas")).to_have_count(1, timeout=STEP_TIMEOUT_MS)
-            log("Initial 600 x 370 mm concept and canvas are visible.")
+            log("Typed task reveals the supported 600 x 370 mm concept and pricing.")
 
-            # Complete synthetic task: summary fields must be displayed.
-            send_chat(page, COMPLETE_TASK_MESSAGE, EXPECTED_STOCK)
             summary = page.locator(".summary-card")
             expect(summary).to_contain_text(EXPECTED_STOCK, timeout=STEP_TIMEOUT_MS)
             expect(summary).to_contain_text(EXPECTED_TARGET, timeout=STEP_TIMEOUT_MS)
@@ -535,6 +542,16 @@ def run_smoke(web_url: str) -> None:
                 frame_physics_panel()
                 page.screenshot(path=str(target))
                 log(f"Saved optional screenshot to {target}.")
+
+            page.get_by_role("button", name="New project", exact=True).click()
+            expect(page.get_by_text("Workspace ready")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".workspace-empty")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".viewer-canvas canvas, .summary-card, .cost-block")).to_have_count(
+                0
+            )
+            expect(page.locator(".message-row.user")).to_have_count(0)
+            expect(page.locator("textarea")).to_have_value("")
+            log("New project clears the design, conversation, plan, costs and generated panels.")
 
             if page_errors:
                 raise AssertionError(f"Unexpected browser page errors: {page_errors!r}")

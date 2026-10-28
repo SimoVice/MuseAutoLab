@@ -7,7 +7,6 @@ import PhysicsPanel from './PhysicsPanel';
 import CameraPanel from './CameraPanel';
 import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectResponse } from './types';
 
-const EXAMPLE = 'I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, with 1 mL in each tube. I have a pipette and microcentrifuge tubes.';
 const WELCOME = 'Tell me about the preparation you would like to automate. We’ll define the concentrations, final volume and equipment together.';
 const PROPOSED_TARGET_C = 4;
 
@@ -82,6 +81,7 @@ export default function App() {
   const field = useRef<HTMLTextAreaElement>(null);
   const viewer = useRef<HTMLDivElement>(null);
   const seenRevision = useRef<string | null>(null);
+  const newProjectRequested = useRef(true);
 
   useEffect(() => {
     let active = true;
@@ -132,6 +132,13 @@ export default function App() {
     }
   }, [projectId, projectRevision]);
 
+  useEffect(() => {
+    if (newProjectRequested.current && project && !initializing) {
+      newProjectRequested.current = false;
+      field.current?.focus({ preventScroll: true });
+    }
+  }, [project, initializing]);
+
   const handleVisionSelect = useCallback((id: string) => {
     setSelectedId(id);
     viewer.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -155,6 +162,24 @@ export default function App() {
   }
   const handlePhysicsView = useCallback((view: PhysicsView | null) => { setPhysicsView(view); }, []);
   const handlePhysicsActivate = useCallback(() => { setPlaying(false); setPhysicsActive(true); }, []);
+
+  function handleNewProject() {
+    if (busy || initializing) return;
+    newProjectRequested.current = true;
+    seenRevision.current = null;
+    setProject(null);
+    setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME }]);
+    setSelectedId(null);
+    setInput('');
+    setError(null);
+    setPlaying(false);
+    setPhysicsView(null);
+    setPhysicsActive(false);
+    setResetKey((value) => value + 1);
+    setCoolingEnabledDraft(false);
+    setCoolingTargetDraft(String(PROPOSED_TARGET_C));
+    setConnectionAttempt((value) => value + 1);
+  }
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
@@ -234,6 +259,16 @@ export default function App() {
   const summary = project?.summary;
   const status = project?.design.constraint_status;
   const plan = project?.plan ?? null;
+  const hasDesign = Boolean(
+    project?.summary && (
+      project.summary.stock_concentration != null ||
+      project.summary.target_concentrations != null ||
+      project.summary.final_volume != null ||
+      project.summary.equipment != null ||
+      project.summary.workspace_width_mm != null ||
+      project.summary.cooling_enabled === true
+    ),
+  );
   const fields = [
     { label: 'Stock', value: summary?.stock_concentration },
     { label: 'Targets', value: summary?.target_concentrations },
@@ -260,99 +295,112 @@ export default function App() {
           <span className="brand-mark"><span /><span /><span /><span /></span>
           <span>Muse<span className="brand-accent">Auto</span>Lab</span>
         </a>
-        <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>Aliquot workstation</strong></div>
-        <div className="topbar-end"><span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}</div>
+        <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{hasDesign ? 'Aliquot workstation' : 'New workstation'}</strong></div>
+        <div className="topbar-end">
+          <button type="button" className="new-project-button" onClick={handleNewProject} disabled={busy || initializing}>New project</button>
+          <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
+        </div>
       </header>
       <main className="workspace">
         <section className={`design-panel${isConfirmed ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
               <p className="kicker"><span className="kicker-dot" /> Design workspace</p>
-              <h1 id="design-title">Your experiment, taking shape.</h1>
+              <h1 id="design-title">{hasDesign ? 'Your experiment, taking shape.' : 'New workstation'}</h1>
               <p className="design-intro">A workstation built around the way you work.</p>
             </div>
-            <div className="revision"><span>Current design</span><strong>{project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Waiting for project'}</strong></div>
+            <div className="revision"><span>Current design</span><strong>{hasDesign && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
           </div>
 
-          <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
-            <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
-            <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-              {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
-              <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
-              <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
+          {!hasDesign ? (
+            <div className="workspace-empty" aria-labelledby="design-title">
+              <div className="workspace-empty-grid" aria-hidden="true" />
+              <h2>Start with your experiment</h2>
+              <p>{initializing ? 'Preparing your workspace…' : !project ? 'Connect to the local server using Retry to begin your project.' : 'Describe your dilutions, volumes and equipment in the chat and your workstation concept will appear here.'}</p>
             </div>
-            <div className="viewer-bottomline">
-              <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
-              <div className="viewer-status"><span className={`status-indicator ${status === 'infeasible' ? 'warning' : ''}`} />{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</div>
-            </div>
-          </div>
-
-          <div className="below-viewer">
-            <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
-            <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
-          </div>
-          {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}
-          {project && showPreview && (
-            <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
-          )}
-          {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
-          {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
-
-
-          <section className="cooling-card" aria-labelledby="cooling-title">
-            <div className="cooling-heading">
-              <div>
-                <h2 id="cooling-title">Cold storage</h2>
-                <p>Optional refrigerated bay for samples.</p>
+          ) : (
+            <>
+              <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
+                <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
+                <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
+                  {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
+                  <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
+                </div>
+                <div className="viewer-bottomline">
+                  <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
+                  <div className="viewer-status"><span className={`status-indicator ${status === 'infeasible' ? 'warning' : ''}`} />{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</div>
+                </div>
               </div>
-              <span className="cooling-state">{coolingEnabled ? `Target ${effectiveTarget}°C` : 'Off'}</span>
-            </div>
-            <label className="cooling-toggle" htmlFor="cooling-enabled">
-              <input
-                id="cooling-enabled"
-                type="checkbox"
-                checked={coolingEnabledDraft}
-                onChange={(event) => setCoolingEnabledDraft(event.target.checked)}
-                disabled={!project || busy}
+
+              <div className="below-viewer">
+                <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
+                <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
+              </div>
+              {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}
+              {project && showPreview && (
+                <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
+              )}
+              {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
+              {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
+
+
+              <section className="cooling-card" aria-labelledby="cooling-title">
+                <div className="cooling-heading">
+                  <div>
+                    <h2 id="cooling-title">Cold storage</h2>
+                    <p>Optional refrigerated bay for samples.</p>
+                  </div>
+                  <span className="cooling-state">{coolingEnabled ? `Target ${effectiveTarget}°C` : 'Off'}</span>
+                </div>
+                <label className="cooling-toggle" htmlFor="cooling-enabled">
+                  <input
+                    id="cooling-enabled"
+                    type="checkbox"
+                    checked={coolingEnabledDraft}
+                    onChange={(event) => setCoolingEnabledDraft(event.target.checked)}
+                    disabled={!project || busy}
+                  />
+                  Refrigerated sample bay
+                </label>
+                <div className="cooling-row">
+                  <div className="cooling-field">
+                    <label htmlFor="cooling-target">Target temperature (°C)</label>
+                    <input
+                      id="cooling-target"
+                      type="number"
+                      min={2}
+                      max={20}
+                      step={0.5}
+                      value={coolingTargetDraft}
+                      onChange={(event) => setCoolingTargetDraft(event.target.value)}
+                      disabled={!project || busy}
+                    />
+                  </div>
+                  <button type="button" className="cooling-apply" onClick={() => void applyCooling()} disabled={!project || busy}>
+                    Apply cooling settings
+                  </button>
+                </div>
+                <p className="cooling-note">
+                  Proposed cooling with manual sample transfer. Thermal performance remains to be verified.
+                </p>
+                {coolingNotes.length > 0 && (
+                  <details className="cooling-notes"><summary>Design assumptions</summary><ul>
+                    {coolingNotes.map((note, index) => (
+                      <li key={index}>{note}</li>
+                    ))}
+                  </ul></details>
+                )}
+              </section>
+
+              <ComponentCatalog
+                sourcing={sourcing}
+                busy={busy || !project}
+                onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
+                onHighlight={(componentId) => setSelectedId(componentId)}
               />
-              Refrigerated sample bay
-            </label>
-            <div className="cooling-row">
-              <div className="cooling-field">
-                <label htmlFor="cooling-target">Target temperature (°C)</label>
-                <input
-                  id="cooling-target"
-                  type="number"
-                  min={2}
-                  max={20}
-                  step={0.5}
-                  value={coolingTargetDraft}
-                  onChange={(event) => setCoolingTargetDraft(event.target.value)}
-                  disabled={!project || busy}
-                />
-              </div>
-              <button type="button" className="cooling-apply" onClick={() => void applyCooling()} disabled={!project || busy}>
-                Apply cooling settings
-              </button>
-            </div>
-            <p className="cooling-note">
-              Proposed cooling with manual sample transfer. Thermal performance remains to be verified.
-            </p>
-            {coolingNotes.length > 0 && (
-              <details className="cooling-notes"><summary>Design assumptions</summary><ul>
-                {coolingNotes.map((note, index) => (
-                  <li key={index}>{note}</li>
-                ))}
-              </ul></details>
-            )}
-          </section>
-
-          <ComponentCatalog
-            sourcing={sourcing}
-            busy={busy || !project}
-            onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
-            onHighlight={(componentId) => setSelectedId(componentId)}
-          />
+            </>
+          )}
         </section>
 
         <aside className="conversation-panel" aria-labelledby="conversation-title">
@@ -365,14 +413,15 @@ export default function App() {
             </div>)}
             {busy && <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span> Working on your request…</div>}
             <div ref={lastMessage} />
-            {messages.length === 1 && <div className="example-prompt"><p>Not sure where to start?</p><button type="button" onClick={() => { setInput(EXAMPLE); field.current?.focus(); }}>Try an example <span>↗</span></button></div>}
-            <div className="summary-card">
-              <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
-              <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
-              {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || busy}>Confirm design <span>↗</span></button>}
-              <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
-            </div>
-            {project && plan == null && (
+            {hasDesign && (
+              <div className="summary-card">
+                <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
+                <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
+                {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || busy}>Confirm design <span>↗</span></button>}
+                <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
+              </div>
+            )}
+            {hasDesign && project && plan == null && (
               <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
                 <div className="plan-heading">
                   <div>
@@ -384,7 +433,7 @@ export default function App() {
                 <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
               </div>
             )}
-            {project && plan && (
+            {hasDesign && project && plan && (
               <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
                 <div className="plan-heading">
                   <div>

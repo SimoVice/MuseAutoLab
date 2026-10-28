@@ -10,14 +10,26 @@ The selected demonstrator is a dilution-and-aliquot workstation with pipette, tu
 
 ## Intended experience
 
-1. Describe stock/target concentrations, final volumes, equipment, space and budget.
-2. Review missing requirements and confirm the parameter summary.
-3. Inspect a rotatable, selectable 3D proposal and revise it through conversation.
+1. Start with a blank workspace and type your own preparation request. No machine, parts subtotal or preset task is displayed before a supported requirement is recorded.
+2. Review missing requirements and refine the proposal through conversation.
+3. Confirm the parameter summary when the supported 3D proposal and preparation plan are ready.
 4. Request a smaller footprint or refrigerated storage; update the design and component data together.
 5. Preview the supported operating cycle and inspect the checks actually performed.
 6. Generate component options, printable parts, human assembly guidance and supported automation code.
 
 The light interface reserves roughly 60% of the design view for the 3D model, with estimated cost below and chat on the right. After confirmation, the model compacts upward to reveal generation progress and project files. The labware photo check analyzes an uploaded image or a captured camera frame with Meta vision, with editable regions and explicit human review.
+
+## Start the demo from your own prompt
+
+The opening screen contains an empty design area and the chat. A greeting alone keeps it empty. Once Meta extracts a supported concentration, volume, equipment, width or explicit cooling requirement, the workstation proposal, partial price, details and optional panels appear. The prototype still uses the supported parametric dilution/aliquot architecture; a blank opening does not imply arbitrary machine/CAD generation. Confirmation gates simulation and project-file generation.
+
+Use **New project** in the header to restart with a fresh project, empty conversation and composer. It clears the visible design, selections, cooling edits, previews, generated panels and camera results, stops camera tracks and focuses the composer. It makes no model call. Older projects remain process-local on the server; there is no save/import workflow. The control is disabled during initialization or a foreground project update.
+
+A shareable demonstration prompt tested with Contributor on 2026-10-28:
+
+> I spend too much time pipetting by hand. Help me design a workstation to prepare three dilutions from a 10 mg/mL stock to target concentrations of 1, 0.5 and 0.1 mg/mL, with a final volume of 1 mL per tube. I have a pipette and microcentrifuge tubes.
+
+Then ask **"Fit the workstation into a 450 mm wide space."** and **"Add refrigerated sample storage at 4 C."** as separate visible revisions. Review/confirm the parameters before running physics or generating files. These are synthetic demo requests; model responses remain variable. The tested opening prompt produced stock volumes of 100, 50 and 10 µL, with diluent to 1 mL per tube, and the blank-state reset passed. No example button, seeded user message, timed model reveal or automatic API replay is used in this route.
 
 ## Reproducible toolchain
 
@@ -258,7 +270,7 @@ $env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome
 .\.venv\Scripts\python.exe tests\browser_smoke.py
 ```
 
-The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save normal/blocked screenshots. The suite checks calculation/recovery, width revisions, confirmation, component selection, illustrative playback, real MuJoCo normal/obstacle cases, replay controls and mode switching. It downloads two real CAD/simulation packages, verifies revisions/hashes/source provenance/selected cooling geometry, navigates assembly steps and rejects stale downloads/results. Logs use temporary files so Windows pipe buffers cannot block the test server. CAD tests reopen STEP and measure envelopes; physics tests use actual MuJoCo, while job/API boundary tests stub engine functions to isolate concurrency/failure behavior. The exported runtime is rerun and compared in the locked environment. These checks concern the encoded model, not built hardware. Testing with the real Meta API requires account access and consumes tokens.
+The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save normal/blocked screenshots. The suite checks the empty opening, a greeting with no design changes, a typed first request, fresh-project reset, calculation/recovery, width revisions, confirmation, component selection, illustrative playback, real MuJoCo normal/obstacle cases, replay controls and mode switching. It downloads two real CAD/simulation packages, verifies revisions/hashes/source provenance/selected cooling geometry, navigates assembly steps and rejects stale downloads/results. Logs use temporary files so Windows pipe buffers cannot block the test server. CAD tests reopen STEP and measure envelopes; physics tests use actual MuJoCo, while job/API boundary tests stub engine functions to isolate concurrency/failure behavior. The exported runtime is rerun and compared in the locked environment. These checks concern the encoded model, not built hardware. Testing with the real Meta API requires account access and consumes tokens.
 
 ## Labware photo check
 

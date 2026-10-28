@@ -332,3 +332,10 @@ a { color: inherit; text-decoration: none; }
 
 .camera-overlay .camera-box-rejected { opacity: .35; }
 .camera-overlay .camera-box-needs_review rect { stroke: #aa730c; }
+.new-project-button { border: 1px solid #d5e4e2; border-radius: 8px; background: #fff; color: #1f7671; font-size: 12px; font-weight: 700; padding: 8px 12px; white-space: nowrap; }
+.new-project-button:hover:not(:disabled) { background: #e6f3ee; border-color: #8fc0b6; }
+.new-project-button:disabled { opacity: .5; }
+.workspace-empty { position: relative; overflow: hidden; border: 1px solid #d8e6e5; border-radius: 15px; background: linear-gradient(180deg, #f4faf9 0%, #eef4f4 100%); padding: 64px 40px; text-align: center; min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.workspace-empty-grid { position: absolute; inset: 0; background-image: linear-gradient(#dce9e7 1px, transparent 1px), linear-gradient(90deg, #dce9e7 1px, transparent 1px); background-size: 28px 28px; opacity: .45; mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); }
+.workspace-empty h2 { position: relative; margin: 0; font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif; font-weight: 400; letter-spacing: -.02em; color: #224b54; font-size: clamp(24px, 2.2vw, 32px); }
+.workspace-empty p { position: relative; margin: 0; max-width: 420px; color: #718a90; font-size: 13px; line-height: 1.6; }

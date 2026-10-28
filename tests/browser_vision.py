@@ -120,6 +120,9 @@ def run_vision(web_url: str) -> None:
             page.goto(web_url, wait_until="domcontentloaded", timeout=STEP_TIMEOUT_MS)
 
             expect(page.get_by_text("Workspace ready")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".workspace-empty")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".camera-card")).to_have_count(0)
+            harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, harness.EXPECTED_STOCK)
             camera = _camera(page)
             expect(camera.get_by_role("heading", name="Labware photo check")).to_be_visible(
                 timeout=STEP_TIMEOUT_MS
@@ -337,6 +340,21 @@ def run_vision(web_url: str) -> None:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 camera.screenshot(path=str(target))
                 log(f"Saved optional screenshot to {target}.")
+
+            camera.get_by_role("button", name="Use camera").click()
+            page.wait_for_function("document.querySelector('video.camera-video')?.videoWidth >= 32")
+            page.evaluate(
+                "window.resetTracks = document.querySelector('video.camera-video')"
+                ".srcObject.getTracks()"
+            )
+            page.get_by_role("button", name="New project", exact=True).click()
+            expect(page.locator(".workspace-empty")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".camera-card")).to_have_count(0)
+            assert page.evaluate("window.resetTracks.every(t => t.readyState === 'ended')")
+            harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, harness.EXPECTED_STOCK)
+            expect(_camera(page).locator(".camera-cards > li")).to_have_count(0)
+            expect(_camera(page).get_by_text("no photo yet", exact=True)).to_be_visible()
+            log("New project stops the camera and clears old images and inspection results.")
 
             if page_errors:
                 raise AssertionError(f"Unexpected browser page errors: {page_errors!r}")

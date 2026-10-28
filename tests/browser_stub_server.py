@@ -56,6 +56,9 @@ async def _fake_generate_turn(
     NOTE: the AI provider is stubbed here. This fake performs no model
     call and only matches the synthetic messages used by the smoke test.
     """
+    if user_message == "Hello.":
+        return _FakeTurn("What would you like to prepare?", {}), {}
+
     lowered = user_message.casefold()
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
