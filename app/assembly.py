@@ -95,6 +95,10 @@ def _cooling(project: dict) -> dict:
 
 def _footprint(project: dict) -> dict:
     design = project.get("design") or {}
+    bounds = design.get("assembly_bounds")
+    if bounds:
+        sizes = [b - a for a, b in zip(bounds["min_mm"], bounds["max_mm"])]
+        return {"width_mm": sizes[0], "depth_mm": sizes[2], "height_mm": sizes[1]}
     fp = design.get("footprint") or {}
     return {
         "width_mm": fp.get("width_mm"),
@@ -292,6 +296,23 @@ def assembly_steps(project: dict) -> list[dict]:
                     "requires_design": False,
                 }
             )
+    extension = project.get("inspection_extension")
+    if extension:
+        steps.insert(-1, {
+            "id": "inspection-extension", "title": "Inspection arm and camera concept",
+            "component_ids": list(extension["component_ids"]), "requires_design": True,
+            "instructions": [
+                "Review the sidecar pad, mast, two links and downward camera in the CAD model.",
+                "The sidecar adds depth beyond the current deck, including any cold bay.",
+                "Design the fasteners, load path, power and cabling before physical assembly.",
+                "Use inspection-module.json for the proposed dimensions and kinematic poses; "
+                "perform real image analysis separately through Labware photo check.",
+            ], "checks": [
+                "Recorded target poses pass planar reach and width-envelope screening.",
+                "Motion clearance, mount loads and image coverage remain unverified.",
+                "MuJoCo results cover the pipette workstation only, excluding this module.",
+            ],
+        })
     for step in steps:
         step["title"] = step["title"].split(" — ", 1)[-1]
     return steps
@@ -629,15 +650,15 @@ def build_readme(project: dict) -> bytes:
         "- Open assembly-guide.html in a browser and print it to PDF if needed.\n"
         "- assembly.json lists the assembly steps; bill-of-materials.csv holds selected options\n"
         "  (blank prices are unknown, never zero); preparation.csv holds per-target volumes.\n"
-        "- extensions.md and extension-plan.json describe possible future robot arm and "
-        "camera work.\n\n"
+        "- extensions.md and extension-plan.json describe this revision's extension status.\n\n"
         "- Open cad/workstation.step in a STEP-compatible CAD viewer (millimetres, Z up).\n"
         "  cad/deck.step and cad/deck.stl contain a solid blank, without mounts or holes.\n"
         "- cad/geometry-report.json records shared primitive geometry, measured bounds, validity\n"
         "  and open interfaces. Primitive-sum volumes are not material mass estimates.\n"
         "  cad/workstation.svg is a standalone top-view drawing.\n"
         "- project.json preserves the confirmed input snapshot; manifest.json records its hash\n"
-        "  and the SHA-256 of each other file. In-app reopening is not implemented yet.\n"
+        "  and the SHA-256 of each other file. Use Save project in the app for a portable "
+        "file accepted by Open project; this package snapshot is for inspection.\n"
         "- To regenerate CAD, use the MuseAutoLab README's locked Python .venv\n"
         "  (build123d==0.13.0) and run `python cad/deck-model.py`. Outputs are written "
         "beside it.\n\n"
@@ -676,11 +697,29 @@ def build_readme(project: dict) -> bytes:
             "proposal, model identity and recorded checks. These checks do not establish "
             "mechanical, thermal or liquid-handling performance.\n"
         )
+    if project.get("inspection_extension"):
+        text += (
+            "\n## Inspection extension\n\n"
+            "The actual CAD includes the digital arm/camera concept and sidecar mount. "
+            "inspection-module.json preserves its accepted proposal, source revision, "
+            "model record, checks, attachment and four kinematic poses; "
+            "inspection-poses.csv lists those poses. All added hardware remains unpriced. "
+            "The MuJoCo result covers liquid_preparation_only and excludes arm/camera dynamics, "
+            "collisions and coverage. No physical mounting, calibration or control is claimed.\n"
+        )
     return text.encode("utf-8")
 
 
 def build_extension_plan(project: dict) -> bytes:
     cooling = _cooling(project)
+    if project.get("inspection_extension"):
+        return json.dumps({
+            "project_id": _project_id(project), "revision": _revision(project),
+            "status": "digital_concept", "installed": False,
+            "inspection_extension": project["inspection_extension"],
+            "physics_scope": "liquid_preparation_only",
+            "cooling_transfer_mode": cooling["transfer_mode"],
+        }, indent=2, sort_keys=True).encode("utf-8")
     plan = {
         "project_id": _project_id(project),
         "revision": _revision(project),
@@ -726,6 +765,25 @@ def build_extension_plan(project: dict) -> bytes:
 
 def build_extensions_md(project: dict) -> bytes:
     cooling = _cooling(project)
+    extension = project.get("inspection_extension")
+    if extension:
+        text = (
+            "# Inspection extension — digital concept\n\n"
+            f"Project {_project_id(project)} revision {_revision(project)}.\n\n"
+            "The accepted two-link arm, front-right sidecar and downward camera are included "
+            "in this revision's CAD. No physical installation or control is implemented.\n\n"
+            "## Geometry and provenance\n\n"
+            "Read inspection-module.json for dimensions, attachment, model proposal and checks; "
+            "inspection-poses.csv lists the four kinematic targets. The underlying workstation "
+            "components retain their original IDs and geometry.\n\n"
+            "## Image evidence and simulation\n\n"
+            "The sweep is a geometric illustration, not a camera acquisition. Browser photo "
+            "capture/upload, Meta analysis and human review are separate actions. MuJoCo "
+            "covers liquid_preparation_only; the extension is excluded.\n\n"
+            "## Open design items\n\n"
+            + "\n".join(f"- {v}" for v in extension["limitations"]) + "\n"
+        )
+        return text.encode("utf-8")
     text = (
         "# Future extensions (proposed, not installed)\n\n"
         f"Project {_project_id(project)} revision {_revision(project)}.\n\n"
@@ -765,4 +823,19 @@ def build_document_files(project: dict) -> dict[str, bytes]:
         "extension-plan.json": build_extension_plan(project),
         "extensions.md": build_extensions_md(project),
     }
+    extension = project.get("inspection_extension")
+    if extension:
+        files["inspection-module.json"] = json.dumps({
+            "project_id": _project_id(project), "revision": _revision(project),
+            "module": extension,
+        }, indent=2, sort_keys=True).encode("utf-8")
+        buffer = io.StringIO(newline="")
+        writer = csv.writer(buffer)
+        writer.writerow(["time_s", "shoulder_deg", "elbow_deg", "camera_x_mm", "camera_y_mm",
+                         "camera_z_mm", "target_x_mm", "target_y_mm", "target_z_mm"])
+        for frame in extension["pose_frames"]:
+            angles = frame["joint_angles_deg"]
+            writer.writerow([frame["time_s"], angles["shoulder"], angles["elbow"],
+                             *frame["camera_mm"], *frame["target_mm"]])
+        files["inspection-poses.csv"] = buffer.getvalue().encode("utf-8")
     return files

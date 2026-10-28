@@ -142,8 +142,9 @@ def apply_candidate(project: dict, raw: object, provenance: dict) -> dict:
         raise ValueError("Provenance must be an object.")
     proposal = LayoutProposal.model_validate(raw)
     from app.domain import _extend_deck_for_cooling
+    from app.inspection import clear_extension
 
-    result = deepcopy(project)
+    result = clear_extension(project)
     design = result["design"]
     design["components"] = [part for part in design["components"] if part["id"] != "cold-storage"]
     components = {part["id"]: part for part in design["components"]}

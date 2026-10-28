@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-28",
+  "scope": "Synthetic cooled workstation fixture with a real recorded Meta extension response. Not a live end-to-end design benchmark.",
+  "elapsed_s": 7.203,
+  "design_run": {
+    "id": "inspection-f9106b74",
+    "source_revision": 2,
+    "status": "accepted",
+    "model": "muse-spark-1.3-contributor",
+    "instruction": "Add a camera inspection arm to this workstation with its refrigerated bay. Keep the current deck and racks unchanged, choose compact practical link lengths, and inspect the sample rack from above.",
+    "attempts": [
+      {
+        "number": 1,
+        "proposal": {
+          "assumptions": [
+            "Base joint at (220,500) in XZ plane",
+            "Sample-rack centre at (-65,-50)",
+            "Targets include x +/-20mm at same z",
+            "Position values are centres",
+            "Arm operates in horizontal plane atop mast",
+            "Leftmost elbow IK branch used"
+          ],
+          "link_lengths_mm": [
+            320,
+            320
+          ],
+          "mast_height_mm": 450,
+          "rationale": "Two 320mm links give 640mm max reach covering 629mm farthest sample-rack target with minimal margin; symmetric links keep IK simple and compact while satisfying abs(L1-L2)<=distance<=L1+L2 for all three targets.",
+          "schema_version": "1"
+        },
+        "checks": [
+          {
+            "id": "planar_reach",
+            "passed": true,
+            "detail": "All illustrated targets are reachable by planar inverse kinematics.",
+            "label": "planar reach"
+          },
+          {
+            "id": "sidecar_width",
+            "passed": true,
+            "detail": "The fixed sidecar pad stays within the base width.",
+            "label": "sidecar width"
+          },
+          {
+            "id": "workspace_width",
+            "passed": true,
+            "detail": "Recorded pose envelopes respect the available width.",
+            "label": "workspace width"
+          }
+        ],
+        "usage": {
+          "model": "muse-spark-1.3-contributor",
+          "input_tokens": 856,
+          "output_tokens": 575
+        }
+      }
+    ],
+    "message": "Inspection arm and camera added to this project. Kinematic concept only; hardware and camera coverage are unverified."
+  },
+  "verification": {
+    "reopen_exact_geometry": true,
+    "cad_component_count": 20,
+    "physics_status": "passed",
+    "physics_scope": "liquid_preparation_only",
+    "inspection_excluded": true
+  }
+}

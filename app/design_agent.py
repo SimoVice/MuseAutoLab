@@ -124,15 +124,25 @@ async def propose_layout(
     The candidate is NOT validated here; semantic and schema diagnostics belong
     to check_candidate so the caller can run one bounded correction.
     """
+    return await request_design_proposal(
+        _developer_instructions(project), proposal_schema(), "layout_proposal", instruction,
+        feedback, client=client, settings=settings,
+    )
+
+
+async def request_design_proposal(
+    instructions: str, schema: dict, schema_name: str, instruction: str, feedback: str,
+    *, client: httpx.AsyncClient | None = None, settings: ModelSettings | None = None,
+) -> tuple[dict, dict]:
+    """Shared bounded transport for supported declarative design proposals."""
     resolved = settings or ModelSettings.load()
-    schema = proposal_schema()
     user_content = instruction.strip()
     if feedback and feedback.strip():
         user_content += (
             "\n\nPrevious proposal failed geometry checks; correct it:\n" + feedback.strip()
         )
     messages = [
-        {"role": "developer", "content": _developer_instructions(project)},
+        {"role": "developer", "content": instructions},
         {"role": "user", "content": user_content},
     ]
     payload = {
@@ -142,7 +152,7 @@ async def propose_layout(
         "max_completion_tokens": DESIGN_MAX_COMPLETION_TOKENS,
         "response_format": {
             "type": "json_schema",
-            "json_schema": {"name": "layout_proposal", "strict": True, "schema": schema},
+            "json_schema": {"name": schema_name, "strict": True, "schema": schema},
         },
     }
     headers = {"Authorization": f"Bearer {resolved.api_key}"}

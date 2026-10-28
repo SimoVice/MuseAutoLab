@@ -242,6 +242,7 @@ export default function PhysicsPanel({ project, active, onView, onActivate }: Pr
         {result && <span className={`physics-status physics-status-${result.status}`}>{result.status}</span>}
       </div>
 
+      {project.inspection_extension && <p className="cooling-note">Workstation motion only. The inspection arm and camera are parked and excluded from MuJoCo dynamics and collision checks.</p>}
       <div className="physics-row">
         <label className="physics-label" htmlFor="physics-scenario">Test case</label>
         <select

@@ -467,6 +467,13 @@ def apply_update(project: dict, patch: dict) -> dict:
     # Effective updates rebuild the layout or preserve stale geometry on an
     # infeasible width; neither represents the previous accepted proposal.
     result.pop("engineering_design", None)
+    extension = result.pop("inspection_extension", None)
+    if extension:
+        old_ids = set(extension["component_ids"])
+        result["design"]["components"] = [
+            p for p in result["design"]["components"] if p["id"] not in old_ids
+        ]
+    result["design"].pop("assembly_bounds", None)
     if "brief" not in result or not isinstance(result["brief"], dict):
         result["brief"] = new_brief()
     for field in BRIEF_FIELDS:

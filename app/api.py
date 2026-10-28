@@ -7,12 +7,13 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.design_agent import develop_design
 from app.domain import apply_update, configure_project, confirm_project, new_project
+from app.inspection import clear_extension, develop_inspection
 from app.model_client import ModelClientError, generate_turn
 from app.project_exports import (
     ExportError,
@@ -22,6 +23,7 @@ from app.project_exports import (
     media_type_for,
     start_export,
 )
+from app.project_storage import MAX_SNAPSHOT_BYTES, decode_snapshot, make_snapshot, restore_snapshot
 from app.simulation_jobs import (
     SimulationError,
     simulation_file,
@@ -145,6 +147,40 @@ async def create_project() -> dict:
     project = new_project()
     _sessions[project["id"]] = ProjectSession(project=project)
     return {"project": deepcopy(project)}
+
+
+@app.get("/api/projects/{project_id}/snapshot")
+async def save_project(project_id: str, revision: int) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        if revision != session.project["revision"]:
+            raise HTTPException(status_code=409, detail="Save the current project revision.")
+        try:
+            snapshot = make_snapshot(session.project, session.history)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+    content = json.dumps(snapshot, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")
+    filename = f"museautolab-{snapshot['project_id'][:8]}-r{revision}.json"
+    return Response(content=content, media_type="application/json", headers={
+        "Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store",
+    })
+
+
+@app.post("/api/projects/open", status_code=201)
+async def open_project(request: Request) -> dict:
+    content = bytearray()
+    async for chunk in request.stream():
+        content.extend(chunk)
+        if len(content) > MAX_SNAPSHOT_BYTES:
+            raise HTTPException(status_code=413,
+                                detail="The project file exceeds the 256 KB limit.")
+    try:
+        project, history = restore_snapshot(decode_snapshot(bytes(content)))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    _sessions[project["id"]] = ProjectSession(project=project, history=history)
+    return {"project": deepcopy(project), "conversation": deepcopy(history),
+            "assistant_message": "Project reopened. Geometry was rebuilt from saved inputs."}
 
 
 @app.post("/api/projects/{project_id}/messages")
@@ -348,6 +384,52 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
             "design_run": deepcopy(run),
             "assistant_message": run.get("message", ""),
         }
+
+
+@app.post("/api/projects/{project_id}/inspection-extension")
+async def add_inspection_extension(project_id: str, request: DesignRequest) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = session.project
+        if request.project_revision != current["revision"]:
+            raise HTTPException(status_code=409,
+                                detail="The project changed. Use its current revision.")
+        if not current.get("engineering_design"):
+            raise HTTPException(status_code=409, detail="Develop a workstation layout first.")
+        try:
+            updated, run = await develop_inspection(deepcopy(current), request.instruction)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        except ModelClientError as exc:
+            return JSONResponse(status_code=502, content={
+                "detail": str(exc), "design_run": getattr(exc, "design_run", None),
+            })
+        if run["status"] == "accepted":
+            session.project = updated
+        return {"project": deepcopy(session.project), "design_run": run,
+                "assistant_message": run["message"]}
+
+
+class RevisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    project_revision: Annotated[int, Field(strict=True, ge=0)]
+
+
+@app.post("/api/projects/{project_id}/inspection-extension/remove")
+async def remove_inspection_extension(project_id: str, request: RevisionRequest) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = session.project
+        if request.project_revision != current["revision"]:
+            raise HTTPException(status_code=409,
+                                detail="The project changed. Use its current revision.")
+        if current.get("inspection_extension"):
+            updated = clear_extension(current)
+            updated["revision"] += 1
+            updated["status"] = "draft"
+            session.project = updated
+        return {"project": deepcopy(session.project),
+                "assistant_message": "Inspection module removed. Workstation layout preserved."}
 
 
 class SimulationRequest(BaseModel):

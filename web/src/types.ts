@@ -5,6 +5,7 @@ export type GeometryPrimitive = {
   size: [number, number, number];
   appearance: string;
   axis?: 'x' | 'y' | 'z';
+  rotation_y_deg?: number;
   radius_top_mm?: number;
   radius_bottom_mm?: number;
   inner_radius_mm?: number;
@@ -23,6 +24,28 @@ export type Component = {
   position: [number, number, number];
   size: [number, number, number];
   geometry?: ComponentGeometry;
+};
+
+export type InspectionFrame = {
+  time_s: number;
+  components: Component[];
+  joint_angles_deg: { shoulder: number; elbow: number };
+  camera_mm: [number, number, number];
+  target_mm: [number, number, number];
+};
+
+export type InspectionExtension = {
+  schema_version: '1';
+  proposal: { schema_version: '1'; link_lengths_mm: [number, number]; mast_height_mm: number; rationale: string; assumptions: string[] };
+  attachment: { parent_component_id: string; anchor_mm: [number, number, number]; concept_only: boolean; fasteners: string; loads: string };
+  component_ids: string[];
+  components: Component[];
+  pose_frames: InspectionFrame[];
+  bounds: { min_mm: [number, number, number]; max_mm: [number, number, number] };
+  assembly_bounds: { min_mm: [number, number, number]; max_mm: [number, number, number] };
+  provenance?: Record<string, unknown>;
+  checks: { id: string; passed: boolean; detail: string }[];
+  limitations: string[];
 };
 
 export type PlanStep = {
@@ -115,6 +138,8 @@ export type ProjectWorkflow = {
 
 export type Project = {
   id: string;
+  lineage_id?: string;
+  restored_from?: { project_id: string; revision: number; saved_at: string };
   revision: number;
   status: 'draft' | 'confirmed';
   brief: ProjectBrief;
@@ -139,6 +164,7 @@ export type Project = {
   };
   plan?: PreparationPlan | null;
   engineering_design?: EngineeringDesign | null;
+  inspection_extension?: InspectionExtension | null;
 };
 
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string };
@@ -257,6 +283,8 @@ export type PhysicsCheck = { id: string; label: string; passed: boolean; observe
 export type PhysicsObstacle = { id: string; label: string; position_mm: [number, number, number]; size_mm: [number, number, number] };
 
 export type PhysicsResult = {
+  scope?: 'liquid_preparation_only';
+  inspection_extension_excluded?: boolean;
   schema_version: 1;
   project_id: string;
   revision: number;

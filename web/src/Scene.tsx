@@ -4,7 +4,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import type { Group } from 'three';
-import type { Component, PhysicsFrame, PhysicsView, Project } from './types';
+import type { Component, InspectionExtension, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
 import {
   DIP_DOWN_TIME,
@@ -141,6 +141,64 @@ function AnimatedPipetteCarriage({ carriage, pipette, home, keyframes, duration,
 
 function lerp3(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+function sampleInspection(extension: InspectionExtension, time: number): Component[] {
+  const frames = extension.pose_frames;
+  if (!frames.length) return extension.components;
+  const bounded = Math.max(frames[0].time_s, Math.min(frames[frames.length - 1].time_s, Number.isFinite(time) ? time : 0));
+  const next = frames.findIndex((frame) => frame.time_s >= bounded);
+  if (next <= 0) return frames[0].components;
+  const a = frames[next - 1];
+  const b = frames[next];
+  const t = b.time_s > a.time_s ? (bounded - a.time_s) / (b.time_s - a.time_s) : 0;
+  const prior = new Map(a.components.map((part) => [part.id, part]));
+  const interpolated = b.components.map((part) => {
+    const before = prior.get(part.id);
+    if (!before) return part;
+    const oldPrimitives = new Map(before.geometry?.primitives.map((p) => [p.id, p]) ?? []);
+    return {
+      ...part,
+      position: lerp3(before.position, part.position, t),
+      size: lerp3(before.size, part.size, t),
+      geometry: part.geometry && {
+        ...part.geometry,
+        primitives: part.geometry.primitives.map((primitive) => {
+          const old = oldPrimitives.get(primitive.id);
+          if (!old) return primitive;
+          const start = old.rotation_y_deg ?? 0;
+          const end = primitive.rotation_y_deg ?? 0;
+          const delta = ((end - start + 540) % 360) - 180;
+          return { ...primitive, position: lerp3(old.position, primitive.position, t), rotation_y_deg: start + delta * t };
+        }),
+      },
+    };
+  });
+  // Interpolate link yaw on the shortest arc, then reconstruct the joints from
+  // the fixed link lengths. Independent midpoint interpolation would visibly
+  // disconnect the rigid links between keyframes.
+  const parts = new Map(interpolated.map((part) => [part.id, part]));
+  const shoulder = parts.get('inspection-shoulder');
+  const upper = parts.get('inspection-upper-link');
+  const elbow = parts.get('inspection-elbow');
+  const forearm = parts.get('inspection-forearm');
+  const wrist = parts.get('inspection-wrist');
+  const camera = parts.get('inspection-camera');
+  if (shoulder && upper && elbow && forearm && wrist && camera) {
+    const upperAngle = (upper.geometry?.primitives[0]?.rotation_y_deg ?? 0) * Math.PI / 180;
+    const lowerAngle = (forearm.geometry?.primitives[0]?.rotation_y_deg ?? 0) * Math.PI / 180;
+    const [first, second] = extension.proposal.link_lengths_mm;
+    const ex = shoulder.position[0] + first * Math.cos(upperAngle);
+    const ez = shoulder.position[2] - first * Math.sin(upperAngle);
+    const wx = ex + second * Math.cos(lowerAngle);
+    const wz = ez - second * Math.sin(lowerAngle);
+    elbow.position = [ex, elbow.position[1], ez];
+    wrist.position = [wx, wrist.position[1], wz];
+    camera.position = [wx, camera.position[1], wz];
+    upper.position = [(shoulder.position[0] + ex) / 2, upper.position[1], (shoulder.position[2] + ez) / 2];
+    forearm.position = [(ex + wx) / 2, forearm.position[1], (ez + wz) / 2];
+  }
+  return interpolated;
 }
 
 function samplePhysicsFrames(frames: PhysicsFrame[], time: number): PhysicsFrame | null {
@@ -280,27 +338,36 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect }: {
   );
 }
 
-export default function Scene({ project, selectedId, onSelect, operation, physics }: {
+export default function Scene({ project, selectedId, onSelect, operation, physics, inspectionTime = 0 }: {
   project: Project;
   selectedId: string | null;
   onSelect: (id: string) => void;
   operation?: OperationSpec;
   physics?: PhysicsView | null;
+  inspectionTime?: number;
 }) {
-  const { components, footprint } = project.design;
+  const { components: designComponents, footprint } = project.design;
+  const extension = project.inspection_extension;
+  const physicsActive = Boolean(physics && physics.result.project_id === project.id && physics.result.revision === project.revision && physics.result.frames.length > 0 && designComponents.some((part) => part.id === 'carriage') && designComponents.some((part) => part.id === 'pipette'));
+  const components = useMemo(() => {
+    if (!extension) return designComponents;
+    const displayed = sampleInspection(extension, physicsActive ? 0 : inspectionTime);
+    const replacements = new Map(displayed.map((part) => [part.id, part]));
+    const existing = new Set(designComponents.map((part) => part.id));
+    return [...designComponents.map((part) => replacements.get(part.id) ?? part), ...displayed.filter((part) => !existing.has(part.id))];
+  }, [designComponents, extension, inspectionTime, physicsActive]);
   const [viewKey, setViewKey] = useState(0);
   const bounds = useMemo(() => {
     if (!components.length) return { center: [0, 0, 0] as [number, number, number], height: 0 };
-    const min = [0, 1, 2].map((axis) => Math.min(...components.map((part) => part.position[axis] - part.size[axis] / 2)));
-    const max = [0, 1, 2].map((axis) => Math.max(...components.map((part) => part.position[axis] + part.size[axis] / 2)));
-    return { center: [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2] as [number, number, number], height: max[1] - min[1] };
-  }, [components]);
+    const min = [0, 1, 2].map((axis) => Math.min(...components.map((part) => part.position[axis] - part.size[axis] / 2), extension?.bounds.min_mm[axis] ?? Infinity));
+    const max = [0, 1, 2].map((axis) => Math.max(...components.map((part) => part.position[axis] + part.size[axis] / 2), extension?.bounds.max_mm[axis] ?? -Infinity));
+    return { center: [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2] as [number, number, number], width: max[0] - min[0], height: max[1] - min[1], depth: max[2] - min[2] };
+  }, [designComponents, extension]);
   const target: [number, number, number] = [0, bounds.height / SCALE / 2, 0];
 
   const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
   const carriagePart = byId.get('carriage');
   const pipettePart = byId.get('pipette');
-  const physicsActive = Boolean(physics && physics.result.project_id === project.id && physics.result.revision === project.revision && physics.result.frames.length > 0 && carriagePart && pipettePart);
   const physicsFrame = useMemo(
     () => (physicsActive && physics ? samplePhysicsFrames(physics.result.frames, physics.time_s) : null),
     [physicsActive, physics],
@@ -396,7 +463,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         <directionalLight position={[8, 12, 7]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]}
           shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
         <directionalLight position={[-6, 5, -5]} intensity={0.7} />
-        <FitCamera width={footprint.width_mm} height={footprint.height_mm} depth={footprint.depth_mm} />
+        <FitCamera width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
         <group>
           {staticParts.map((part) => <GeometryPart key={part.id} part={part}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}

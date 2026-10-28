@@ -5,12 +5,13 @@ type Props = {
   project: Project;
   onProject: (project: Project) => void;
   onBusy?: (busy: boolean) => void;
+  disabled?: boolean;
 };
 
 const DEFAULT_INSTRUCTION =
   'Propose a workstation layout for the recorded workflow, keeping sample access clear and respecting the equipment.';
 
-async function finishReveal(signal: AbortSignal, element: HTMLSpanElement | null): Promise<void> {
+export async function finishReveal(signal: AbortSignal, element: HTMLSpanElement | null): Promise<void> {
   // Presentation transition only: the server has already accepted the layout.
   if (!element || signal.aborted || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const animation = element.animate(
@@ -38,7 +39,7 @@ function attemptRationale(attempt: DesignRun['attempts'][number]): string | null
   return null;
 }
 
-export default function DesignAgentPanel({ project, onProject, onBusy }: Props) {
+export default function DesignAgentPanel({ project, onProject, onBusy, disabled = false }: Props) {
   const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION);
   const [pending, setPending] = useState(false);
   const [layoutReady, setLayoutReady] = useState(false);
@@ -66,6 +67,7 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
   }, [projectKey, onBusy]);
 
   async function develop() {
+    if (disabled) return;
     const trimmed = instruction.trim();
     if (trimmed === '' || pending) {
       if (trimmed === '') setError('Describe the layout change you want before developing a design.');
@@ -141,7 +143,7 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
         rows={3}
         value={instruction}
         onChange={(event) => setInstruction(event.target.value)}
-        disabled={pending}
+        disabled={pending || disabled}
         maxLength={2000}
       />
       <div className="design-agent-row">
@@ -149,7 +151,7 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
           type="button"
           className="design-agent-button"
           onClick={() => void develop()}
-          disabled={pending || instruction.trim() === ''}
+          disabled={pending || disabled || instruction.trim() === ''}
         >
           {pending ? 'Developing design…' : hasAccepted ? 'Revise design with Meta' : 'Develop design with Meta'}
         </button>

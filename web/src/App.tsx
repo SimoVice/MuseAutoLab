@@ -6,11 +6,20 @@ import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
 import DesignAgentPanel from './DesignAgentPanel';
 import CameraPanel from './CameraPanel';
+import InspectionPanel from './InspectionPanel';
 import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectBrief, ProjectResponse } from './types';
 
 const WELCOME = 'What would you like to automate in your lab? Describe the task and what makes it difficult.';
 const PROPOSED_TARGET_C = 4;
 const LIQUID_NOTE = 'This workflow is at the concept stage. 3D previews and build files are currently available for liquid preparation.';
+const LOCAL_PROJECT = 'museautolab.workspace.v1';
+type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assistant'; content: string }[] };
+
+function restoredMessages(data: OpenedProject): ConversationEntry[] {
+  return [{ id: 0, role: 'assistant', text: WELCOME }, ...(data.conversation ?? []).map((entry, index) => ({
+    id: index + 1, role: entry.role, text: entry.content,
+  }))];
+}
 
 function readableError(message: string) {
   return message.replace(/\b(stock_concentration|target_concentrations|final_volume|workspace_width_mm)\b/g, (field) => ({
@@ -86,6 +95,10 @@ export default function App() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [designBusy, setDesignBusy] = useState(false);
+  const [storageBusy, setStorageBusy] = useState(false);
+  const [extensionBusy, setExtensionBusy] = useState(false);
+  const [inspectionTime, setInspectionTime] = useState(0);
+  const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
@@ -101,18 +114,45 @@ export default function App() {
   const viewer = useRef<HTMLDivElement>(null);
   const seenRevision = useRef<string | null>(null);
   const newProjectRequested = useRef(true);
+  const skipRestore = useRef(false);
+  const projectFile = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
     setInitializing(true);
     setError(null);
-    request('/api/projects').then(({ project: created }) => {
-      if (active) setProject(created);
-    }).catch((reason: unknown) => {
+    (async () => {
+      let stored: string | null = null;
+      try { if (!skipRestore.current) stored = localStorage.getItem(LOCAL_PROJECT); } catch { /* File save remains available. */ }
+      skipRestore.current = false;
+      if (stored) {
+        const data = await request('/api/projects/open', JSON.parse(stored)) as OpenedProject;
+        if (active) {
+          setProject(data.project);
+          setMessages(restoredMessages(data));
+          setStorageNotice('Resumed your last project. Previous runs can be generated again.');
+        }
+      } else {
+        const data = await request('/api/projects');
+        if (active) setProject(data.project);
+      }
+    })().catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : 'Cannot connect to the local server.');
     }).finally(() => { if (active) setInitializing(false); });
     return () => { active = false; };
   }, [connectionAttempt]);
+
+  useEffect(() => {
+    if (!project || initializing) return;
+    const controller = new AbortController();
+    fetch(`/api/projects/${encodeURIComponent(project.id)}/snapshot?revision=${project.revision}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const snapshot = await response.json();
+        if (!controller.signal.aborted) localStorage.setItem(LOCAL_PROJECT, JSON.stringify(snapshot));
+      }).catch(() => { /* Explicit file saving still works when browser storage is unavailable. */ });
+    return () => controller.abort();
+  }, [project, initializing]);
 
   useEffect(() => {
     if (messages.length < 2 || !conversation.current || !lastMessage.current) return;
@@ -193,20 +233,71 @@ export default function App() {
     if (!showPreview) setPlaying(false);
   }, [showPreview]);
 
-  function handlePlay() { setPhysicsActive(false); setPhysicsView(null); setPlaying(true); }
+  function handlePlay() { setResetKey((value) => value + 1); setInspectionTime(0); setPhysicsActive(false); setPhysicsView(null); setPlaying(true); }
   function handlePause() { setPlaying(false); }
   function handleReset() {
     setPlaying(false);
     setResetKey((value) => value + 1);
   }
   const handlePhysicsView = useCallback((view: PhysicsView | null) => { setPhysicsView(view); }, []);
-  const handlePhysicsActivate = useCallback(() => { setPlaying(false); setPhysicsActive(true); }, []);
+  const handlePhysicsActivate = useCallback(() => { setResetKey((value) => value + 1); setInspectionTime(0); setPlaying(false); setPhysicsActive(true); }, []);
   const handleProjectUpdate = useCallback((updated: Project) => { setProject(updated); }, []);
   const handleDesignBusy = useCallback((value: boolean) => { setDesignBusy(value); }, []);
-  const uiBusy = busy || designBusy;
+  const handleExtensionBusy = useCallback((value: boolean) => { setExtensionBusy(value); }, []);
+  const handleInspection = useCallback((time: number) => {
+    setInspectionTime(time); setPlaying(false); setPhysicsActive(false); setPhysicsView(null);
+  }, []);
+  const uiBusy = busy || designBusy || storageBusy || extensionBusy;
+
+  async function saveProject() {
+    if (!project || uiBusy) return;
+    setStorageBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/snapshot?revision=${project.revision}`);
+      if (!response.ok) throw new Error('The project could not be saved. Try again.');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `museautolab-r${project.revision}.json`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStorageNotice('Project saved to file, including the latest design and conversation.');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'The project could not be saved.'); }
+    finally { setStorageBusy(false); }
+  }
+
+  async function openProject(file: File) {
+    if (uiBusy || initializing) return;
+    setStorageBusy(true);
+    setError(null);
+    try {
+      if (file.size > 256 * 1024) throw new Error('Choose a project file smaller than 256 KB.');
+      const raw = await file.text();
+      const response = await fetch('/api/projects/open', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: raw,
+      });
+      const data = await response.json() as OpenedProject & { detail?: string };
+      if (!response.ok || !data.project) throw new Error(data.detail ?? 'Choose a valid MuseAutoLab project file.');
+      setProject(data.project);
+      setMessages(restoredMessages(data));
+      setSelectedId(null);
+      setInput('');
+      setPlaying(false);
+      setPhysicsView(null);
+      setPhysicsActive(false);
+      setStorageNotice('Project reopened. Geometry was rebuilt; previous runs are ready to regenerate.');
+      field.current?.focus({ preventScroll: true });
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'The project could not be opened.'); }
+    finally { setStorageBusy(false); if (projectFile.current) projectFile.current.value = ''; }
+  }
 
   function handleNewProject() {
-    if (busy || initializing) return;
+    if (busy || storageBusy || initializing) return;
+    skipRestore.current = true;
+    try { localStorage.removeItem(LOCAL_PROJECT); } catch { /* Continue with a new session. */ }
+    setStorageNotice(null);
     setDesignBusy(false);
     newProjectRequested.current = true;
     seenRevision.current = null;
@@ -218,6 +309,8 @@ export default function App() {
     setPlaying(false);
     setPhysicsView(null);
     setPhysicsActive(false);
+    setInspectionTime(0);
+    setExtensionBusy(false);
     setResetKey((value) => value + 1);
     setCoolingEnabledDraft(false);
     setCoolingTargetDraft(String(PROPOSED_TARGET_C));
@@ -298,7 +391,11 @@ export default function App() {
   }
 
   const part = hasEngineeringDesign ? project?.design.components.find((component) => component.id === selectedId) : undefined;
-  const dimensions = hasEngineeringDesign ? project?.design.footprint : undefined;
+  const bounds = project?.inspection_extension?.assembly_bounds;
+  const dimensions = hasEngineeringDesign ? bounds ? {
+    width_mm: bounds.max_mm[0] - bounds.min_mm[0], depth_mm: bounds.max_mm[2] - bounds.min_mm[2],
+    height_mm: bounds.max_mm[1] - bounds.min_mm[1],
+  } : project?.design.footprint : undefined;
   const summary = project?.summary;
   const status = project?.design.constraint_status;
   const plan = supportedLiquid ? (project?.plan ?? null) : null;
@@ -331,7 +428,10 @@ export default function App() {
         </a>
         <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{headerLabel}</strong></div>
         <div className="topbar-end">
-          <button type="button" className="new-project-button" onClick={handleNewProject} disabled={busy || initializing}>New project</button>
+          <input ref={projectFile} type="file" accept=".json,application/json" className="sr-only" aria-label="Open saved project" onChange={(event) => { const file = event.target.files?.[0]; if (file) void openProject(file); }} />
+          <button type="button" className="new-project-button" onClick={() => projectFile.current?.click()} disabled={uiBusy || initializing}>Open project</button>
+          <button type="button" className="new-project-button" onClick={() => void saveProject()} disabled={!project || uiBusy || initializing}>Save project</button>
+          <button type="button" className="new-project-button" onClick={handleNewProject} disabled={busy || storageBusy || initializing}>New project</button>
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
         </div>
       </header>
@@ -342,6 +442,7 @@ export default function App() {
               <p className="kicker"><span className="kicker-dot" /> Design workspace</p>
               <h1 id="design-title">{headerLabel}</h1>
               <p className="design-intro">Automation designed around your lab.</p>
+              {storageNotice && <p className="storage-notice" role="status">{storageNotice}</p>}
             </div>
             <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
           </div>
@@ -384,7 +485,7 @@ export default function App() {
               <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
                 <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span><span className="viewer-badge">Meta-proposed layout</span> <span className="viewer-badge">Unverified concept</span></span></div>
                 <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-                  {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
                   <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
                 </div>
@@ -400,7 +501,8 @@ export default function App() {
               </div>
             </>
           )}
-          {project && showDesignAgent && <DesignAgentPanel project={project} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
+          {project && showDesignAgent && <DesignAgentPanel project={project} disabled={busy || storageBusy || extensionBusy} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
+          {project && hasEngineeringDesign && <InspectionPanel project={project} busy={uiBusy} resetKey={resetKey} onProject={handleProjectUpdate} onBusy={handleExtensionBusy} onInspect={handleInspection} />}
           {hasEngineeringDesign && (
             <>
               {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}

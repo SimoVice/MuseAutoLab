@@ -105,7 +105,7 @@ as width.
 The program handles updates separately: do not claim that a requested change has already
 happened.
 If the user requests capabilities outside this early prototype (including ordering, hardware
-operation, persistent saved projects, fluid simulation or temperature control), say that they
+operation, fluid simulation or temperature control), say that they
 are not yet implemented instead of claiming success. 'Run physics' after confirmation computes
 an ideal XYZ head model in MuJoCo with assumed masses, gains, force limits and obstacle
 envelopes. It checks modeled motion and contacts; no liquid accuracy, real motor capability or
@@ -126,6 +126,13 @@ action proposes bounded operating-deck dimensions and five component positions, 
 them, and may request one correction. Direct layout-design requests there; chat alone does
 not run that action. It is not arbitrary machine generation. Effective chat/configuration
 updates rebuild the baseline concept and invalidate an earlier accepted layout proposal.
+Save project downloads a portable file; Open project rebuilds it without a Meta call. The last
+project is also remembered in this browser. Prior simulation/image jobs are not restored.
+After an accepted layout, Expand this workstation can ask Meta to propose a bounded two-link
+inspection-arm/camera module, check planar reach and recorded-pose width, and add it to the
+same project. Direct expansion requests to Add arm and camera with Meta; chat alone does not
+run that action. Its sweep is kinematic only, not captured imagery or validated hardware.
+Effective requirement/configuration/layout edits clear that extension for fresh design.
 Keep the assistant_message brief and constructive."""
 
 REQUIREMENT_KEYS = (
@@ -443,6 +450,11 @@ async def generate_turn(
                 "current_plan": project.get("plan"),
                 "cooling": design.get("cooling"),
                 "catalogue": _catalogue_facts(project),
+                "inspection_extension": ({
+                    "status": "digital_concept",
+                    "proposal": project["inspection_extension"]["proposal"],
+                    "limitations": project["inspection_extension"]["limitations"],
+                } if project.get("inspection_extension") else None),
             }
         )
     messages = [

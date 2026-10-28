@@ -400,7 +400,10 @@ def _validate_details(part: dict) -> int:
                 inner = number(primitive.get("inner_radius_mm"), f"{pid} inner_radius_mm")
                 if not 0 <= inner < radius:
                     raise ValueError(f"{label}, primitive {pid}: invalid inner radius.")
-        if any(abs(pos[i]) + size[i] / 2 > envelope[i] / 2 + tolerance for i in range(3)):
+        yaw = math.radians(number(primitive.get("rotation_y_deg", 0), f"{pid} rotation_y_deg"))
+        c, s = abs(math.cos(yaw)), abs(math.sin(yaw))
+        extents = (c * size[0] + s * size[2], size[1], s * size[0] + c * size[2])
+        if any(abs(pos[i]) + extents[i] / 2 > envelope[i] / 2 + tolerance for i in range(3)):
             raise ValueError(f"{label}, primitive {pid}: extends outside the component envelope.")
         if kind == "plate":
             holes = primitive.get("holes", [])
@@ -523,8 +526,8 @@ def _plan_motion(project: dict) -> tuple:
     proxies = _proxy_boxes(project)
     tops = [
         p["position"][1] + p["size"][1] / 2
-        for p in parts.values()
-        if p["id"] not in ("carriage", "pipette", "crossbar", "column-left", "column-right")
+        for p in _geom_list(project, None, "nominal")
+        if p["id"] not in ("crossbar", "column-left", "column-right")
     ]
     cruise = max(tops + [p[2] + p[5] / 2 for p in proxies]) + 15
     waypoints = []
@@ -630,6 +633,7 @@ def _limitations() -> list[str]:
         "Fine bores, vents and cutouts are not resolved for contact; full envelopes can "
         "conservatively block visually open spaces.",
         "The diagnostic obstacle is a synthetic test object, not a selected project component.",
+        "Inspection arm and camera are excluded from dynamics and collision checks when present.",
     ]
 
 
@@ -804,6 +808,8 @@ def simulate_project(project: dict, scenario: str = "nominal", on_progress=None)
         "project_id": snapshot["id"],
         "revision": snapshot["revision"],
         "scenario": scenario,
+        "scope": "liquid_preparation_only",
+        "inspection_extension_excluded": bool(snapshot.get("inspection_extension")),
         "engine": "MuJoCo",
         "engine_version": mujoco.__version__,
         "engine_source_sha256": hashlib.sha256(_SOURCE_BYTES).hexdigest(),
@@ -896,6 +902,8 @@ print(result["status"], result["metrics"])
         "Real forward dynamics with assumed masses/ideal servos and collision envelopes.\n"
         "Concept primitives are checked against component envelopes when present, but are\n"
         "not used for contacts. Older snapshots without them use the same envelopes.\n"
+        "Scope: liquid_preparation_only. The inspection arm and camera are excluded from\n"
+        "the simulated dynamics and collision checks, including when present in the project.\n"
         "Fine bores, vents and cutouts are unresolved; full envelopes may conservatively\n"
         "block visually open spaces. Tube and tip contacts use separate assumed proxies.\n"
         "Crossbar/carriage guide contact is excluded; head/post and tool/frame contacts "

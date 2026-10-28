@@ -6,7 +6,8 @@ model chooses operating-deck dimensions and component positions, while the
 application checks and compiles that proposal into actual 3D/CAD geometry.
 
 This feature operates on the existing workstation project. It does not generate
-arbitrary robots, validate hardware or implement the planned arm/camera module.
+arbitrary robots or validate hardware. A separate bounded
+[inspection extension](project-evolution.md) adds a digital arm/camera to an accepted layout.
 The backend retains a built-in parametric workstation as the compiler's reference
 architecture. It is not a Meta-generated machine. The UI does not render that
 reference just because the task was classified: the first viewer appears only

@@ -31,6 +31,7 @@ function validPrimitive(p: GeometryPrimitive): boolean {
   if (!p || typeof p.id !== 'string' || typeof p.appearance !== 'string' ||
       !Array.isArray(p.position) || p.position.length !== 3 || !p.position.every(Number.isFinite) ||
       !Array.isArray(p.size) || p.size.length !== 3 || !p.size.every((n) => Number.isFinite(n) && n > 0) ||
+      (p.rotation_y_deg !== undefined && !Number.isFinite(p.rotation_y_deg)) ||
       !['box', 'cylinder', 'frustum', 'tube', 'plate'].includes(p.kind) ||
       (p.axis !== undefined && !['x', 'y', 'z'].includes(p.axis))) return false;
   const axis = p.axis ?? 'y';
@@ -92,7 +93,8 @@ function PrimitiveMesh({ primitive, selected, hovered }: { primitive: GeometryPr
   useEffect(() => () => geometry.dispose(), [geometry]);
   const finish = finishes[primitive.appearance] ?? { color: '#a8bfc0', metalness: 0.2, roughness: 0.5 };
   return (
-    <mesh position={primitive.position.map((n) => n / SCALE) as Vec3} castShadow receiveShadow>
+    <mesh position={primitive.position.map((n) => n / SCALE) as Vec3}
+      rotation={[0, (primitive.rotation_y_deg ?? 0) * Math.PI / 180, 0]} castShadow receiveShadow>
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial color={finish.color} metalness={finish.metalness} roughness={finish.roughness}
         transparent={finish.opacity !== undefined} opacity={finish.opacity ?? 1} depthWrite={finish.opacity === undefined}

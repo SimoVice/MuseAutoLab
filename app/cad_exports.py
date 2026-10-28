@@ -51,6 +51,40 @@ def _components(project: dict) -> list[dict]:
         geometry = comp.get("geometry") or geometry_for_component(comp)
         if geometry.get("schema_version") != "1" or not geometry.get("primitives"):
             raise ValueError(f"Invalid geometry for {comp['id']}.")
+        for primitive in geometry["primitives"]:
+            try:
+                primitive_pos = primitive["position"]
+                primitive_size = primitive["size"]
+                yaw = primitive.get("rotation_y_deg", 0)
+                if (
+                    isinstance(yaw, bool)
+                    or not isinstance(yaw, (int, float))
+                    or not math.isfinite(yaw)
+                ):
+                    raise ValueError
+                values = [*primitive_pos, *primitive_size]
+                if (
+                    len(primitive_pos) != 3
+                    or len(primitive_size) != 3
+                    or any(
+                        isinstance(v, bool)
+                        or not isinstance(v, (int, float))
+                        or not math.isfinite(v)
+                        for v in values
+                    )
+                    or any(v <= 0 for v in primitive_size)
+                ):
+                    raise ValueError
+                c, s = abs(math.cos(math.radians(yaw))), abs(math.sin(math.radians(yaw)))
+                sx, sy, sz = primitive_size
+                extents = (c * sx + s * sz, sy, s * sx + c * sz)
+                if any(
+                    abs(p) + extent / 2 > bound / 2 + 1e-7
+                    for p, extent, bound in zip(primitive_pos, extents, size)
+                ):
+                    raise ValueError
+            except (KeyError, TypeError, ValueError):
+                raise ValueError(f"Invalid or out-of-bounds primitive for {comp['id']}.") from None
         out.append(
             {
                 "id": str(comp["id"]),
@@ -116,6 +150,8 @@ def _primitive_solid(comp, primitive):
             solid = Rot(-90, 0, 0) * solid
     else:
         raise ValueError(f"Unsupported geometry primitive: {shape}")
+    # The app-to-CAD coordinate mapping reflects orientation about the up axis.
+    solid = Rot(0, 0, -primitive.get("rotation_y_deg", 0)) * solid
     cx, cy, cz = comp["position"]
     solid = Pos(cx + x, cz + z, cy + y) * solid
     solid.label = primitive["id"]
@@ -229,10 +265,12 @@ def _workstation_svg(components: list[dict], project_id, revision) -> bytes:
             sx, _sy, sz = primitive["size"]
             rx, ry = px(x + dx - sx / 2), py(z + dz + sz / 2)
             fill = palette.get(primitive["appearance"], "#b8c4ca")
+            yaw = primitive.get("rotation_y_deg", 0)
+            transform = f' transform="rotate({yaw:.6f} {px(x + dx):.2f} {py(z + dz):.2f})"'
             parts.append(
                 f'<rect x="{rx:.2f}" y="{ry:.2f}" width="{sx * scale:.2f}" '
                 f'height="{sz * scale:.2f}" '
-                f'fill="{fill}" stroke="#526772" stroke-width="0.5">'
+                f'fill="{fill}" stroke="#526772" stroke-width="0.5"{transform}>'
                 f"<title>{html.escape(comp['id'] + '/' + primitive['id'])}</title></rect>"
             )
             if primitive["kind"] == "plate":
@@ -240,7 +278,8 @@ def _workstation_svg(components: list[dict], project_id, revision) -> bytes:
                     parts.append(
                         f'<circle cx="{px(x + dx + hole["x_mm"]):.2f}" '
                         f'cy="{py(z + dz + hole["z_mm"]):.2f}" '
-                        f'r="{hole["radius_mm"] * scale:.2f}" fill="#f8fafc" stroke="#526772"/>'
+                        f'r="{hole["radius_mm"] * scale:.2f}" fill="#f8fafc" '
+                        f'stroke="#526772"{transform}/>'
                     )
         parts.append(
             f'<text x="{px(x):.2f}" y="{py(z):.2f}" font-size="9" '
@@ -339,12 +378,13 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "Pipette actuation and tip handling: mounting dimensions not measured.",
             "Labware fixtures: tube and tip rack vendor dimensions and tolerances not measured.",
             "Cooling attachment, ventilation and insulation: not engineered.",
-            "Camera and arm mounts, loads, reach and keep-out volumes: future design.",
+            "Camera and arm attachment, loads, motion clearances and cabling: not engineered.",
         ],
         "fabrication_ready": False,
         "layout_origin": (
             "Meta-proposed, geometrically screened layout"
-            if project.get("engineering_design") else "Built-in concept layout"
+            if project.get("engineering_design")
+            else "Built-in concept layout"
         ),
         "engineering_design": project.get("engineering_design"),
         "process": "not selected; concept only",

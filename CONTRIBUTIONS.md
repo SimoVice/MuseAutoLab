@@ -133,3 +133,34 @@ Verification: 250 Python tests plus 58 final targeted API/model checks, Ruff/bui
 ## 2026-10-28: Progress before model reveal
 
 Added an accessible progress indicator during the actual layout request. It waits without inventing a percentage, fills after the server accepts/checks the proposal and reveals the 3D only when the short completion animation finishes. Reset cancels the reveal; rejected/failed requests never show completion. Reduced motion is respected. Frontend build and the offline design browser suite passed, including observed waiting/completion/model ordering and existing export/reset checks. Visual QA used recorded-response replay without further model calls. The completion animation represents presentation, not additional engineering work.
+
+## 2026-10-28: Portable projects and inspection-arm expansion
+
+Added Save project/Open project and browser-local resume. A bounded versioned file stores
+canonical inputs, selected variants, accepted proposals, logical lineage, revision/status
+and recent server conversation. Opening validates and rebuilds geometry/arithmetic/checks
+under a new runtime ID; old jobs, images and reviews are not revived. No code or arbitrary
+serialized geometry is executed or trusted on import.
+
+Added an explicit Meta extension request inside the accepted workstation. The model chooses
+two link lengths and mast height within a fixed two-link inspection architecture; deterministic
+inverse kinematics and recorded-pose width/reach checks allow one correction. Acceptance
+preserves existing workstation components and creates a draft revision with an external
+sidecar, articulated arm and downward camera, a kinematic sweep, three unpriced hardware
+groups, coherent CAD and assembly/export metadata. Removing/changing the module invalidates
+older outputs. MuJoCo explicitly covers only the liquid-preparation mechanism, excluding
+arm/camera dynamics and collisions. Photo inference remains a separate real-image action.
+
+Codex implemented persistence, runtime/API/UI integration and review. GPT-6.1 Terra xhigh
+implemented the shared arm geometry, viewer/CAD rotation and kinematic display, plus bounded
+physics-scope integration and geometric tests. No new dependency was added.
+
+Verification includes the full Python suite, five offline browser suites, frontend build,
+Ruff, actual extended STEP export/reopening and standalone CAD/simulation reruns. The new
+browser flow saves, reopens, refreshes, extends, previews motion, exports a real 24-file
+package, checks hashes/revisions, removes the module and rejects an invalid file without
+losing the design. One real Contributor request on a synthetic cooled workstation fixture
+accepted 320 + 320 mm links and a 450 mm mast on its first attempt, reporting 856 input /
+575 output tokens. Its geometry survived reopening, exported 20 CAD components and passed
+the workstation-only nominal MuJoCo model. This is bounded digital integration evidence,
+not built hardware, continuous collision clearance, camera accuracy or laboratory validation.

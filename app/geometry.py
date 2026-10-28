@@ -165,10 +165,26 @@ def geometry_for_component(comp: dict) -> dict:
 def add_geometry(project: dict) -> dict:
     """Return an independent snapshot with a single deterministic geometry model."""
     result = deepcopy(project)
+    # Rebuild recognized inspection geometry from the bounded proposal. Never
+    # treat arbitrary stored primitives or a matching prefix as authoritative.
+    inspection = {}
+    extension = result.get("inspection_extension")
+    if isinstance(extension, dict):
+        try:
+            from app.inspection_geometry import compile_inspection
+
+            compiled = compile_inspection(result, extension.get("proposal"))
+            inspection = {part["id"]: part for part in compiled["components"]}
+        except (ValueError, TypeError, KeyError):
+            pass
     for comp in result["design"]["components"]:
         if comp["id"] == "sample-rack":
             comp["rack_slot_count"] = max(1, min(6, len(result.get("plan", {}).get("steps", []))))
-        comp["geometry"] = geometry_for_component(comp)
+        canonical = inspection.get(comp["id"])
+        if canonical and comp.get("kind") == canonical["kind"]:
+            comp["geometry"] = deepcopy(canonical["geometry"])
+        else:
+            comp["geometry"] = geometry_for_component(comp)
     result["design"]["geometry_model"] = {
         "schema_version": "1",
         "source": "app.geometry.geometry_for_component",
