@@ -443,6 +443,27 @@ def _step_svg(project: dict, component_ids: list[str]) -> str:
     return _svg_rects(_components(project), set(component_ids))
 
 
+def _design_provenance_html(project: dict) -> str:
+    engineering = project.get("engineering_design")
+    if not engineering:
+        return ""
+    provenance = engineering["provenance"]
+    proposal = engineering["proposal"]
+    model = html.escape(str(provenance.get("model", "not recorded")))
+    rationale = html.escape(proposal["rationale"])
+    checks = provenance.get("checks", [])
+    passed = sum(check.get("passed") is True for check in checks)
+    return (
+        '<div class="card"><h2>Meta layout decision</h2>'
+        f"<p>Model: {model}. {passed}/{len(checks)} recorded geometry checks passed.</p>"
+        f"<p>{rationale}</p>"
+        "<p>Meta proposed the operating-deck dimensions and five component positions. "
+        "The application checked and compiled the proposal; these checks do not establish "
+        "hardware feasibility. The full accepted proposal and provenance are in "
+        "project.json under engineering_design.</p></div>"
+    )
+
+
 def build_guide_html(project: dict, steps: list[dict]) -> bytes:
     pid = html.escape(_project_id(project))
     rev = _revision(project)
@@ -541,6 +562,7 @@ STEPS
 </body>
 </html>"""
     page = page.replace("PROJECT_ID", pid).replace("rREV", f"r{rev}").replace("REV", str(rev))
+    page = page.replace("</main>", _design_provenance_html(project) + "</main>")
     page = page.replace("LIMITATIONS", "</li><li>".join(html.escape(s) for s in limitations))
     page = page.replace(
         "FP", html.escape(f"{fp.get('width_mm')} x {fp.get('depth_mm')} x {fp.get('height_mm')} mm")
@@ -640,6 +662,20 @@ def build_readme(project: dict) -> bytes:
         "- Rails, mounts, pipette actuation, power, wiring, and firmware are unverified.\n"
         "- Cold target is a requested setting with manual transfer, never a measured result.\n"
     )
+    engineering = project.get("engineering_design")
+    if engineering:
+        provenance = engineering["provenance"]
+        proposal = engineering["proposal"]
+        text += (
+            "\n## Meta layout provenance\n\n"
+            f"Model: {provenance.get('model', 'not recorded')}.\n\n"
+            f"{proposal['rationale']}\n\n"
+            "The operating-deck dimensions and five component positions were proposed by "
+            "the model, screened by deterministic geometry checks, and compiled into this "
+            "revision. Read project.json -> project.engineering_design for the accepted "
+            "proposal, model identity and recorded checks. These checks do not establish "
+            "mechanical, thermal or liquid-handling performance.\n"
+        )
     return text.encode("utf-8")
 
 

@@ -342,6 +342,11 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "Camera and arm mounts, loads, reach and keep-out volumes: future design.",
         ],
         "fabrication_ready": False,
+        "layout_origin": (
+            "Meta-proposed, geometrically screened layout"
+            if project.get("engineering_design") else "Built-in concept layout"
+        ),
+        "engineering_design": project.get("engineering_design"),
         "process": "not selected; concept only",
         "material": "not selected; concept only",
         "notes": [

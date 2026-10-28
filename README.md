@@ -2,11 +2,15 @@
 
 AI-assisted design of modular laboratory workstations, from a researcher's task to an interactive machine proposal and a build package.
 
+Powered at runtime by Meta models for requirements, layout proposals and image inspection, with deterministic CAD, arithmetic and bounded MuJoCo checks.
+
 ## Status
 
 Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. MuseAutoLab is a general laboratory automation platform: describe a repetitive task, map the process and constraints, and develop a project brief through conversation. Volumes, concentrations and other task-specific parameters are collected only when relevant to the chosen workflow.
 
-The first complete engineering demonstrator is a **liquid preparation workstation** for aliquots and dilutions. Its current adapter provides a selectable parametric 3D concept, smaller-footprint/cold-bay revisions, sourced partial costs, direct-dilution arithmetic, image-based labware inspection, bounded MuJoCo motion/contact simulation and revision-specific CAD/document/simulation downloads. Other workflows support discovery, conceptual discussion and brief export. Mechanical execution, liquid/thermal dynamics, arbitrary machine CAD, robot-arm integration and saved-project import are not implemented. Digital outputs do not establish hardware or laboratory performance.
+The first complete engineering demonstrator is a **liquid preparation workstation** for aliquots and dilutions. Its current adapter provides a selectable parametric 3D concept, smaller-footprint/cold-bay revisions, sourced partial costs, direct-dilution arithmetic, image-based labware inspection, bounded MuJoCo motion/contact simulation and revision-specific CAD/document/simulation downloads. An explicit **Develop design with Meta** action now asks the configured Meta model to propose continuous operating-deck dimensions and five component positions, checks them, requests at most one correction and compiles an accepted proposal into the same 3D/CAD project. Other workflows support discovery, conceptual discussion and brief export. Mechanical execution, liquid/thermal dynamics, arbitrary machine CAD, robot-arm integration and saved-project import are not implemented. Digital outputs do not establish hardware or laboratory performance.
+
+See [the Meta design architecture and checks](docs/meta-design.md), [recorded synthetic live examples](docs/examples/meta-layout-live.json) and [implemented contributions](CONTRIBUTIONS.md). The model proposes the layout; application code performs arithmetic, geometry compilation and checks. Coding assistants used to develop the repository are separate from its runtime Meta inference.
 
 ## Project flow
 
@@ -14,7 +18,8 @@ The first complete engineering demonstrator is a **liquid preparation workstatio
 2. Discuss the process, materials, existing equipment and constraints. The app records a general project brief; it does not treat mentioning a microscope, pipette, tube or bench width as a complete machine specification.
 3. The model proposes a workflow classification. A generic project stays in concept planning; the currently supported liquid preparation adapter reveals its 3D proposal and component options.
 4. Supply task-specific parameters when needed. For liquid preparation, concentration/volume details and the preparation table appear after quantities have actually been supplied. If a request already contains those values, they are used directly.
-5. Review the module's parameters, confirm the design and run its available simulations or exports. Changes invalidate older revision-specific outputs.
+5. Optionally use **Workstation layout → Develop design with Meta** to request an actual model-proposed layout. Review the result, rationale and geometry checks; an invalid candidate leaves the last accepted project unchanged. This is a separate explicit model request from the requirements conversation.
+6. Review the module's parameters, confirm the design and run its available simulations or exports. Effective chat/configuration changes rebuild the baseline layout and invalidate earlier model-layout provenance and older revision-specific outputs; develop a new layout after those changes.
 
 The interface keeps the design/planning area on the left and conversation on the right. A generic project shows its recorded brief without fabricated geometry, machine prices or dilution questions. The liquid adapter provides the interactive 3D workspace, costs and camera; confirmation exposes its physics and build-file controls. **New project** resets visible state, stops camera capture and focuses a fresh composer without making a model call. Older projects remain process-local; there is no saved-project import.
 

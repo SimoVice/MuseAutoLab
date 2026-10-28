@@ -8,8 +8,10 @@ from dataclasses import dataclass, field
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.design_agent import develop_design
 from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.model_client import ModelClientError, generate_turn
 from app.project_exports import (
@@ -267,6 +269,72 @@ async def confirm(project_id: str) -> dict:
             "assistant_message": (
                 "Parameters confirmed for this concept. This does not run a laboratory protocol."
             ),
+        }
+
+
+class DesignRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_revision: Annotated[int, Field(strict=True, ge=0)]
+    instruction: Annotated[str, Field(min_length=1, max_length=2000)]
+
+    @field_validator("instruction")
+    @classmethod
+    def trim_instruction(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Enter a design instruction before sending.")
+        if len(value) > 2000:
+            raise ValueError("Design instruction must contain at most 2000 characters.")
+        return value
+
+
+@app.post("/api/projects/{project_id}/design")
+async def develop_layout(project_id: str, request: DesignRequest) -> dict:
+    session = session_for(project_id)
+    # Serialize design runs like chat turns; a slow model call cannot overwrite a newer revision.
+    async with session.lock:
+        current = session.project
+        if request.project_revision != current.get("revision"):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Revision {request.project_revision} is not current "
+                    f"(expected {current.get('revision')})."
+                ),
+            )
+        workflow = describe_workflow(current)
+        if not isinstance(workflow, dict) or not workflow.get("design_available"):
+            raise HTTPException(
+                status_code=409,
+                detail="Layout design is not available for this workflow.",
+            )
+        design = current.get("design", {}) if isinstance(current, dict) else {}
+        if design.get("constraint_status") == "infeasible":
+            raise HTTPException(
+                status_code=409,
+                detail="Layout design is not available for an infeasible width.",
+            )
+        try:
+            updated, run = await develop_design(deepcopy(current), request.instruction)
+        except ModelClientError as exc:
+            if hasattr(exc, "design_run"):
+                return JSONResponse(status_code=502, content={
+                    "detail": str(exc), "design_run": exc.design_run,
+                })
+            raise HTTPException(status_code=502, detail=str(exc)) from None
+        # Commit only accepted runs; rejected runs leave the stored project unchanged.
+        if run.get("status") == "accepted":
+            session.project = updated
+            return {
+                "project": deepcopy(updated),
+                "design_run": deepcopy(run),
+                "assistant_message": run.get("message", ""),
+            }
+        return {
+            "project": deepcopy(current),
+            "design_run": deepcopy(run),
+            "assistant_message": run.get("message", ""),
         }
 
 

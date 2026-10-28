@@ -360,3 +360,32 @@ a { color: inherit; text-decoration: none; }
 .brief-note { color: #92a4a2; font-size: 10px; line-height: 1.5; margin: 10px 0 0; }
 .generic-confirm-note { margin-top: 12px; border: 1px dashed #cfdfdb; border-radius: 10px; padding: 10px 12px; background: #f6fbfa; }
 .generic-confirm-note p { margin: 0; color: #5d7776; font-size: 11px; line-height: 1.55; }
+.design-agent-card { margin-top: 16px; border: 1px solid #d9e7e4; border-radius: 12px; padding: 16px 17px; background: #fff; }
+.design-agent-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.design-agent-heading h2 { margin: 0; color: #245059; font-size: 13px; font-weight: 750; }
+.design-agent-heading p { margin: 4px 0 0; color: #8aa3a1; font-size: 11px; line-height: 1.5; }
+.design-agent-status { flex: 0 0 auto; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 100px; border: 1px solid #d5e4e2; background: #eef4f4; color: #58797c; white-space: nowrap; }
+.design-agent-status-accepted { background: #eaf7ef; color: #2f7d57; border-color: #c4e6d2; }
+.design-agent-status-rejected { background: #fff1e8; color: #9d5a33; border-color: #f0d3b8; }
+.design-agent-label { display: block; font-size: 11px; color: #718b8f; font-weight: 650; margin-bottom: 6px; }
+.design-agent-input { display: block; width: 100%; resize: vertical; min-height: 64px; max-height: 180px; border: 1px solid #d5e4e2; border-radius: 8px; padding: 10px 11px; font-size: 12px; line-height: 1.55; color: #284e56; background: #fcfefd; }
+.design-agent-input:disabled { background: #f4f8f7; }
+.design-agent-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.design-agent-button { border: 1px solid #b9d8d1; border-radius: 8px; background: #087d7d; color: #fff; font-size: 12px; font-weight: 700; padding: 10px 14px; }
+.design-agent-button:hover:not(:disabled) { background: #076a6d; }
+.design-agent-button:disabled { opacity: .5; }
+.design-agent-busy { display: inline-flex; align-items: center; gap: 8px; color: #6c8c89; font-size: 11px; }
+.design-agent-error { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0 0; padding: 9px 10px; border-radius: 7px; background: #fff5ec; color: #9d633a; font-size: 11px; }
+.design-agent-error button { border: 0; background: transparent; color: #92592f; font-weight: 700; }
+.design-agent-result { margin-top: 12px; border-top: 1px dashed #cfdfdb; padding-top: 11px; }
+.design-agent-message { margin: 0; color: #36585f; font-size: 11.5px; line-height: 1.55; }
+.design-agent-meta { margin: 6px 0 0; color: #8aa3a1; font-size: 10.5px; }
+.design-agent-rationale { margin: 8px 0 0; color: #36585f; font-size: 11.5px; line-height: 1.55; background: #f2f7f6; border-radius: 7px; padding: 8px 9px; }
+.design-agent-checks { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.design-agent-checks li { border: 1px solid #e0ebe9; border-radius: 8px; padding: 8px 10px; font-size: 11px; line-height: 1.5; background: #fcfefd; }
+.design-agent-checks li strong { display: block; color: #2c515a; font-size: 11px; }
+.design-agent-checks li span { display: block; color: #5d7776; margin-top: 2px; overflow-wrap: anywhere; }
+.design-agent-checks li.passed { border-color: #c4e6d2; background: #f4faf6; }
+.design-agent-checks li.failed { border-color: #f0d3b8; background: #fff8f1; }
+.design-agent-details { margin-top: 10px; font-size: 11px; color: #42646d; line-height: 1.55; }
+.design-agent-details summary { cursor: pointer; color: #247e78; font-weight: 700; }

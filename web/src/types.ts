@@ -138,6 +138,7 @@ export type Project = {
     cooling: DesignCooling;
   };
   plan?: PreparationPlan | null;
+  engineering_design?: EngineeringDesign | null;
 };
 
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string };
@@ -174,7 +175,48 @@ export type ExportJob = {
   download_url: string | null;
 };
 
+export type DesignCheck = { id: string; label: string; passed: boolean; detail: string };
+
+export type DesignUsage = { model?: string; input_tokens?: number; output_tokens?: number };
+
+export type DesignAttempt = {
+  number: number;
+  proposal: Record<string, unknown> | null;
+  checks: DesignCheck[];
+  usage: DesignUsage | null;
+  error?: string;
+};
+
+export type DesignRun = {
+  id: string;
+  source_revision: number;
+  status: 'accepted' | 'rejected' | 'failed';
+  model: string;
+  instruction: string;
+  attempts: DesignAttempt[];
+  message: string;
+};
+
+export type LayoutPlacement = { component_id: string; x_mm: number; z_mm: number };
+
+export type LayoutProposal = {
+  schema_version: '1';
+  deck_width_mm: number;
+  deck_depth_mm: number;
+  placements: LayoutPlacement[];
+  rationale: string;
+  assumptions: string[];
+};
+
+export type EngineeringDesign = {
+  schema_version: '1';
+  proposal: LayoutProposal;
+  provenance: Record<string, unknown>;
+};
+
 export type ProjectResponse = { project: Project; assistant_message?: string };
+
+export type DesignResponse = { project: Project; design_run: DesignRun; assistant_message: string };
 
 export type PhysicsScenario = 'nominal' | 'blocked_path';
 

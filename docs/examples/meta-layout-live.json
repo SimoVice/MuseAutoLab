@@ -1,0 +1,699 @@
+{
+  "recorded_on": "2026-10-28",
+  "input_kind": "Synthetic shareable laboratory tasks",
+  "scope": "Three live integration cases; not a reliability benchmark or hardware result.",
+  "examples": [
+    {
+      "name": "continuous",
+      "instruction": "Design an operating deck exactly 500 mm wide and 480 mm deep. Keep the sample rack near the front centre for access, and controller towards the right rear. Retain all five fixed component sizes and all stated clearances.",
+      "status": "accepted",
+      "model": "muse-spark-1.3-contributor",
+      "attempt_count": 1,
+      "elapsed_model_loop_s": 11.765,
+      "proposal": {
+        "schema_version": "1",
+        "deck_width_mm": 500.0,
+        "deck_depth_mm": 480.0,
+        "placements": [
+          {
+            "component_id": "source-rack",
+            "x_mm": -105.0,
+            "z_mm": 150.0
+          },
+          {
+            "component_id": "sample-rack",
+            "x_mm": 0.0,
+            "z_mm": 150.0
+          },
+          {
+            "component_id": "tip-rack",
+            "x_mm": 105.0,
+            "z_mm": 150.0
+          },
+          {
+            "component_id": "tip-waste",
+            "x_mm": 195.0,
+            "z_mm": 40.0
+          },
+          {
+            "component_id": "controller",
+            "x_mm": 155.0,
+            "z_mm": -75.0
+          }
+        ],
+        "rationale": "Front row places sample-rack at front centre for access, flanked by source and tip racks with 10mm gaps. Tip-waste on right mid-deck for short tip eject path. Controller at right rear clear of front workflow but reachable, outside gantry strip and within 10mm edge clearance.",
+        "assumptions": [
+          "Footprints taken from current sizes: racks 95x70, waste 55x55, controller 90x80 mm.",
+          "Centres are component footprint centres in deck coordinates.",
+          "No cooling bay included; deck is 500x480 operating deck.",
+          "Layout is proposal only, no collision or hardware validation claimed."
+        ]
+      },
+      "checks": [
+        {
+          "id": "workflow",
+          "label": "Supported workflow",
+          "passed": true,
+          "detail": "Liquid preparation with design enabled is required."
+        },
+        {
+          "id": "feasible_width",
+          "label": "Feasible workspace",
+          "passed": true,
+          "detail": "Resolve the infeasible workspace width before developing a layout."
+        },
+        {
+          "id": "schema",
+          "label": "Proposal format",
+          "passed": true,
+          "detail": "Required fields and values are valid."
+        },
+        {
+          "id": "workspace_width",
+          "label": "Workspace width",
+          "passed": true,
+          "detail": "Proposed width 500 mm; workspace limit 650.0 mm."
+        },
+        {
+          "id": "envelopes",
+          "label": "Component envelopes",
+          "passed": true,
+          "detail": "Fixed project component envelopes are retained."
+        },
+        {
+          "id": "edge_source-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "source-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_source-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "source-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_sample-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "sample-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_sample-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "sample-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_tip-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_tip-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "tip-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_tip-waste",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-waste requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_tip-waste",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "tip-waste must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_controller",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "controller requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_controller",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "controller must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "clearance_source-rack_sample-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-waste_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+        }
+      ],
+      "reported_usage": {
+        "model": "muse-spark-1.3-contributor",
+        "input_tokens": 1003,
+        "output_tokens": 939
+      },
+      "actual_footprint_mm": {
+        "width_mm": 500.0,
+        "depth_mm": 480.0,
+        "height_mm": 400
+      },
+      "cad": {
+        "all_components_valid": true,
+        "units": "mm",
+        "fabrication_ready": false
+      },
+      "bounded_physics": {
+        "status": "passed",
+        "metrics": {
+          "max_tracking_error_mm": 3.076918240129203,
+          "final_tracking_error_mm": 1.179161999986377,
+          "peak_actuator_force_n": [
+            0.5168515648670962,
+            0.48747902765649087,
+            6.999961692246039
+          ],
+          "max_contact_force_n": 0.0,
+          "contact_count": 0,
+          "completed_waypoints": 68,
+          "total_waypoints": 68
+        }
+      }
+    },
+    {
+      "name": "compact",
+      "instruction": "Propose a compact arrangement within the recorded 450 mm maximum width. Use depth to separate the consumables from the controller and keep sample access clear.",
+      "status": "accepted",
+      "model": "muse-spark-1.3-contributor",
+      "attempt_count": 1,
+      "elapsed_model_loop_s": 11.719,
+      "proposal": {
+        "schema_version": "1",
+        "deck_width_mm": 440.0,
+        "deck_depth_mm": 500.0,
+        "placements": [
+          {
+            "component_id": "source-rack",
+            "x_mm": -120.0,
+            "z_mm": -80.0
+          },
+          {
+            "component_id": "sample-rack",
+            "x_mm": 0.0,
+            "z_mm": -20.0
+          },
+          {
+            "component_id": "tip-rack",
+            "x_mm": 120.0,
+            "z_mm": -80.0
+          },
+          {
+            "component_id": "tip-waste",
+            "x_mm": -140.0,
+            "z_mm": 120.0
+          },
+          {
+            "component_id": "controller",
+            "x_mm": 100.0,
+            "z_mm": 120.0
+          }
+        ],
+        "rationale": "440mm width stays within 450mm limit. Depth 500mm separates rear consumable row source/tip from front controller/waste row, with sample-rack centered forward of rear row for clear pipette access. All centres keep 10mm edge clearance, >5mm gaps, and z_min above rear 85mm gantry strip.",
+        "assumptions": [
+          "Rack footprints taken from current project state sizes as reference only",
+          "Tip-waste 55x55 mm and controller 90x80 mm footprints used for gaps",
+          "No cooling bay included; deck is operating deck only",
+          "Gantry motion and pipette reach not validated",
+          "Dimensions are proposed choices, not supplier specs",
+          "Rear 85 mm gantry strip kept clear by z_min check"
+        ]
+      },
+      "checks": [
+        {
+          "id": "workflow",
+          "label": "Supported workflow",
+          "passed": true,
+          "detail": "Liquid preparation with design enabled is required."
+        },
+        {
+          "id": "feasible_width",
+          "label": "Feasible workspace",
+          "passed": true,
+          "detail": "Resolve the infeasible workspace width before developing a layout."
+        },
+        {
+          "id": "schema",
+          "label": "Proposal format",
+          "passed": true,
+          "detail": "Required fields and values are valid."
+        },
+        {
+          "id": "workspace_width",
+          "label": "Workspace width",
+          "passed": true,
+          "detail": "Proposed width 440 mm; workspace limit 450.0 mm."
+        },
+        {
+          "id": "envelopes",
+          "label": "Component envelopes",
+          "passed": true,
+          "detail": "Fixed project component envelopes are retained."
+        },
+        {
+          "id": "edge_source-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "source-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_source-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "source-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_sample-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "sample-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_sample-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "sample-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_tip-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_tip-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "tip-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_tip-waste",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-waste requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_tip-waste",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "tip-waste must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_controller",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "controller requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_controller",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "controller must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "clearance_source-rack_sample-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-waste_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+        }
+      ],
+      "reported_usage": {
+        "model": "muse-spark-1.3-contributor",
+        "input_tokens": 987,
+        "output_tokens": 1137
+      },
+      "actual_footprint_mm": {
+        "width_mm": 440.0,
+        "depth_mm": 500.0,
+        "height_mm": 400
+      },
+      "cad": {
+        "all_components_valid": true,
+        "units": "mm",
+        "fabrication_ready": false
+      },
+      "bounded_physics": {
+        "status": "passed",
+        "metrics": {
+          "max_tracking_error_mm": 3.076918240129203,
+          "final_tracking_error_mm": 1.179161999986377,
+          "peak_actuator_force_n": [
+            0.5024916773573125,
+            0.45434040528050446,
+            6.999961692246039
+          ],
+          "max_contact_force_n": 0.0,
+          "contact_count": 0,
+          "completed_waypoints": 68,
+          "total_waypoints": 68
+        }
+      }
+    },
+    {
+      "name": "cooled",
+      "instruction": "Design the operating deck as 550 mm wide and 430 mm deep, with source and tips towards the left and samples accessible at the front. Preserve the existing cold bay; its appended depth is not part of the operating-deck depth.",
+      "status": "accepted",
+      "model": "muse-spark-1.3-contributor",
+      "attempt_count": 1,
+      "elapsed_model_loop_s": 9.093,
+      "proposal": {
+        "schema_version": "1",
+        "deck_width_mm": 550.0,
+        "deck_depth_mm": 430.0,
+        "placements": [
+          {
+            "component_id": "source-rack",
+            "x_mm": -180.0,
+            "z_mm": -50.0
+          },
+          {
+            "component_id": "tip-rack",
+            "x_mm": -180.0,
+            "z_mm": 60.0
+          },
+          {
+            "component_id": "sample-rack",
+            "x_mm": -50.0,
+            "z_mm": 150.0
+          },
+          {
+            "component_id": "tip-waste",
+            "x_mm": 150.0,
+            "z_mm": 140.0
+          },
+          {
+            "component_id": "controller",
+            "x_mm": 170.0,
+            "z_mm": -40.0
+          }
+        ],
+        "rationale": "550x430 operating deck excludes appended cold bay. Source and tip racks grouped left with 40 mm separation for workflow; sample rack centered at front for access; tip-waste front-right near samples; controller right-mid clear of gantry. All centres keep 10 mm edge clearance, 5 mm gaps, and z_min above -130 mm rear strip.",
+        "assumptions": [
+          "Source/sample/tip rack footprints 95x70 mm from current state",
+          "Tip-waste footprint 55x55 mm and controller 90x80 mm from state",
+          "Rear 85 mm gantry strip reserved across full deck width",
+          "Cold bay remains appended beyond +z operating deck edge"
+        ]
+      },
+      "checks": [
+        {
+          "id": "workflow",
+          "label": "Supported workflow",
+          "passed": true,
+          "detail": "Liquid preparation with design enabled is required."
+        },
+        {
+          "id": "feasible_width",
+          "label": "Feasible workspace",
+          "passed": true,
+          "detail": "Resolve the infeasible workspace width before developing a layout."
+        },
+        {
+          "id": "schema",
+          "label": "Proposal format",
+          "passed": true,
+          "detail": "Required fields and values are valid."
+        },
+        {
+          "id": "workspace_width",
+          "label": "Workspace width",
+          "passed": true,
+          "detail": "Proposed width 550 mm; workspace limit 650.0 mm."
+        },
+        {
+          "id": "envelopes",
+          "label": "Component envelopes",
+          "passed": true,
+          "detail": "Fixed project component envelopes are retained."
+        },
+        {
+          "id": "edge_source-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "source-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_source-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "source-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_tip-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_tip-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "tip-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_sample-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "sample-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_sample-rack",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "sample-rack must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_tip-waste",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-waste requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_tip-waste",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "tip-waste must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "edge_controller",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "controller requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "rear_controller",
+          "label": "Rear gantry strip",
+          "passed": true,
+          "detail": "controller must remain clear of the rear 85 mm strip."
+        },
+        {
+          "id": "clearance_source-rack_sample-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-waste_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+        }
+      ],
+      "reported_usage": {
+        "model": "muse-spark-1.3-contributor",
+        "input_tokens": 1052,
+        "output_tokens": 794
+      },
+      "actual_footprint_mm": {
+        "width_mm": 550.0,
+        "depth_mm": 630.0,
+        "height_mm": 400
+      },
+      "cad": {
+        "all_components_valid": true,
+        "units": "mm",
+        "fabrication_ready": false
+      },
+      "bounded_physics": {
+        "status": "passed",
+        "metrics": {
+          "max_tracking_error_mm": 3.0784689501622324,
+          "final_tracking_error_mm": 1.1791619999918908,
+          "peak_actuator_force_n": [
+            0.5027437554830954,
+            0.5027139801314888,
+            6.931014369580129
+          ],
+          "max_contact_force_n": 0.0,
+          "contact_count": 0,
+          "completed_waypoints": 68,
+          "total_waypoints": 68
+        }
+      }
+    }
+  ]
+}

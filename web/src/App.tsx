@@ -4,6 +4,7 @@ import Scene from './Scene';
 import ComponentCatalog from './ComponentCatalog';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
+import DesignAgentPanel from './DesignAgentPanel';
 import CameraPanel from './CameraPanel';
 import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectBrief, ProjectResponse } from './types';
 
@@ -84,6 +85,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [designBusy, setDesignBusy] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
@@ -175,6 +177,9 @@ export default function App() {
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
   const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && designAvailable;
+  const showDesignAgent = Boolean(
+    project && designAvailable && project.workflow?.kind === 'liquid_preparation' && project.design?.constraint_status !== 'infeasible',
+  );
   useEffect(() => {
     if (!showPreview) setPlaying(false);
   }, [showPreview]);
@@ -187,9 +192,13 @@ export default function App() {
   }
   const handlePhysicsView = useCallback((view: PhysicsView | null) => { setPhysicsView(view); }, []);
   const handlePhysicsActivate = useCallback(() => { setPlaying(false); setPhysicsActive(true); }, []);
+  const handleProjectUpdate = useCallback((updated: Project) => { setProject(updated); }, []);
+  const handleDesignBusy = useCallback((value: boolean) => { setDesignBusy(value); }, []);
+  const uiBusy = busy || designBusy;
 
   function handleNewProject() {
     if (busy || initializing) return;
+    setDesignBusy(false);
     newProjectRequested.current = true;
     seenRevision.current = null;
     setProject(null);
@@ -209,7 +218,7 @@ export default function App() {
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const message = input.trim();
-    if (!project || !message || busy) return;
+    if (!project || !message || uiBusy) return;
     setBusy(true);
     setError(null);
     setInput('');
@@ -225,7 +234,7 @@ export default function App() {
   }
 
   async function confirm() {
-    if (!project || busy) return;
+    if (!project || uiBusy) return;
     setBusy(true);
     setError(null);
     try {
@@ -238,7 +247,7 @@ export default function App() {
   }
 
   async function applyCooling() {
-    if (!project || busy) return;
+    if (!project || uiBusy) return;
     const parsed = Number(coolingTargetDraft);
     if (coolingEnabledDraft && (!coolingTargetDraft.trim() || !Number.isFinite(parsed) || parsed < 2 || parsed > 20)) {
       setError('Enter a target temperature between 2 and 20 °C.');
@@ -258,7 +267,7 @@ export default function App() {
   }
 
   async function chooseOption(groupId: string, optionId: string) {
-    if (!project || busy) return;
+    if (!project || uiBusy) return;
     setBusy(true);
     setError(null);
     try {
@@ -371,6 +380,7 @@ export default function App() {
                 <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
                 <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
               </div>
+              {project && showDesignAgent && <DesignAgentPanel project={project} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
               {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}
               {project && showPreview && (
                 <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
@@ -393,7 +403,7 @@ export default function App() {
                     type="checkbox"
                     checked={coolingEnabledDraft}
                     onChange={(event) => setCoolingEnabledDraft(event.target.checked)}
-                    disabled={!project || busy}
+                    disabled={!project || uiBusy}
                   />
                   Refrigerated sample bay
                 </label>
@@ -408,10 +418,10 @@ export default function App() {
                       step={0.5}
                       value={coolingTargetDraft}
                       onChange={(event) => setCoolingTargetDraft(event.target.value)}
-                      disabled={!project || busy}
+                      disabled={!project || uiBusy}
                     />
                   </div>
-                  <button type="button" className="cooling-apply" onClick={() => void applyCooling()} disabled={!project || busy}>
+                  <button type="button" className="cooling-apply" onClick={() => void applyCooling()} disabled={!project || uiBusy}>
                     Apply cooling settings
                   </button>
                 </div>
@@ -429,7 +439,7 @@ export default function App() {
 
               <ComponentCatalog
                 sourcing={sourcing}
-                busy={busy || !project}
+                busy={uiBusy || !project}
                 onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
                 onHighlight={(componentId) => setSelectedId(componentId)}
               />
@@ -459,7 +469,7 @@ export default function App() {
               <div className="summary-card">
                 <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
                 <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
-                {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || busy}>Confirm design <span>↗</span></button>}
+                {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy}>Confirm design <span>↗</span></button>}
                 <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
               </div>
             )}
@@ -543,8 +553,8 @@ export default function App() {
             {error && <div className="error-message" role="alert"><span>{error}</span>{!project && <button type="button" onClick={() => setConnectionAttempt((value) => value + 1)}>Retry</button>}</div>}
             <form className="composer" onSubmit={(event) => void send(event)}>
               <label className="sr-only" htmlFor="message">Describe your workflow or request a change</label>
-              <textarea id="message" ref={field} rows={2} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={keyDown} placeholder="Describe the task you want to automate…" disabled={!project || busy} />
-              <div className="composer-bottom"><span>Enter to send <span className="hide-small">· Shift + Enter for a new line</span></span><button type="submit" aria-label="Send message" disabled={!project || busy || !input.trim()}><Icon name="send" size={18} /></button></div>
+              <textarea id="message" ref={field} rows={2} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={keyDown} placeholder="Describe the task you want to automate…" disabled={!project || uiBusy} />
+              <div className="composer-bottom"><span>Enter to send <span className="hide-small">· Shift + Enter for a new line</span></span><button type="submit" aria-label="Send message" disabled={!project || uiBusy || !input.trim()}><Icon name="send" size={18} /></button></div>
             </form>
             <p className="composer-caption">Designed with Meta AI <span>·</span> Review all suggested parameters</p>
           </div>

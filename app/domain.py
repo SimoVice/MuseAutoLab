@@ -464,6 +464,9 @@ def apply_update(project: dict, patch: dict) -> dict:
         )
 
     result = deepcopy(project)
+    # Effective updates rebuild the layout or preserve stale geometry on an
+    # infeasible width; neither represents the previous accepted proposal.
+    result.pop("engineering_design", None)
     if "brief" not in result or not isinstance(result["brief"], dict):
         result["brief"] = new_brief()
     for field in BRIEF_FIELDS:
