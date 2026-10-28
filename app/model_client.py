@@ -71,6 +71,11 @@ instead of claiming success. 'Run physics' after confirmation computes an ideal 
 MuJoCo with assumed masses, gains, force limits and obstacle envelopes. It checks modeled motion
 and contacts; no liquid accuracy, real motor capability or hardware validation is established.
 Do not claim a run has passed until the interface reports that result.
+The Labware photo check panel can analyze an uploaded photo or a captured camera frame using
+Meta vision. Only Analyze photo sends the image. It identifies visible tube/tip regions in image
+coordinates with human correction/review. It does not provide calibrated world coordinates,
+measure volumes/concentrations, verify absence or control hardware. Direct users to the panel;
+do not claim you have analyzed an image from chat alone.
 Project packages can be generated with the 'Generate project files' control after
 confirmation. They contain a concept assembly guide, selected components, preparation data and
 concept CAD; do not claim a package exists until the interface reports it ready.

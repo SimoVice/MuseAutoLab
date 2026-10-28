@@ -5,3 +5,6 @@ MuseAutoLab's CAD export review used the `lab-hardware-cad` guidance from K-Dens
 Kassis, T., Agarwal, V., He, Y., Patel, D., & Brueckner, A. M. (2026). *Scientific Agent Skills: A Library of Procedural Knowledge for Research Agents*. [arXiv:2609.00065](https://doi.org/10.48550/arXiv.2609.00065). Bibliographic record checked on 2026-10-27; the consulted record was revised on 2026-09-02.
 
 Pinned product dependencies and optional development-skill sources are listed in the README. Skill files remain outside the public product checkout. Generated concept geometry does not establish mechanical fit, manufacturability or laboratory performance.
+
+
+The bundled labware example photograph is by **Gannu03**, [Laboratory microcentrifuge tubes and pipette tips 01](https://commons.wikimedia.org/wiki/File:Laboratory_microcentrifuge_tubes_and_pipette_tips_01.jpg), **CC BY-SA 4.0**. [Asset attribution and changes](../web/public/examples/README.md) apply to that photograph; it is not original MuseAutoLab work. The surrounding project is not assigned a new license by inclusion of this asset.

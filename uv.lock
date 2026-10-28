@@ -620,6 +620,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "pillow" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
@@ -649,6 +650,7 @@ requires-dist = [
     { name = "httpx", specifier = "==0.28.1" },
     { name = "matplotlib", marker = "extra == 'cad'", specifier = "==3.11.2" },
     { name = "mujoco", marker = "extra == 'simulation'", specifier = "==3.17.0" },
+    { name = "pillow", specifier = "==13.0.0" },
     { name = "pydantic", specifier = "==2.14.1" },
     { name = "python-dotenv", specifier = "==1.2.4" },
     { name = "uvicorn", specifier = "==0.54.0" },

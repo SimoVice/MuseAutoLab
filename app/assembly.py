@@ -656,8 +656,10 @@ def build_extension_plan(project: dict) -> bytes:
         "camera": {
             "installed": False,
             "proposed_mount": "upper frame region (to be determined)",
-            "control_adapter": "proposed image capture service returning still frames",
-            "data_adapter": "proposed file-based image log referenced by step id",
+            "control_adapter": "browser still-frame capture/photo upload implemented; "
+            "no hardware adapter",
+            "data_adapter": "revision-specific inspection jobs and separate image/audit "
+            "ZIP implemented",
             "unchecked": [
                 "field of view",
                 "lighting",
@@ -685,7 +687,9 @@ def build_extensions_md(project: dict) -> bytes:
         "- Arm: standalone motion service with explicit start/stop interlocks; job files "
         "exchanged\n"
         "  with the preparation workflow, no shared mutable state.\n"
-        "- Camera: capture service returning still frames logged per assembly step.\n\n"
+        "- Camera: browser capture/upload and human-reviewed image inspection are implemented.\n"
+        "  Inspection images/audits are downloaded separately, not included in this CAD package.\n"
+        "  Step-linked capture, metric calibration and hardware mounting remain proposed.\n\n"
         "## Unchecked mechanical and electrical requirements\n\n"
         "- Mount loads, reach, keep-out volumes, field of view, lighting, power, collision "
         "safety,\n"

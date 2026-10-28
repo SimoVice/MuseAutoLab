@@ -17,7 +17,7 @@ The selected demonstrator is a dilution-and-aliquot workstation with pipette, tu
 5. Preview the supported operating cycle and inspect the checks actually performed.
 6. Generate component options, printable parts, human assembly guidance and supported automation code.
 
-The light interface reserves roughly 60% of the design view for the 3D model, with estimated cost below and chat on the right. After confirmation, the model compacts upward to reveal generation progress and project files. Camera-based tube/tip presence checks remain planned.
+The light interface reserves roughly 60% of the design view for the 3D model, with estimated cost below and chat on the right. After confirmation, the model compacts upward to reveal generation progress and project files. The labware photo check analyzes an uploaded image or a captured camera frame with Meta vision, with editable regions and explicit human review.
 
 ## Reproducible toolchain
 
@@ -74,7 +74,7 @@ npm.cmd --version
 
 Repeat the search-path assignment in a new shell if using this local CLI. Do not run a global npm upgrade as part of reproduction.
 
-`uv sync --locked --all-extras` includes the backend, CAD, simulation and default development group. For chat-only use, omit `--all-extras`; project-file generation and the full checks below require both CAD and simulation extras. MuJoCo 3.17.0 was already pinned; this feature adds no dependencies.
+`uv sync --locked --all-extras` includes the backend, CAD, simulation and default development group. For chat-only use, omit `--all-extras`; project-file generation and the full checks below require both CAD and simulation extras. MuJoCo 3.17.0 remains pinned. Camera image processing adds Pillow 13.0.0 as a direct requirement (already present transitively in the CAD environment).
 
 For an unreliable connection, retry with lower concurrency while preserving the lock:
 
@@ -136,14 +136,14 @@ Contributor is the default for suitable tests; use `muse-wonder-1.0` when comple
 
 | Group | Direct packages |
 | --- | --- |
-| Backend | FastAPI 0.162.0, Pydantic 2.14.1, HTTPX 0.28.1, python-dotenv 1.2.4, Uvicorn 0.54.0 |
+| Backend | FastAPI 0.162.0, Pydantic 2.14.1, HTTPX 0.28.1, python-dotenv 1.2.4, Uvicorn 0.54.0, Pillow 13.0.0 |
 | CAD extra | build123d 0.13.0, matplotlib 3.11.2 |
 | Simulation extra | MuJoCo 3.17.0 |
 | Python development | Playwright 1.64.1, pytest 9.1.1, Ruff 0.17.3, uv 0.13.6 |
 | Frontend | React/React DOM 19.3.1, React Three Fiber 9.8.2, Drei 10.7.9, Three.js 0.186.1 |
 | Frontend development | Vite 8.3.5, React plugin 6.1.2, TypeScript 7.0.2, Tailwind/Vite plugin 4.3.3; exact type packages in the manifest |
 
-The CAD and simulation dependencies are prepared for later work; their presence does not mean workstation CAD export or physics simulation exists. Remotion, camera tooling and additional services are not product dependencies in this revision.
+CAD export, bounded MuJoCo motion/contact simulation and photo inspection are implemented. Their scope is described below; installed packages alone do not validate hardware. Remotion and external camera services are not required.
 
 ## Run the prototype
 
@@ -237,7 +237,7 @@ Each job uses an immutable copy of one confirmed revision. Edits invalidate conf
 
 The API exposes `POST /api/projects/{id}/exports`, `GET /api/projects/{id}/exports/{job}`, and the returned download URL; individual attachments use `/api/projects/{id}/exports/{job}/files/{name}`. Generation runs locally without additional Meta requests or supplier calls. The exported snapshot makes inputs and selections inspectable; identical binary output across machines or regeneration is not guaranteed (for example, STEP headers can contain timestamps).
 
-The assembly sequence is a concept design guide. Rail/transmission details, pipette actuation, labware fits, mounting holes, power, wiring and calibration remain unresolved. Process, material and tolerances have not been selected; the deck STL is **not ready for fabrication**. Camera on an upper-frame mount and robot arm on an external sidecar are future proposals: their load, reach, field of view, power and collision clearances require hardware-specific design. No installed camera/arm or reserved compatible physical space is claimed.
+The assembly sequence is a concept design guide. Rail/transmission details, pipette actuation, labware fits, mounting holes, power, wiring and calibration remain unresolved. Process, material and tolerances have not been selected; the deck STL is **not ready for fabrication**. The browser camera/photo inspection is implemented separately from mechanical integration. A camera on an upper-frame mount and robot arm on an external sidecar are future proposals: their load, reach, field of view, power and collision clearances require hardware-specific design. No installed camera/arm or reserved compatible physical space is claimed.
 
 ## Test the application
 
@@ -259,6 +259,33 @@ $env:PLAYWRIGHT_CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome
 ```
 
 The browser test uses temporary localhost ports, synthetic messages and a deterministic test-only model response. It does not use an API key or contact Meta. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to save normal/blocked screenshots. The suite checks calculation/recovery, width revisions, confirmation, component selection, illustrative playback, real MuJoCo normal/obstacle cases, replay controls and mode switching. It downloads two real CAD/simulation packages, verifies revisions/hashes/source provenance/selected cooling geometry, navigates assembly steps and rejects stale downloads/results. Logs use temporary files so Windows pipe buffers cannot block the test server. CAD tests reopen STEP and measure envelopes; physics tests use actual MuJoCo, while job/API boundary tests stub engine functions to isolate concurrency/failure behavior. The exported runtime is rerun and compared in the locked environment. These checks concern the encoded model, not built hardware. Testing with the real Meta API requires account access and consumes tokens.
+
+## Labware photo check
+
+1. Start the backend and frontend above and open the workspace. Photo inspection works on a draft or confirmed project.
+2. In **Labware photo check**, choose **Upload labware photo**, **Load example photo**, or **Use camera**. Camera access requires a secure browser context (localhost is supported), browser permission and a camera. **Capture** freezes a frame and stops the video tracks; **Stop camera**, project changes and leaving the panel also stop them. No microphone or continuous inference is used.
+3. Click **Analyze photo** explicitly. Preview/capture/example loading alone makes no Meta request. This sends the normalized photo to the configured Meta model, Contributor by default; Contributor inputs/responses may be used for training. Use photos you can share. No project chat, simulated object list or design geometry is sent with the photo.
+4. Select a numbered image region or its card. Review the category, label, normalized bounding box and, for a tip rack, visible contents. **Accept** or **Reject**, then **Save decisions**; corrections can be saved together. **Add missed object** creates a human-authored region. **Accept visible regions** is an explicit bulk human decision, not an automatic confidence filter. Click **Review scene** after all objects have decisions; an empty detection list can also be acknowledged.
+5. An optional **Manual 3D association** links tubes to source/sample racks and tips to the tip rack. **Show in 3D** highlights that concept component. This is a human label, not image-to-world calibration; no machine movement or physical registration is inferred.
+6. **Download inspection zip** downloads six files: the exact analyzed metadata-free `image.jpg`, a self-contained `annotated.svg` with numbered regions and a legend, current `inspection.json` including the original model output, timestamped `review-history.json`, usage/limits `README.md` and a SHA-256 `manifest.json`. Photos are included only in this explicit inspection download, not the main CAD package.
+
+Uploads accept JPEG/PNG up to 16 MiB in the browser and are resized to at most 1600 px on the longest side. The API accepts only base64 JPEG/PNG data URLs, at most 4 MiB decoded and 16 million source pixels, with both sides at least 32 px. It validates content/type, applies EXIF orientation, removes metadata, flattens transparency on white and creates a canonical JPEG. The returned image is exactly the input sent to Meta. External image URLs and local file paths are not accepted.
+
+The model returns at most 24 regions: tubes, individual pipette tips, tip racks or uncertain labware. Boxes use **0–1000 image coordinates**, origin top left, x right, y down; pixel centers can be obtained by multiplying normalized coordinates by width/height divided by 1000. There are no calibrated metric coordinates, volume/concentration estimates, exact inventory counts or hardware interlocks. Model scores are uncalibrated. Uncertainty, score below the demonstration threshold of 0.85, poor image quality or partial coverage flags an object for review. Even stronger observations require a human decision before final scene review. A rack alone does not prove tips are present; its visible contents must support that observation. **Not observed** does not establish absence.
+
+Jobs, canonical images and reviews are process-local, retaining at most three inspections per project; restart loses them. Duplicate requests for the same canonical image and project revision reuse the active/ready job instead of making another model call. One job per project and at most two model calls globally run concurrently; failures remain visible and retry requires user action. Every read, review and download checks the project revision. Corrections increment an observation version, with stale review/download versions rejected. Changing the design or confirming it clears the panel and requires a new inspection. No new image is acquired or sent automatically.
+
+The bundled example is a laboratory photograph by **Gannu03**, under **CC BY-SA 4.0**, with [source, license and derivative details](web/public/examples/README.md). It is not MuseAutoLab hardware. API request format follows Meta's [image understanding](https://dev.meta.ai/docs/image-understanding) and [vision input cookbook](https://dev.meta.ai/docs/cookbook/vision-input), consulted 2026-10-28. Scores/coordinates are model outputs, not measurements.
+
+For repeatable browser verification with **stubbed chat/vision and a synthetic canvas camera stream**, run:
+
+```powershell
+.\.venv\Scripts\python.exe tests\browser_vision.py
+```
+
+The real image preparation, jobs, human review and archive generation run in that test. It exercises photo upload/example loading, no automatic analysis, corrections and 3D association, original/audit preservation and hashes, stale versions/revisions, zero-object acknowledgement and video-track shutdown. It uses real browser MediaStream tracks backed by a synthetic canvas feed, not the user's webcam; it never contacts Meta. The built-in headless Chrome fake device ended before its first frame on the tested Windows machine, so the repeatable camera test supplies the source at getUserMedia. Actual webcam/driver compatibility remains to be checked on the target device. Set `MUSEAUTOLAB_VISION_SCREENSHOT` for an optional screenshot. The main `browser_smoke.py` remains the regression test for design/CAD/physics.
+
+A bounded live Contributor check on 2026-10-28 returned 24 approximate regions with partial coverage for the crowded example photo, and zero regions for a synthetic white negative control. The first photo response failed validation with a 2400-token output cap; a single retry with a 6000-token cap succeeded. The discarded response does not establish the exact failure cause. These limited checks establish integration, not detection precision/recall, camera calibration or operation in a laboratory. Results are not deterministic; more varied labeled photos and hardware calibration are future work.
 
 ## Updating requirements deliberately
 

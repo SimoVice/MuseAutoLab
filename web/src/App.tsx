@@ -4,6 +4,7 @@ import Scene from './Scene';
 import ComponentCatalog from './ComponentCatalog';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
+import CameraPanel from './CameraPanel';
 import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectResponse } from './types';
 
 const EXAMPLE = 'I need to prepare aliquots from a 10 mg/mL stock to a 1 mg/mL target, with 1 mL in each tube. I have a pipette and microcentrifuge tubes.';
@@ -79,6 +80,7 @@ export default function App() {
   const lastMessage = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const viewer = useRef<HTMLDivElement>(null);
   const seenRevision = useRef<string | null>(null);
 
   useEffect(() => {
@@ -129,6 +131,11 @@ export default function App() {
       setResetKey((value) => value + 1);
     }
   }, [projectId, projectRevision]);
+
+  const handleVisionSelect = useCallback((id: string) => {
+    setSelectedId(id);
+    viewer.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }, []);
 
   const handlePreviewComplete = useCallback(() => {
     setPlaying(false);
@@ -267,7 +274,7 @@ export default function App() {
             <div className="revision"><span>Current design</span><strong>{project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Waiting for project'}</strong></div>
           </div>
 
-          <div className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
+          <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
             <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
             <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
               {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
@@ -284,6 +291,7 @@ export default function App() {
             <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
             <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
           </div>
+          {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}
           {project && showPreview && (
             <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
           )}

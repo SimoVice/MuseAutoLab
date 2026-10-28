@@ -26,6 +26,15 @@ from app.simulation_jobs import (
     simulation_status,
     start_simulation,
 )
+from app.vision import Box
+from app.vision_jobs import (
+    InspectionError,
+    inspection_archive,
+    inspection_image,
+    inspection_status,
+    review_inspection,
+    start_inspection,
+)
 
 app = FastAPI(title="MuseAutoLab", version="0.1.0")
 
@@ -246,6 +255,48 @@ def _simulation_error_response(exc: SimulationError) -> HTTPException:
     return HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
+def _inspection_error_response(exc: InspectionError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+
+class InspectionCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    project_revision: Annotated[int, Field(strict=True)]
+    image_data_url: Annotated[str, Field(min_length=1, max_length=5_592_472)]
+
+
+class ReviewDecisionModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    action: str
+    kind: str | None = None
+    label: str | None = None
+    box: Box | None = None
+    component_id: str | None = None
+    tip_rack_contents: str | None = None
+
+
+class ReviewAdditionModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str
+    label: str
+    box: Box
+    component_id: str | None = None
+    tip_rack_contents: str | None = None
+
+
+class InspectionReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    observation_version: Annotated[int, Field(strict=True)]
+    scene_reviewed: Annotated[bool, Field(strict=True)]
+    decisions: list[ReviewDecisionModel] = Field(default_factory=list)
+    additions: list[ReviewAdditionModel] = Field(default_factory=list)
+
+
 @app.post("/api/projects/{project_id}/exports", status_code=202)
 async def create_export(project_id: str) -> dict:
     session = session_for(project_id)
@@ -334,6 +385,79 @@ async def download_simulation_file(project_id: str, job_id: str, name: str) -> R
         content=payload,
         media_type=media_type_for(name),
         headers={"Content-Disposition": f'attachment; filename="{safe}"'},
+    )
+
+
+@app.post("/api/projects/{project_id}/inspections", status_code=202)
+async def create_inspection(project_id: str, request: InspectionCreateRequest) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+        try:
+            return await start_inspection(
+                current,
+                project_revision=request.project_revision,
+                image_data_url=request.image_data_url,
+            )
+        except InspectionError as exc:
+            raise _inspection_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/inspections/{job_id}")
+async def get_inspection(project_id: str, job_id: str) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        return await inspection_status(current, job_id)
+    except InspectionError as exc:
+        raise _inspection_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/inspections/{job_id}/image")
+async def get_inspection_image(project_id: str, job_id: str) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        payload, _, _ = await inspection_image(current, job_id)
+    except InspectionError as exc:
+        raise _inspection_error_response(exc) from None
+    return Response(
+        content=payload,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.post("/api/projects/{project_id}/inspections/{job_id}/review")
+async def review_inspection_job(
+    project_id: str, job_id: str, request: InspectionReviewRequest
+) -> dict:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        return await review_inspection(current, job_id, request.model_dump(exclude_unset=True))
+    except InspectionError as exc:
+        raise _inspection_error_response(exc) from None
+
+
+@app.get("/api/projects/{project_id}/inspections/{job_id}/archive")
+async def download_inspection_archive(
+    project_id: str, job_id: str, observation_version: int | None = None
+) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        current = deepcopy(session.project)
+    try:
+        payload, filename = await inspection_archive(current, job_id, observation_version)
+    except InspectionError as exc:
+        raise _inspection_error_response(exc) from None
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
