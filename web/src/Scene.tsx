@@ -184,6 +184,7 @@ function sampleInspection(extension: InspectionExtension, time: number): Compone
   const forearm = parts.get('inspection-forearm');
   const wrist = parts.get('inspection-wrist');
   const camera = parts.get('inspection-camera');
+  const cameraMount = parts.get('inspection-camera-mount');
   if (shoulder && upper && elbow && forearm && wrist && camera) {
     const upperAngle = (upper.geometry?.primitives[0]?.rotation_y_deg ?? 0) * Math.PI / 180;
     const lowerAngle = (forearm.geometry?.primitives[0]?.rotation_y_deg ?? 0) * Math.PI / 180;
@@ -195,6 +196,7 @@ function sampleInspection(extension: InspectionExtension, time: number): Compone
     elbow.position = [ex, elbow.position[1], ez];
     wrist.position = [wx, wrist.position[1], wz];
     camera.position = [wx, camera.position[1], wz];
+    if (cameraMount) cameraMount.position = [wx, cameraMount.position[1], wz];
     upper.position = [(shoulder.position[0] + ex) / 2, upper.position[1], (shoulder.position[2] + ez) / 2];
     forearm.position = [(ex + wx) / 2, forearm.position[1], (ez + wz) / 2];
   }

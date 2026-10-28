@@ -56,7 +56,9 @@ the accepted workstation, increments revision and invalidates confirmation/files
 
 ## Portable state
 
-The JSON format is `museautolab-project`, schema 1, compiler 1, with a 256 KB cap.
+The JSON format is `museautolab-project`, schema 1, compiler 2, with a 256 KB cap.
+Compiler-1 files are upgraded to a draft revision requiring reconfirmation after
+the [manufacturer-envelope update](source-grounding.md).
 It stores canonical brief/workflow/summary inputs, selected catalogue variants,
 accepted layout/extension proposals and historical provenance, logical project ID,
 revision/status and the last eight server conversation entries. It contains no

@@ -8,6 +8,26 @@ import browser_stub_server
 
 import app.design_agent
 import app.inspection
+from app.model_client import ExtractedTurn
+
+SOURCE_MESSAGE = "Which reviewed open-source foundation supports pipette and camera tools?"
+
+
+async def sourced_turn(project, message, history):
+    if message == SOURCE_MESSAGE:
+        return ExtractedTurn.model_validate(
+            {
+                "assistant_message": "Science Jubilee documents pipette and camera workflows. "
+                "It is an integration reference; this workstation remains a custom concept.",
+                "recommendations": [
+                    {
+                        "reference_id": "science-jubilee",
+                        "reason": "Documented modular pipette/camera starting point.",
+                    }
+                ],
+            }
+        ), {"prompt_tokens": 0, "completion_tokens": 0}
+    return await browser_stub_server._fake_generate_turn(project, message, history)
 
 
 async def proposal(project, instruction, feedback):
@@ -27,7 +47,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, required=True)
     args = parser.parse_args()
-    browser_stub_server.app.api.generate_turn = browser_stub_server._fake_generate_turn
+    browser_stub_server.app.api.generate_turn = sourced_turn
     app.design_agent.propose_layout = browser_design_server.fake_proposal
     app.inspection.propose_inspection = proposal
     uvicorn.run(browser_stub_server.app.api.app, host="127.0.0.1", port=args.port)

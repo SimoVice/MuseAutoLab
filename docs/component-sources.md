@@ -33,4 +33,6 @@ In this prototype the cold bay is attached beside the preparation area and sampl
 
 ## Refreshing the snapshot
 
+The [reviewed design-reference library](source-grounding.md) now connects source facts to actual motor/camera geometry, model advice and revision-specific exports. It records open-project revisions/licenses separately from manufacturer envelope data and price dates. The existing price snapshot below is not silently refreshed by a geometry-source review.
+
 Reopen each primary listing, record its date, currency, price basis, quantity tier and availability, and update the catalogue data and this source note together. Preserve unknown prices as null and check alternative-specific integration notes. Run the catalogue, domain and browser checks before committing. Do not replace missing offers with invented estimates or convert currencies without a separately dated exchange-rate source.

@@ -93,6 +93,8 @@ def _components(project: dict) -> list[dict]:
                 "position": pos,
                 "size": size,
                 "geometry": geometry,
+                **({"reference_geometry": comp["reference_geometry"]}
+                   if "reference_geometry" in comp else {}),
                 **(
                     {"rack_slot_count": comp["rack_slot_count"]}
                     if "rack_slot_count" in comp
@@ -386,7 +388,8 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             if project.get("engineering_design")
             else "Built-in concept layout"
         ),
-        "engineering_design": project.get("engineering_design"),
+            "engineering_design": project.get("engineering_design"),
+            "design_basis": project.get("design_basis"),
         "process": "not selected; concept only",
         "material": "not selected; concept only",
         "notes": [

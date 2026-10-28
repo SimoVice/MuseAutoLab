@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.catalog import build_sourcing
 from app.design_agent import _semaphore, request_design_proposal
+from app.design_sources import project_source_basis, reference_context, resolve_reference
 from app.inspection_geometry import compile_inspection, inspection_components
 from app.model_client import ModelClientError
 
@@ -48,6 +49,7 @@ def clear_extension(project: dict) -> dict:
             result["selections"], result["summary"]["cooling_enabled"]
         )
     result["design"].pop("assembly_bounds", None)
+    result["design_basis"] = project_source_basis(result)
     return result
 
 
@@ -100,7 +102,8 @@ def _extension_sourcing(project: dict) -> None:
             ],
         ),
         ("inspection-mount", "Inspection sidecar mount", ["inspection-mount"]),
-        ("inspection-camera", "Inspection camera", ["inspection-camera"]),
+        ("inspection-camera", "Inspection camera and custom bracket",
+         ["inspection-camera", "inspection-camera-mount"]),
     ):
         sourcing["groups"] = [g for g in sourcing["groups"] if g["id"] != group_id]
         sourcing["groups"].append(
@@ -128,6 +131,13 @@ def _extension_sourcing(project: dict) -> None:
                 ],
             }
         )
+        if group_id == "inspection-camera":
+            ref = resolve_reference("rpi-camera-module-3")
+            option = sourcing["groups"][-1]["options"][0]
+            option.update(label="Camera Module 3 + custom mount (integration pending)",
+                          supplier="Raspberry Pi / custom bracket", sku="Camera Module 3 standard",
+                          source_url=ref["url"], checked_on=ref["checked_on"],
+                          compatibility_note=ref["limits"], reference_ids=[ref["id"]])
     sourcing["unpriced_count"] = sum(
         next(o for o in g["options"] if o["id"] == g["selected_id"])["unit_price"] is None
         for g in sourcing["groups"]
@@ -143,6 +153,7 @@ def apply_extension(project: dict, raw: object, provenance: dict, *, bump: bool 
     result["design"]["components"].extend(inspection_components(module))
     result["design"]["assembly_bounds"] = deepcopy(module["assembly_bounds"])
     _extension_sourcing(result)
+    result["design_basis"] = project_source_basis(result)
     if bump:
         result["revision"] += 1
         result["status"] = "draft"
@@ -174,6 +185,9 @@ async def propose_inspection(project: dict, instruction: str, feedback: str) -> 
         "Keep existing components unchanged. Hardware is not selected or priced. "
         f"Workspace width limit mm: {project['summary'].get('workspace_width_mm')}. "
         f"Existing components mm: {json.dumps(parts)}"
+        f"Reviewed reference context: {json.dumps(reference_context(project))}"
+        "The camera envelope is fixed to Camera Module 3 manufacturer dimensions; do not "
+        "resize it or imply the custom arm is a copied/validated open-source robot."
     )
     return await request_design_proposal(
         instructions,
@@ -248,6 +262,7 @@ async def develop_inspection(project: dict, instruction: str) -> tuple[dict, dic
                     "attempts": deepcopy(attempts),
                     "checks": checks,
                     "usage": usage,
+                    "source_library_sha256": project_source_basis(source)["library_sha256"],
                 }
                 updated = apply_extension(source, candidate, provenance)
                 return updated, {

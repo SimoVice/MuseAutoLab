@@ -24,6 +24,17 @@ export type Component = {
   position: [number, number, number];
   size: [number, number, number];
   geometry?: ComponentGeometry;
+  reference_geometry?: Record<string, unknown>;
+};
+
+export type DesignReference = {
+  id: string; title: string; kind: string; publisher: string; url: string;
+  revision: string; license: string; license_url: string | null; checked_on: string;
+  body_size_app_mm?: [number, number, number]; facts: string[]; use: string; limits: string;
+};
+export type SourceBasis = {
+  schema_version: string; checked_on: string; architecture: string; references: DesignReference[];
+  bindings: { component_id: string; primitive_id?: string; basis: string; reference_id: string | null; detail: string }[];
 };
 
 export type InspectionFrame = {
@@ -165,9 +176,11 @@ export type Project = {
   plan?: PreparationPlan | null;
   engineering_design?: EngineeringDesign | null;
   inspection_extension?: InspectionExtension | null;
+  design_basis?: SourceBasis;
+  rebuild_notice?: string;
 };
 
-export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string };
+export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string; references?: DesignReference[] };
 
 export type AssemblyStep = {
   id: string;
@@ -240,7 +253,7 @@ export type EngineeringDesign = {
   provenance: Record<string, unknown>;
 };
 
-export type ProjectResponse = { project: Project; assistant_message?: string };
+export type ProjectResponse = { project: Project; assistant_message?: string; recommendations?: { reference: DesignReference; reason: string }[] };
 
 export type DesignResponse = { project: Project; design_run: DesignRun; assistant_message: string };
 

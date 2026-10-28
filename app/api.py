@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.design_agent import develop_design
+from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.inspection import clear_extension, develop_inspection
 from app.model_client import ModelClientError, generate_turn
@@ -149,6 +150,25 @@ async def create_project() -> dict:
     return {"project": deepcopy(project)}
 
 
+@app.get("/api/references")
+async def get_reference_library() -> dict:
+    return reference_library()
+
+
+@app.get("/api/projects/{project_id}/sources")
+async def get_project_sources(project_id: str, revision: int) -> Response:
+    session = session_for(project_id)
+    async with session.lock:
+        if revision != session.project["revision"]:
+            raise HTTPException(status_code=409,
+                                detail="Download sources for the current revision.")
+        payload = {"project_id": project_id, "revision": revision,
+                   "source_basis": project_source_basis(session.project)}
+    return Response(content=json.dumps(payload, indent=2), media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="design-sources.json"',
+                             "Cache-Control": "no-store"})
+
+
 @app.get("/api/projects/{project_id}/snapshot")
 async def save_project(project_id: str, revision: int) -> Response:
     session = session_for(project_id)
@@ -208,6 +228,10 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ) from None
 
         reply = turn.assistant_message
+        recommendations = []
+        for recommendation in turn.recommendations:
+            ref = resolve_reference(recommendation.reference_id)
+            recommendations.append({"reference": ref, "reason": recommendation.reason})
         workflow = describe_workflow(updated)
         design_available = bool(workflow.get("design_available"))
         if design_available:
@@ -240,13 +264,20 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     )
             reply += _cooling_feedback(patch, updated)
 
+        display_reply = reply
+        if recommendations:
+            reply += "\n\nReviewed references:\n" + "\n".join(
+                f"{r['reference']['title']} [{r['reference']['id']}]: {r['reason']}"
+                for r in recommendations
+            )
         # Publish state only after model and domain validation both succeed.
         session.project = updated
         session.history.extend(
             [{"role": "user", "content": request.message}, {"role": "assistant", "content": reply}]
         )
         session.history = session.history[-8:]
-        return {"project": deepcopy(updated), "assistant_message": reply, "usage": usage}
+        return {"project": deepcopy(updated), "assistant_message": display_reply, "usage": usage,
+                "recommendations": recommendations}
 
 
 @app.post("/api/projects/{project_id}/configuration")

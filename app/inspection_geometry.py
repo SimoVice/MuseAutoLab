@@ -11,6 +11,8 @@ from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 
+from app.design_sources import camera_geometry_spec
+
 INSPECTION_SOURCE_SHA256 = sha256(Path(__file__).read_bytes()).hexdigest()
 
 
@@ -188,17 +190,48 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
         elbow, q1, q2 = _solve((x, z), target_xz, spec["link_lengths_mm"])
         tx, tz = target_xz
         camera_y = height - 55
+        camera_spec = camera_geometry_spec()
+        camera_size = camera_spec["size_mm"]
         camera = _component(
             "inspection-camera",
             "inspection-camera",
-            "Downward camera concept",
+            "Raspberry Pi Camera Module 3 envelope",
             (tx, camera_y, tz),
-            (48, 80, 48),
+            camera_size,
             [
-                _primitive("body", "box", (0, 8, 0), (48, 45, 48), "controller"),
-                _primitive("mounting-neck", "box", (0, 35.25, 0), (20, 9.5, 20), "structure"),
-                _primitive("lens", "cylinder", (0, -24.5, 0), (24, 20, 24), "motor", axis="y"),
+                _primitive(
+                    "pcb",
+                    "box",
+                    (0, 4.25, 0),
+                    (25, 3, 24),
+                    "controller",
+                    reference_id=camera_spec["reference_id"],
+                    dimension_basis="schematic_within_manufacturer_envelope",
+                ),
+                _primitive(
+                    "lens",
+                    "cylinder",
+                    (0, -1.5, 0),
+                    (11, 8.5, 11),
+                    "motor",
+                    axis="y",
+                    reference_id=camera_spec["reference_id"],
+                    dimension_basis="schematic_within_manufacturer_envelope",
+                ),
             ],
+        )
+        camera["reference_geometry"] = deepcopy(camera_spec)
+        # Custom conceptual neck connects the wrist to the envelope, not vendor CAD.
+        neck_bottom = camera_y + camera_size[1] / 2
+        neck_top = height - 15
+        neck_height = neck_top - neck_bottom
+        camera_mount = _component(
+            "inspection-camera-mount",
+            "inspection-camera-mount",
+            "Custom camera neck concept",
+            (tx, (neck_top + neck_bottom) / 2, tz),
+            (12, neck_height, 12),
+            [_primitive("neck", "box", (0, 0, 0), (12, neck_height, 12), "structure")],
         )
         pieces = [
             deepcopy(mount),
@@ -222,6 +255,7 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
                 spec["link_lengths_mm"][1],
             ),
             _joint("inspection-wrist", "Camera wrist", tx, height, tz, 40, 30),
+            camera_mount,
             camera,
         ]
         frames.append(
@@ -238,6 +272,10 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
         schema_version="1",
         proposal=spec,
         geometry_source_sha256=INSPECTION_SOURCE_SHA256,
+        source_binding=dict(
+            camera=deepcopy(camera_geometry_spec()),
+            interpretation="Manufacturer envelope; custom mount and arm. Vendor CAD not imported.",
+        ),
         attachment=dict(
             parent_component_id="base",
             anchor_mm=[x, base_top, edge],
@@ -265,6 +303,8 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
             "Concept geometry and kinematic poses only; no physical or hardware validation.",
             "Attachment, fasteners, loads, motion clearance, collision avoidance and cabling "
             "are unverified.",
+            "The camera uses the manufacturer overall envelope with schematic internal shapes; "
+            "mounting and lens details are not supplier CAD.",
             "The downward camera is illustrative; field of view, image quality and inspection "
             "coverage are unverified.",
         ],

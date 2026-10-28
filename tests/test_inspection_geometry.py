@@ -121,6 +121,8 @@ def test_camera_mount_and_lens_meet_in_each_pose():
         camera = parts["inspection-camera"]
         wrist = parts["inspection-wrist"]
         shapes = {p["id"]: p for p in camera["geometry"]["primitives"]}
+        mount = parts["inspection-camera-mount"]
+        neck = mount["geometry"]["primitives"][0]
 
         def top(shape):
             return camera["position"][1] + shape["position"][1] + shape["size"][1] / 2
@@ -128,11 +130,11 @@ def test_camera_mount_and_lens_meet_in_each_pose():
         def bottom(shape):
             return camera["position"][1] + shape["position"][1] - shape["size"][1] / 2
 
-        assert top(shapes["mounting-neck"]) == pytest.approx(
+        assert mount["position"][1] + neck["size"][1] / 2 == pytest.approx(
             wrist["position"][1] - wrist["size"][1] / 2
         )
-        assert bottom(shapes["mounting-neck"]) == pytest.approx(top(shapes["body"]))
-        assert top(shapes["lens"]) == pytest.approx(bottom(shapes["body"]))
+        assert mount["position"][1] - neck["size"][1] / 2 == pytest.approx(top(shapes["pcb"]))
+        assert top(shapes["lens"]) == pytest.approx(bottom(shapes["pcb"]))
         assert frame["camera_mm"] == camera["position"]
 
 
@@ -141,7 +143,7 @@ def test_sidecar_beyond_cooling_extension_and_stable_ids():
     compact_cold = apply_update(wide, {"workspace_width_mm": 450, "cooling_enabled": True})
     modules = [compile_inspection(project, proposal()) for project in (wide, compact_cold)]
     assert modules[0]["component_ids"] == modules[1]["component_ids"]
-    assert len(set(modules[0]["component_ids"])) == 8
+    assert len(set(modules[0]["component_ids"])) == 9
     for project, module in zip((wide, compact_cold), modules):
         base = part_map(project["design"]["components"])["base"]
         mount = part_map(module["components"])["inspection-mount"]

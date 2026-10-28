@@ -4,6 +4,8 @@ AI-assisted design of modular laboratory workstations, from a researcher's task 
 
 Powered at runtime by Meta models for requirements, layout proposals and image inspection, with deterministic CAD, arithmetic and bounded MuJoCo checks.
 
+Models and recommendations now use [reviewed primary references](docs/source-grounding.md): pinned Jubilee/Science Jubilee projects, official Pololu motor dimensions, the Raspberry Pi camera envelope and Opentrons module specifications. **Design foundations** shows what is sourced and what remains a custom concept. The whole workstation is not an imported open-source robot or a fabrication-ready design.
+
 ## Status
 
 Initialized on **2026-10-27** for the Meta Global AI Developer Hackathon. MuseAutoLab is a general laboratory automation platform: describe a repetitive task, map the process and constraints, and develop a project brief through conversation. Volumes, concentrations and other task-specific parameters are collected only when relevant to the chosen workflow.

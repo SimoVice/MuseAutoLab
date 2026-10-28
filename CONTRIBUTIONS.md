@@ -164,3 +164,27 @@ accepted 320 + 320 mm links and a 450 mm mast on its first attempt, reporting 85
 575 output tokens. Its geometry survived reopening, exported 20 CAD components and passed
 the workstation-only nominal MuJoCo model. This is bounded digital integration evidence,
 not built hardware, continuous collision clearance, camera accuracy or laboratory validation.
+
+## 2026-10-28: Reviewed references and source-bound component geometry
+
+Added a versioned primary-source library with immutable Jubilee/Science Jubilee revisions,
+license links, manufacturer facts, dates and scope. Runtime Meta chat/layout/extension
+requests receive that library; structured chat recommendations accept only reviewed IDs,
+and the server resolves source links and metadata. The interface exposes design foundations,
+per-part source/custom distinctions, downloadable revision-specific sources and restored
+conversation citations. The same manifest is included in project/CAD/assembly outputs.
+
+The actual carriage motor body follows the selected Pololu variant's published dimensions.
+The camera now follows the Camera Module 3 overall envelope, with a separate custom neck.
+This is schematic source-bound geometry, not imported vendor CAD. The original frame,
+pipette/racks and arm remain custom; open-project references are not presented as installed
+or simulated upstream robots. Compiler-1 project files upgrade to draft compiler-2 geometry
+and require reconfirmation. No new dependency or price refresh was introduced.
+
+Codex implemented source data, runtime/advice/API/UI/export/migration integration and review;
+GPT-6.1 Terra xhigh implemented the actual motor/camera geometry bindings and tests. The
+full 317-test Python suite, Ruff/build and six offline browser suites passed. One real Meta
+advice call selected the pinned Science Jubilee/Jubilee references with no opening quantities;
+one real layout call accepted first attempt and exported the sourced motor/CAD/source manifest.
+Reported usage: 7706 input / 1686 output tokens. No procurement, upstream CAD/control-code
+redistribution or hardware/laboratory validation is claimed.

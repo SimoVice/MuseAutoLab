@@ -7,6 +7,7 @@ import PhysicsPanel from './PhysicsPanel';
 import DesignAgentPanel from './DesignAgentPanel';
 import CameraPanel from './CameraPanel';
 import InspectionPanel from './InspectionPanel';
+import DesignSources from './DesignSources';
 import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectBrief, ProjectResponse } from './types';
 
 const WELCOME = 'What would you like to automate in your lab? Describe the task and what makes it difficult.';
@@ -17,7 +18,10 @@ type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assist
 
 function restoredMessages(data: OpenedProject): ConversationEntry[] {
   return [{ id: 0, role: 'assistant', text: WELCOME }, ...(data.conversation ?? []).map((entry, index) => ({
-    id: index + 1, role: entry.role, text: entry.content,
+    id: index + 1, role: entry.role, text: entry.role === 'assistant' ? entry.content.split('\n\nReviewed references:\n')[0] : entry.content,
+    references: entry.role === 'assistant' ? data.project.design_basis?.references.filter(
+      (ref) => entry.content.includes(`[${ref.id}]`),
+    ) : [],
   }))];
 }
 
@@ -130,7 +134,7 @@ export default function App() {
         if (active) {
           setProject(data.project);
           setMessages(restoredMessages(data));
-          setStorageNotice('Resumed your last project. Previous runs can be generated again.');
+          setStorageNotice(data.project.rebuild_notice ?? 'Resumed your last project. Previous runs can be generated again.');
         }
       } else {
         const data = await request('/api/projects');
@@ -287,7 +291,7 @@ export default function App() {
       setPlaying(false);
       setPhysicsView(null);
       setPhysicsActive(false);
-      setStorageNotice('Project reopened. Geometry was rebuilt; previous runs are ready to regenerate.');
+      setStorageNotice(data.project.rebuild_notice ?? 'Project reopened. Geometry was rebuilt; previous runs are ready to regenerate.');
       field.current?.focus({ preventScroll: true });
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'The project could not be opened.'); }
     finally { setStorageBusy(false); if (projectFile.current) projectFile.current.value = ''; }
@@ -328,7 +332,7 @@ export default function App() {
     try {
       const result = await request(`/api/projects/${encodeURIComponent(project.id)}/messages`, { message });
       setProject(result.project);
-      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
+      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message!, references: result.recommendations?.map((item) => item.reference) }]);
     } catch (reason) {
       setInput(message);
       setError(reason instanceof Error ? reason.message : 'The request could not be completed. Please try again.');
@@ -502,6 +506,7 @@ export default function App() {
             </>
           )}
           {project && showDesignAgent && <DesignAgentPanel project={project} disabled={busy || storageBusy || extensionBusy} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
+          {project && hasBrief && <DesignSources project={project} showBindings={hasEngineeringDesign} onHighlight={handleVisionSelect} />}
           {project && hasEngineeringDesign && <InspectionPanel project={project} busy={uiBusy} resetKey={resetKey} onProject={handleProjectUpdate} onBusy={handleExtensionBusy} onInspect={handleInspection} />}
           {hasEngineeringDesign && (
             <>
@@ -577,7 +582,7 @@ export default function App() {
             <div className="chat-date">Your design conversation</div>
             {messages.map((message) => <div key={message.id} className={`message-row ${message.role}`}>
               {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
-              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.text}</div></div>
+              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
             </div>)}
             {busy && <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span> Working on your request…</div>}
             <div ref={lastMessage} />

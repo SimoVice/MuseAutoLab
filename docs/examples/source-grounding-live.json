@@ -1,0 +1,284 @@
+{
+  "date": "2026-10-28",
+  "scope": "Shareable synthetic tasks and curated public references only",
+  "advice": {
+    "turn": {
+      "assistant_message": "For pipette and camera tooling, evaluate Science Jubilee \u2014 it documents OT-2 pipette, syringe and camera tool workflows. Jubilee hardware is the related open motion platform alternative. Both are references only, not installed hardware. What dilution process do you run by hand?",
+      "recommendations": [
+        {
+          "reference_id": "science-jubilee",
+          "reason": "Documents OT-2 pipette and camera tools for evaluation"
+        },
+        {
+          "reference_id": "jubilee-hardware",
+          "reason": "Open hardware motion foundation alternative to evaluate"
+        }
+      ],
+      "stock_concentration": null,
+      "target_concentrations": null,
+      "final_volume": null,
+      "equipment": null,
+      "workspace_width_mm": null,
+      "cooling_enabled": null,
+      "cooling_target_c": null,
+      "workflow_kind": "liquid_preparation",
+      "brief_objective": null,
+      "brief_process": "preparing aliquots and dilutions",
+      "brief_materials": null,
+      "brief_equipment": null,
+      "brief_constraints": null,
+      "source_stock_concentration": null,
+      "source_target_concentrations": null,
+      "source_final_volume": null,
+      "source_equipment": null,
+      "source_workspace_width_mm": null,
+      "source_cooling_enabled": null,
+      "source_cooling_target_c": null,
+      "source_workflow_kind": "preparing aliquots and dilutions",
+      "source_brief_objective": null,
+      "source_brief_process": "preparing aliquots and dilutions",
+      "source_brief_materials": null,
+      "source_brief_equipment": null,
+      "source_brief_constraints": null
+    },
+    "usage": {
+      "prompt_tokens": 4615,
+      "completion_tokens": 702,
+      "total_tokens": 5317
+    },
+    "elapsed_s": 7.75
+  },
+  "layout": {
+    "run": {
+      "id": "design-1b5ec1c0",
+      "source_revision": 2,
+      "status": "accepted",
+      "model": "muse-spark-1.3-contributor",
+      "instruction": "Develop a practical workstation layout using the recorded fixed component envelopes and reviewed references. Keep access to the sample rack clear. Treat open-source platforms as documented foundations rather than claiming their hardware is installed.",
+      "attempts": [
+        {
+          "number": 1,
+          "proposal": {
+            "assumptions": [
+              "Component footprints taken from project state sizes as width x depth envelopes.",
+              "Placements are proposed centres; no collision or thermal validation claimed.",
+              "Open references are documented foundations only; no hardware claimed installed.",
+              "Sample rack placed front-centre to keep manual access clear.",
+              "Deck 600x420 mm is a proposed choice, cold bay excluded.",
+              "No workspace width limit was supplied."
+            ],
+            "deck_depth_mm": 420.0,
+            "deck_width_mm": 600.0,
+            "placements": [
+              {
+                "component_id": "source-rack",
+                "x_mm": -185.0,
+                "z_mm": -60.0
+              },
+              {
+                "component_id": "sample-rack",
+                "x_mm": -65.0,
+                "z_mm": 60.0
+              },
+              {
+                "component_id": "tip-rack",
+                "x_mm": 55.0,
+                "z_mm": -60.0
+              },
+              {
+                "component_id": "controller",
+                "x_mm": 185.0,
+                "z_mm": -60.0
+              },
+              {
+                "component_id": "tip-waste",
+                "x_mm": 185.0,
+                "z_mm": 80.0
+              }
+            ],
+            "rationale": "600x420 deck keeps 10mm edge clearance and 5mm gaps. Rear row holds source, tip and controller outside gantry strip; sample rack is front-centre for clear access; tall tip-waste is front-right for disposal access without crossing racks.",
+            "schema_version": "1"
+          },
+          "checks": [
+            {
+              "id": "workflow",
+              "label": "Supported workflow",
+              "passed": true,
+              "detail": "Liquid preparation with design enabled is required."
+            },
+            {
+              "id": "feasible_width",
+              "label": "Feasible workspace",
+              "passed": true,
+              "detail": "Resolve the infeasible workspace width before developing a layout."
+            },
+            {
+              "id": "schema",
+              "label": "Proposal format",
+              "passed": true,
+              "detail": "Required fields and values are valid."
+            },
+            {
+              "id": "workspace_width",
+              "label": "Workspace width",
+              "passed": true,
+              "detail": "Proposed width 600 mm; no width limit specified."
+            },
+            {
+              "id": "envelopes",
+              "label": "Component envelopes",
+              "passed": true,
+              "detail": "Fixed project component envelopes are retained."
+            },
+            {
+              "id": "edge_source-rack",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "source-rack requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "rear_source-rack",
+              "label": "Rear gantry strip",
+              "passed": true,
+              "detail": "source-rack must remain clear of the rear 85 mm strip."
+            },
+            {
+              "id": "edge_sample-rack",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "sample-rack requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "rear_sample-rack",
+              "label": "Rear gantry strip",
+              "passed": true,
+              "detail": "sample-rack must remain clear of the rear 85 mm strip."
+            },
+            {
+              "id": "edge_tip-rack",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "tip-rack requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "rear_tip-rack",
+              "label": "Rear gantry strip",
+              "passed": true,
+              "detail": "tip-rack must remain clear of the rear 85 mm strip."
+            },
+            {
+              "id": "edge_controller",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "controller requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "rear_controller",
+              "label": "Rear gantry strip",
+              "passed": true,
+              "detail": "controller must remain clear of the rear 85 mm strip."
+            },
+            {
+              "id": "edge_tip-waste",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "tip-waste requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "rear_tip-waste",
+              "label": "Rear gantry strip",
+              "passed": true,
+              "detail": "tip-waste must remain clear of the rear 85 mm strip."
+            },
+            {
+              "id": "clearance_source-rack_sample-rack",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_source-rack_tip-rack",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_source-rack_tip-waste",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_source-rack_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_sample-rack_tip-rack",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_sample-rack_tip-waste",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_sample-rack_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_tip-rack_tip-waste",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_tip-rack_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_tip-waste_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+            }
+          ],
+          "usage": {
+            "model": "muse-spark-1.3-contributor",
+            "input_tokens": 3091,
+            "output_tokens": 984
+          }
+        }
+      ],
+      "message": "Meta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 25 geometry checks passed."
+    },
+    "elapsed_s": 12.734,
+    "cad_verified": true,
+    "motor": {
+      "id": "motor",
+      "kind": "box",
+      "position": [
+        -20.0,
+        8.4,
+        -4.550000000000001
+      ],
+      "size": [
+        35,
+        36,
+        35
+      ],
+      "appearance": "motor",
+      "reference_id": "pololu-1209",
+      "dimension_basis": "manufacturer_envelope",
+      "scope": "Manufacturer motor body, excluding shaft"
+    }
+  }
+}

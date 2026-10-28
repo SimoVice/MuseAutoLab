@@ -208,8 +208,12 @@ def test_general_context_hides_liquid_template_and_catalogue():
     run_turn(handler, message="I want to move vials between racks")
     state_text = captured["body"]["messages"][1]["content"]
     assert "move vials between racks" not in state_text or "brief" in state_text
-    for token in ("concentration", "aliquot", "C1*V1", "catalogue", "subtotal_usd"):
-        assert token not in state_text
+    state = json.loads(state_text.removeprefix("Current recorded project state: "))
+    for key in ("summary", "catalogue", "current_plan", "current_footprint_mm"):
+        assert key not in state
+    references = state["reviewed_reference_library"]
+    assert references["geometry_bindings"] == []
+    assert references["architecture"] == "Workflow discovery; no machine adapter chosen"
 
 
 def test_canonicalization_cannot_change_concentration_or_capitalized_prefix():

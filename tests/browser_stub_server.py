@@ -28,6 +28,7 @@ class _FakeTurn:
     def __init__(self, assistant_message: str, patch_data: dict) -> None:
         self.assistant_message = assistant_message
         self._patch_data = dict(patch_data)
+        self.recommendations = []
 
     def patch(self) -> dict:
         return dict(self._patch_data)

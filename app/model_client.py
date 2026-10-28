@@ -13,6 +13,7 @@ import httpx
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from app.design_sources import reference_context, resolve_reference
 from app.quantities import normalize_concentration, normalize_targets, normalize_volume
 from app.workflows import describe_workflow
 
@@ -133,6 +134,15 @@ inspection-arm/camera module, check planar reach and recorded-pose width, and ad
 same project. Direct expansion requests to Add arm and camera with Meta; chat alone does not
 run that action. Its sweep is kinematic only, not captured imagery or validated hardware.
 Effective requirement/configuration/layout edits clear that extension for fresh design.
+Ground component/project advice in the reviewed_reference_library supplied below. It is a
+dated curated library, not a live web search. Return recommendations as reference_id/reason
+objects using only the supplied IDs; use an empty list for ordinary discovery questions.
+Do not invent products, licenses, URLs, dimensions, ready-to-build interfaces or compatibility.
+Jubilee and Science Jubilee are documented alternative foundations, NOT the current robot
+CAD or installed drivers. Manufacturer envelopes support only the explicitly bound parts;
+the custom frame, pipette, racks, arm and mounts remain concept geometry. A source review
+is not laboratory validation. Explain missing source evidence rather than presenting it as
+verified. Do not set user requirement fields from a source or your own recommendation.
 Keep the assistant_message brief and constructive."""
 
 REQUIREMENT_KEYS = (
@@ -181,12 +191,29 @@ class ModelClientError(Exception):
     """A sanitized, user-facing model integration failure."""
 
 
+class SourceRecommendation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reference_id: Literal["jubilee-hardware", "science-jubilee", "pololu-1209", "pololu-1208",
+                          "rpi-camera-module-3", "opentrons-temp-module-gen2"]
+    reason: Annotated[str, Field(min_length=1, max_length=350)]
+
+    @field_validator("reference_id")
+    @classmethod
+    def reviewed_reference(cls, value: str) -> str:
+        resolve_reference(value)
+        return value
+
+
 class ExtractedTurn(BaseModel):
     """Strict envelope for the model's single-turn response."""
 
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
     assistant_message: Annotated[str, Field(min_length=1, max_length=1200)]
+    recommendations: Annotated[list[SourceRecommendation], Field(max_length=3)] = Field(
+        default_factory=list
+    )
     stock_concentration: Annotated[str | None, Field(max_length=500)] = None
     target_concentrations: Annotated[str | None, Field(max_length=500)] = None
     final_volume: Annotated[str | None, Field(max_length=500)] = None
@@ -439,6 +466,7 @@ async def generate_turn(
     state: dict = {
         "brief": project.get("brief", {}) if isinstance(project, dict) else {},
         "workflow": workflow,
+        "reviewed_reference_library": reference_context(project),
     }
     if design_available:
         design = project.get("design", {}) if isinstance(project, dict) else {}

@@ -18,6 +18,7 @@ from weakref import WeakKeyDictionary
 
 import httpx
 
+from app.design_sources import project_source_basis, reference_context
 from app.design_spec import apply_candidate, check_candidate, proposal_schema
 from app.model_client import ModelClientError, ModelSettings, _safe_usage
 
@@ -107,7 +108,8 @@ def _developer_instructions(project: dict) -> str:
         "Never exceed workspace_width_mm when a limit is supplied. Dimensions you introduce "
         "are proposed design choices, not user-confirmed or supplier specifications. "
         "Do not claim hardware, cooling or collision validation. "
-        f"Current project state: {json.dumps(state, ensure_ascii=False)}"
+        f"Current project state: {json.dumps(state, ensure_ascii=False)} "
+        f"Reviewed design references: {json.dumps(reference_context(project), ensure_ascii=False)}"
     )
 
 
@@ -295,6 +297,7 @@ async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
                     "attempts": deepcopy(attempts),
                     "checks": deepcopy(checks),
                     "usage": deepcopy(usage),
+                    "source_library_sha256": project_source_basis(source)["library_sha256"],
                 }
                 updated = apply_candidate(source, candidate, provenance)
                 message = (

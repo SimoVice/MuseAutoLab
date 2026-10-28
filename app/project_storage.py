@@ -61,7 +61,7 @@ class HistoryEntry(StrictModel):
 class Snapshot(StrictModel):
     format: Literal["museautolab-project"]
     schema_version: Annotated[int, Field(ge=1, le=1)]
-    compiler_version: Literal["1"]
+    compiler_version: Literal["1", "2"]
     saved_at: Annotated[str, Field(min_length=10, max_length=50)]
     project_id: Annotated[str, Field(min_length=36, max_length=36)]
     revision: Annotated[int, Field(ge=0, le=1000000)]
@@ -111,7 +111,7 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
     payload = {
         "format": "museautolab-project",
         "schema_version": 1,
-        "compiler_version": "1",
+        "compiler_version": "2",
         "saved_at": datetime.now(timezone.utc).isoformat(),
         "project_id": project.get("lineage_id", project["id"]),
         "revision": project["revision"],
@@ -182,14 +182,21 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         from app.inspection import restore_extension
 
         project = restore_extension(project, saved.inspection_extension)
-    if saved.status == "confirmed":
+    upgraded = saved.compiler_version == "1"
+    if saved.status == "confirmed" and not upgraded:
         project = confirm_project(project)
-    project["revision"] = saved.revision
-    project["status"] = saved.status
+    project["revision"] = saved.revision + int(upgraded)
+    project["status"] = "draft" if upgraded else saved.status
     project["lineage_id"] = saved.project_id
     project["restored_from"] = {
         "project_id": saved.project_id,
         "revision": saved.revision,
         "saved_at": saved.saved_at,
+        "compiler_version": saved.compiler_version,
     }
+    if upgraded:
+        project["rebuild_notice"] = (
+            "Project upgraded to manufacturer-sourced component envelopes. "
+            "Review the new geometry and confirm again."
+        )
     return project, [entry.model_dump() for entry in saved.history]

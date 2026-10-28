@@ -485,6 +485,34 @@ def _design_provenance_html(project: dict) -> str:
     )
 
 
+def _source_basis_html(project: dict) -> str:
+    basis = project.get("design_basis")
+    if not basis:
+        return ""
+    rows = []
+    bindings = "".join(
+        f'<tr><td>{html.escape(item["component_id"])}</td>'
+        f'<td>{html.escape(item["basis"])}</td>'
+        f'<td>{html.escape(item["reference_id"] or "Custom concept")}</td>'
+        f'<td>{html.escape(item["detail"])}</td></tr>' for item in basis["bindings"]
+    )
+    for ref in basis["references"]:
+        rows.append(
+            f'<tr><td><a href="{html.escape(ref["url"], quote=True)}">'
+            f'{html.escape(ref["title"])}</a></td><td>{html.escape(ref["license"])}</td>'
+            f'<td>{html.escape(ref["use"])}</td><td>{html.escape(ref["limits"])}</td></tr>'
+        )
+    return ('<section class="card"><h2>Design sources and geometry basis</h2>'
+            '<p>Manufacturer envelopes are distinct from custom geometry. Open projects '
+            'are reviewed foundations, not imported robot CAD or validated adapters.</p>'
+            '<table><thead><tr><th>Part</th><th>Basis</th><th>Reference</th><th>Scope</th>'
+            '</tr></thead><tbody>' + bindings + '</tbody></table>'
+            '<table><thead><tr><th>Primary reference</th><th>License / rights</th>'
+            '<th>Use</th><th>Scope</th></tr></thead><tbody>' + "".join(rows) +
+            '</tbody></table><p>Revision-pinned source records and component bindings are '
+            'in project.json and cad/geometry-report.json under design_basis.</p></section>')
+
+
 def build_guide_html(project: dict, steps: list[dict]) -> bytes:
     pid = html.escape(_project_id(project))
     rev = _revision(project)
@@ -583,7 +611,8 @@ STEPS
 </body>
 </html>"""
     page = page.replace("PROJECT_ID", pid).replace("rREV", f"r{rev}").replace("REV", str(rev))
-    page = page.replace("</main>", _design_provenance_html(project) + "</main>")
+    page = page.replace("</main>", _design_provenance_html(project) + _source_basis_html(project)
+                        + "</main>")
     page = page.replace("LIMITATIONS", "</li><li>".join(html.escape(s) for s in limitations))
     page = page.replace(
         "FP", html.escape(f"{fp.get('width_mm')} x {fp.get('depth_mm')} x {fp.get('height_mm')} mm")
@@ -706,6 +735,16 @@ def build_readme(project: dict) -> bytes:
             "inspection-poses.csv lists those poses. All added hardware remains unpriced. "
             "The MuJoCo result covers liquid_preparation_only and excludes arm/camera dynamics, "
             "collisions and coverage. No physical mounting, calibration or control is claimed.\n"
+        )
+    basis = project.get("design_basis")
+    if basis:
+        text += (
+            "\n## Reviewed design foundations\n\n"
+            "Component bindings, primary URLs, dates, pinned project revisions and licenses "
+            "are in project.json and cad/geometry-report.json under design_basis. "
+            "Manufacturer envelopes cover only explicitly bound shapes; the frame, racks, "
+            "pipette mechanism, arm and mounts remain custom concepts. Jubilee and Science "
+            "Jubilee are documented alternative foundations, not this machine's imported CAD.\n"
         )
     return text.encode("utf-8")
 

@@ -8,6 +8,8 @@ from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 
+from app.design_sources import component_geometry_specs
+
 # Capture provenance when this module is loaded, not when an export is requested.
 GEOMETRY_SOURCE_SHA256 = sha256(Path(__file__).read_bytes()).hexdigest()
 
@@ -52,9 +54,18 @@ def geometry_for_component(comp: dict) -> dict:
                 box(f"guide-{sign}", (0, 0, sign * sz * 0.39), (sx, sy * 0.56, sz * 0.22), "rail")
     elif kind == "carriage":
         box("backplate", (0, 0, -sz * 0.38), (sx, sy, sz * 0.24), "structure")
-        box(
-            "motor", (-sx * 0.22, sy * 0.12, -sz * 0.07), (sx * 0.38, sy * 0.58, sz * 0.38), "motor"
-        )
+        motor = comp.get("reference_geometry", {}).get("motor")
+        if motor:
+            add(
+                "motor", "box", (-sx / 2 + motor["size_mm"][0] / 2, sy * 0.12, -sz * 0.07),
+                motor["size_mm"], "motor", reference_id=motor["reference_id"],
+                dimension_basis="manufacturer_envelope", scope=motor["scope"],
+            )
+        else:
+            box(
+                "motor", (-sx * 0.22, sy * 0.12, -sz * 0.07),
+                (sx * 0.38, sy * 0.58, sz * 0.38), "motor"
+            )
         box("drive", (sx * 0.21, sy * 0.08, -sz * 0.06), (sx * 0.28, sy * 0.65, sz * 0.40), "rail")
         box("holder-upper", (0, sy * 0.30, sz * 0.29), (sx * 0.68, sy * 0.20, sz * 0.42), "holder")
         box("holder-lower", (0, -sy * 0.30, sz * 0.29), (sx * 0.68, sy * 0.20, sz * 0.42), "holder")
@@ -177,12 +188,19 @@ def add_geometry(project: dict) -> dict:
             inspection = {part["id"]: part for part in compiled["components"]}
         except (ValueError, TypeError, KeyError):
             pass
+    reference_specs = component_geometry_specs(result)
     for comp in result["design"]["components"]:
+        if comp["id"] in reference_specs:
+            comp["reference_geometry"] = deepcopy(reference_specs[comp["id"]])
+        else:
+            comp.pop("reference_geometry", None)
         if comp["id"] == "sample-rack":
             comp["rack_slot_count"] = max(1, min(6, len(result.get("plan", {}).get("steps", []))))
         canonical = inspection.get(comp["id"])
         if canonical and comp.get("kind") == canonical["kind"]:
             comp["geometry"] = deepcopy(canonical["geometry"])
+            if "reference_geometry" in canonical:
+                comp["reference_geometry"] = deepcopy(canonical["reference_geometry"])
         else:
             comp["geometry"] = geometry_for_component(comp)
     result["design"]["geometry_model"] = {
@@ -196,4 +214,7 @@ def add_geometry(project: dict) -> dict:
         "collision_scope": "Conservative component envelopes and consumable proxies; "
         "no detailed contacts.",
     }
+    from app.design_sources import project_source_basis
+
+    result["design_basis"] = project_source_basis(result)
     return result
