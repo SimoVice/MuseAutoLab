@@ -50,7 +50,14 @@ def main():
                 page.goto(web_url, wait_until="networkidle")
                 expect(page.get_by_text("Workspace ready")).to_be_visible()
                 expect(page.locator(".design-agent-card")).to_have_count(0)
+                # Generic planning plus completed quantities reveal no geometry.
                 smoke.send_chat(page, smoke.COMPLETE_TASK_MESSAGE, smoke.EXPECTED_STOCK)
+                expect(page.locator(".planning-panel")).to_be_visible()
+                expect(page.get_by_text("no machine has been generated yet").first).to_be_visible()
+                expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+                expect(page.locator(".cost-block")).to_have_count(0)
+                expect(page.get_by_role("button", name="Confirm design")).to_be_disabled()
+                expect(page.locator(".design-agent-card")).to_have_count(1)
                 panel = page.locator(".design-agent-card")
                 expect(panel).to_be_visible()
 
@@ -71,20 +78,26 @@ def main():
                     )).to_be_enabled()
                     return body
 
-                before = page.locator(".viewer-canvas canvas").screenshot()
+                expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
                 accepted = design("Exercise a correction with the offline fixture.", "accepted")
                 assert len(accepted["design_run"]["attempts"]) == 2
                 assert not all(c["passed"] for c in accepted["design_run"]["attempts"][0]["checks"])
                 assert all(c["passed"] for c in accepted["design_run"]["attempts"][1]["checks"])
+                expect(page.get_by_text("Meta-proposed layout").first).to_be_visible()
                 expect(page.locator(".footprint strong")).to_contain_text("500")
                 expect(page.locator(".footprint strong")).to_contain_text("480")
                 after = page.locator(".viewer-canvas canvas").screenshot()
-                assert hashlib.sha256(before).digest() != hashlib.sha256(after).digest()
+                assert len(after) > 0
                 rejected = design("Reject both proposals for this diagnostic.", "rejected")
                 assert rejected["project"] == accepted["project"]
                 assert len(rejected["design_run"]["attempts"]) == 2
+                # A rejected candidate preserves the last genuinely accepted design.
+                expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
+                expect(page.locator(".cost-block")).to_be_visible()
                 expect(page.locator(".footprint strong")).to_contain_text("500")
                 design("Keep clear access to the sample rack.", "accepted")
+                expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
+                expect(page.locator(".footprint strong")).to_contain_text("500")
                 screenshot = os.environ.get("MUSEAUTOLAB_DESIGN_SCREENSHOT")
                 if screenshot:
                     page.locator(".design-panel").evaluate("el => {el.scrollTop = 0}")
@@ -114,18 +127,21 @@ def main():
                     assert physics["status"] == "passed"
                     assert len(archive.namelist()) == 22
 
-                smoke.send_chat(page, smoke.WIDTH_450_MESSAGE, "Within requested width")
+                # Width revision invalidates the run and hides the canvas/stale ZIP.
+                smoke.send_chat(page, smoke.WIDTH_450_MESSAGE, "Recorded a 450 mm maximum width")
                 expect(panel.locator(".design-agent-status")).to_have_count(0)
                 expect(page.get_by_role(
                     "link", name="Download project ZIP", exact=True
                 )).to_have_count(0)
+                expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+                design("Keep clear access to the sample rack.", "accepted")
                 expect(page.locator(".footprint strong")).to_contain_text("400")
                 page.get_by_role("button", name="New project", exact=True).click()
                 expect(page.locator(".workspace-empty")).to_be_visible()
                 expect(page.locator(".design-agent-card")).to_have_count(0)
                 assert errors == [], errors
-                print("PASS: correction, rejection, geometry/CAD/simulation ZIP, stale UI "
-                      "and reset; model stubbed.")
+                print("PASS: gated planning, correction, rejection, geometry/CAD/simulation ZIP, "
+                      "stale UI and reset; model stubbed.")
             finally:
                 browser.close()
         return 0

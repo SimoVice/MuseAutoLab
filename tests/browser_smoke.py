@@ -2,18 +2,21 @@
 
 What this test does:
 * Starts the actual backend API locally via ``tests/browser_stub_server.py``
-  (actual FastAPI + domain code; only the Meta model call is stubbed).
+  (actual FastAPI + domain code; only the Meta model and layout model calls
+  are stubbed with explicit offline fixtures).
 * Starts the actual frontend locally via Node + ``web/node_modules/vite/bin/vite.js``.
 * Drives the UI with Playwright using a locally installed Chrome browser.
-* Verifies dilution volumes, an impossible concentration and recovery, the
-  initial 600x370 mm concept, width revisions and confirmation.
-* Inspects one component through the accessible component list.
+* Verifies the planning brief before any design, then an explicit
+  model-backed design via ``develop_layout``, dilution volumes, an impossible
+  concentration and recovery, width revisions with fresh designs, and
+  confirmation.
+* Inspects one component through the accessible component list (after design).
 * Checks playback controls and that canvas pixels change during animation.
 * Captures browser page errors and fails on unexpected errors.
 
 What this test does NOT do:
-* The AI provider is STUBBED (see ``browser_stub_server.py``). No Meta
-  request or key is used; assistant replies are deterministic fakes.
+* The AI provider and layout proposal are STUBBED with explicit offline
+  fixtures (see ``browser_stub_server.py``). No Meta request or key is used.
 * No physical, collision, dispensing, cost, or quantitative motion validation
   is implied by a change in rendered canvas pixels.
 * No fixed screenshot or artifact files are created, except an optional
@@ -24,7 +27,6 @@ Run (integrator machine, after copying both test files back):
 
 Environment:
 * PLAYWRIGHT_CHROME_PATH (optional): full path to a Chrome executable.
-  When unset, Playwright uses channel="chrome".
 * MUSEAUTOLAB_BROWSER_SCREENSHOT (optional): path for a final screenshot.
 * The test binds only 127.0.0.1 and chooses free localhost ports.
 """
@@ -141,11 +143,42 @@ def send_chat(page, message: str, expect_text: str) -> None:
     composer.fill(message)
     expect(send_button).to_be_enabled(timeout=STEP_TIMEOUT_MS)
     send_button.click()
-    # The API appends deterministic text (including backend domain suffixes
-    # for width changes); wait for the key expected substring.
     expect(page.get_by_text(expect_text).first).to_be_visible(timeout=STEP_TIMEOUT_MS)
-    # Wait until the composer is usable again before the next step.
     expect(composer).to_be_enabled(timeout=STEP_TIMEOUT_MS)
+
+
+def develop_layout(page) -> dict:
+    """Request an explicit model-backed design and await the real /design response."""
+    from playwright.sync_api import expect
+
+    panel = page.locator(".design-agent-card")
+    expect(panel).to_be_visible(timeout=STEP_TIMEOUT_MS)
+    # Exactly one design-agent panel exists; it lives outside the viewer branch.
+    expect(page.locator(".design-agent-card")).to_have_count(1)
+    panel.get_by_label("Layout request").fill(
+        "Develop a valid layout for this liquid preparation concept (offline fixture)."
+    )
+    with page.expect_response(
+        lambda response: (
+            response.request.method == "POST" and response.url.endswith("/design")
+        ),
+        timeout=60_000,
+    ) as response_info:
+        panel.get_by_role("button", name="design with Meta", exact=False).click()
+    response = response_info.value
+    body = response.json()
+    assert response.ok, f"Design request failed: {response.status} {body!r}"
+    assert body.get("design_run", {}).get("status") == "accepted", body
+    expect(panel.locator(".design-agent-status")).to_have_text(
+        "Accepted", timeout=STEP_TIMEOUT_MS
+    )
+    expect(page.locator(".viewer-canvas canvas")).to_have_count(
+        1, timeout=STEP_TIMEOUT_MS
+    )
+    expect(page.get_by_text("Meta-proposed layout").first).to_be_visible(
+        timeout=STEP_TIMEOUT_MS
+    )
+    return body
 
 
 def run_smoke(web_url: str) -> None:
@@ -182,13 +215,22 @@ def run_smoke(web_url: str) -> None:
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
             log("Blank workspace remains blank until an actual requirement is recorded.")
 
+            # Complete quantities show planning only: one left brief, summary and
+            # plan, but no baseline geometry, cost, camera or confirmable design.
             send_chat(page, COMPLETE_TASK_MESSAGE, EXPECTED_STOCK)
             expect(page.locator(".workspace-empty")).to_have_count(0)
-            footprint = page.locator(".footprint strong")
-            expect(footprint).to_contain_text("600", timeout=STEP_TIMEOUT_MS)
-            expect(footprint).to_contain_text("370", timeout=STEP_TIMEOUT_MS)
-            expect(page.locator(".viewer-canvas canvas")).to_have_count(1, timeout=STEP_TIMEOUT_MS)
-            log("Typed task reveals the supported 600 x 370 mm concept and pricing.")
+            expect(page.locator(".planning-panel")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".cost-block, .camera-card")).to_have_count(0)
+            expect(page.locator(".planning-panel")).to_have_count(1)
+            expect(page.get_by_text("no machine has been generated yet").first).to_be_visible(
+                timeout=STEP_TIMEOUT_MS
+            )
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            log("Quantities show a single planning brief with no prebuilt geometry.")
+            # Single planning summary: no duplicate right brief before a design.
+            expect(page.locator(".planning-panel")).to_have_count(1)
+            expect(page.locator(".conversation-panel .brief-card")).to_have_count(0)
 
             summary = page.locator(".summary-card")
             expect(summary).to_contain_text(EXPECTED_STOCK, timeout=STEP_TIMEOUT_MS)
@@ -199,40 +241,85 @@ def run_smoke(web_url: str) -> None:
             expect(plan).to_contain_text("100 µL", timeout=STEP_TIMEOUT_MS)
             expect(plan).to_contain_text("900 µL", timeout=STEP_TIMEOUT_MS)
             log("Complete synthetic task is reflected in the displayed summary.")
+            # Confirm stays disabled until an explicit accepted design exists.
+            expect(page.get_by_role("button", name="Confirm design")).to_be_disabled(
+                timeout=STEP_TIMEOUT_MS
+            )
+            # Brief download comes from planning before any design exists.
+            with page.expect_download() as planning_download:
+                page.get_by_role("link", name="Download brief", exact=True).first.click()
+            planning_data = json.loads(
+                Path(planning_download.value.path()).read_text(encoding="utf-8")
+            )
+            assert "engineering_design" not in planning_data
+            assert planning_data["brief"]["equipment"] is not None
+
+            # Explicit model-backed design reveals the wide 600 x 370 mm geometry.
+            develop_layout(page)
+            footprint = page.locator(".footprint strong")
+            expect(footprint).to_contain_text("600", timeout=STEP_TIMEOUT_MS)
+            expect(footprint).to_contain_text("370", timeout=STEP_TIMEOUT_MS)
+            expect(page.locator(".cost-block")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            expect(page.get_by_role("button", name="Confirm design")).to_be_enabled(
+                timeout=STEP_TIMEOUT_MS
+            )
+            # Right brief appears only after a real design, collapsed by default.
+            details = page.locator("details.brief-card, details.right-brief")
+            expect(details).to_have_count(1, timeout=STEP_TIMEOUT_MS)
+            assert details.get_attribute("open") is None
+            log("Explicit design reveals the supported 600 x 370 mm concept and pricing.")
 
             send_chat(page, "Change the target to 20 mg/mL", "impossible target")
             expect(plan).to_contain_text("Needs attention", timeout=STEP_TIMEOUT_MS)
-            page.get_by_role("button", name="Confirm design").click()
-            expect(page.get_by_role("alert")).to_be_visible(timeout=STEP_TIMEOUT_MS)
+            # Effective change invalidates the design and hides the viewer again.
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".cost-block")).to_have_count(0)
+            expect(page.get_by_role("button", name="Confirm design")).to_be_disabled(
+                timeout=STEP_TIMEOUT_MS
+            )
+            invalid_confirmation = page.request.post(
+                f"{web_url.rstrip('/')}/api/projects/{planning_data['project_id']}/confirm"
+            )
+            assert invalid_confirmation.status == 422
             expect(page.locator(".chat-status")).to_contain_text("Draft")
             send_chat(page, COMPLETE_TASK_MESSAGE, EXPECTED_STOCK)
             expect(plan).to_contain_text("100 µL", timeout=STEP_TIMEOUT_MS)
-            log("Impossible target is rejected; restoring the original target restores the plan.")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
+            expect(plan).to_contain_text("100 µL", timeout=STEP_TIMEOUT_MS)
+            log("Impossible target is rejected; restoring the target and design restores the plan.")
 
-            # Feasible narrower width: compact 400 x 470 mm layout.
-            send_chat(page, WIDTH_450_MESSAGE, "Within requested width")
+            # Feasible narrower width hides the viewer until a fresh design lands.
+            send_chat(page, WIDTH_450_MESSAGE, "Recorded a 450 mm maximum width")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
             expect(footprint).to_contain_text("400", timeout=STEP_TIMEOUT_MS)
             expect(footprint).to_contain_text("470", timeout=STEP_TIMEOUT_MS)
             expect(page.get_by_text("Within requested width")).to_be_visible(
                 timeout=STEP_TIMEOUT_MS
             )
-            expect(page.get_by_text("400 mm wide").first).to_be_visible(timeout=STEP_TIMEOUT_MS)
-            log("450 mm request shows compact 400 x 470 mm geometry and 'Within requested width'.")
+            expect(page.get_by_text("Meta-proposed layout").first).to_be_visible()
+            log("450 mm request shows compact 400 x 470 mm geometry after explicit design.")
 
-            # Infeasible width: message shown and previous geometry preserved.
+            # Infeasible width: planning warning, no canvas, preserved backend geometry.
             send_chat(page, WIDTH_300_MESSAGE, "below this concept's supported minimum")
             expect(page.get_by_text("Requested width cannot fit this concept")).to_be_visible(
                 timeout=STEP_TIMEOUT_MS
             )
-            expect(footprint).to_contain_text("400", timeout=STEP_TIMEOUT_MS)
-            expect(footprint).to_contain_text("470", timeout=STEP_TIMEOUT_MS)
-            log("300 mm request shows the infeasible message and preserves 400 x 470 mm geometry.")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".cost-block")).to_have_count(0)
+            expect(page.get_by_role("button", name="Confirm design")).to_be_disabled(
+                timeout=STEP_TIMEOUT_MS
+            )
+            log("300 mm request shows the infeasible message with no canvas.")
 
-            # Wider feasible width then confirm.
-            send_chat(page, WIDTH_650_MESSAGE, "Within requested width")
+            # Wider feasible width then explicit fresh design and confirm.
+            send_chat(page, WIDTH_650_MESSAGE, "Recorded a 650 mm maximum width")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
             expect(footprint).to_contain_text("600", timeout=STEP_TIMEOUT_MS)
             expect(footprint).to_contain_text("370", timeout=STEP_TIMEOUT_MS)
-            log("650 mm request restores the wide 600 x 370 mm geometry.")
+            log("650 mm request restores the wide 600 x 370 mm geometry after design.")
 
             confirm_button = page.get_by_role("button", name="Confirm design")
             expect(confirm_button).to_be_enabled(timeout=STEP_TIMEOUT_MS)
@@ -460,7 +547,11 @@ def run_smoke(web_url: str) -> None:
             expect(page.locator(".selection-block")).to_contain_text("Custom deck")
             log("Real ZIP download, revision, hashes, CAD and assembly selection verified.")
 
+            # Cooling revision invalidates the design; regenerate before cost checks.
             send_chat(page, "Add refrigerated storage at 4 C.", "Recorded a 4 C")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".cost-block")).to_have_count(0)
+            develop_layout(page)
             expect(
                 component_list.get_by_role("button", name="Refrigerated sample bay")
             ).to_be_visible()
@@ -469,6 +560,8 @@ def run_smoke(web_url: str) -> None:
             expect(page.locator(".chat-status")).to_contain_text("Draft")
 
             page.get_by_label("Choose Motor drivers", exact=True).select_option("a4988")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
             expect(page.locator(".cost-block")).to_contain_text("225.18")
             expect(page.get_by_label("Describe your workflow or request a change")).to_be_enabled()
             try:
@@ -487,6 +580,8 @@ def run_smoke(web_url: str) -> None:
                 log(f"Alerts: {alerts}, page errors: {page_errors}")
                 raise
             assert configured.value.status == 200, configured.value.text()
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
             expect(page.locator(".cost-block")).to_contain_text("4,165.23")
             expect(page.locator(".cost-block")).to_contain_text("from")
             expect(footprint).to_contain_text("624")
@@ -497,6 +592,8 @@ def run_smoke(web_url: str) -> None:
             page.get_by_label("Target temperature (°C)", exact=True).fill("4")
             page.get_by_label("Refrigerated sample bay", exact=True).uncheck()
             page.get_by_role("button", name="Apply cooling settings").click()
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
             expect(footprint).to_contain_text("370")
             expect(
                 component_list.get_by_role("button", name="Refrigerated sample bay")
@@ -504,13 +601,15 @@ def run_smoke(web_url: str) -> None:
             expect(page.locator(".cost-block")).to_contain_text("180.28")
             page.get_by_label("Refrigerated sample bay", exact=True).check()
             page.get_by_role("button", name="Apply cooling settings").click()
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            develop_layout(page)
             expect(page.get_by_label("Choose Cooling", exact=True)).to_have_value("opentrons-gen2")
             expect(footprint).to_contain_text("624")
             expect(page.locator(".cost-block")).to_contain_text("4,165.23")
             log("Cooling, prices, alternatives, rejection and re-enable are coherent.")
-            expect(page.get_by_role("link", name="Download project ZIP", exact=True)).to_have_count(
-                0
-            )
+            # Stale files remain rejected via API even though the UI hides downloads.
+            stale_gone = page.get_by_role("link", name="Download project ZIP", exact=True)
+            expect(stale_gone).to_have_count(0)
             assert page.request.get(web_url.rstrip("/") + baseline_download).status == 409
             baseline_project_id = str(baseline_snapshot["id"])
             for stale_job_id in physics_job_ids:

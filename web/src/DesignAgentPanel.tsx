@@ -8,7 +8,7 @@ type Props = {
 };
 
 const DEFAULT_INSTRUCTION =
-  'Rearrange the work area for clear access to the sample rack, preserving the existing equipment.';
+  'Propose a workstation layout for the recorded workflow, keeping sample access clear and respecting the equipment.';
 
 function readDetail(data: unknown, status: number): string {
   if (data && typeof data === 'object' && 'detail' in data && typeof (data as { detail: unknown }).detail === 'string') {
@@ -101,7 +101,7 @@ export default function DesignAgentPanel({ project, onProject, onBusy }: Props) 
       <div className="design-agent-heading">
         <div>
           <h2 id="design-agent-title">Workstation layout</h2>
-          <p>Meta proposes the layout. Geometry checks protect the accepted project.</p>
+          <p>Meta proposes a layout within one supported pipetting architecture. Geometry checks protect the accepted project.</p>
         </div>
         {run && (
           <span className={`design-agent-status design-agent-status-${run.status}`}>

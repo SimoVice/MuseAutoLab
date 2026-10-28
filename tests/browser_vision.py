@@ -5,16 +5,17 @@ Standalone executable: imports ``browser_smoke`` as a harness, points
 with ``run_vision`` and delegates to ``harness.main``. Process launch,
 free ports and log cleanup are reused exactly from the harness.
 
-Coverage: no analysis on load or example load, example load plus manual
-analyze to a ready job, real request counting without route stubbing,
-detection cards, aria-pressed accept buttons, label and box edits, tube
-source-rack mapping plus Show in 3D, reject of the other object, save,
-scene review, six-file ZIP hash checks with raw and history preservation,
-stale observation 409 after a further review, revision change clearing the
-camera UI with old image and report 409, zero-object scene via a fresh
-fake-camera capture, camera capture without automatic analysis with
-stopped tracks, stop button and revision stop, and a real JPEG upload
-through the file input.
+Coverage: gated planning (no camera/canvas before explicit design), explicit
+``develop_layout`` before camera work, no analysis on load or example load,
+example load plus manual analyze to a ready job, real request counting without
+route stubbing, detection cards, aria-pressed accept buttons, label and box
+edits, tube source-rack mapping plus Show in 3D, reject of the other object,
+save, scene review, six-file ZIP hash checks with raw and history
+preservation, stale observation 409 after a further review, revision change
+clearing the camera UI with old image and report 409, zero-object scene via a
+fresh fake-camera capture, camera capture without automatic analysis with
+stopped tracks, stop button and revision stop, and a real JPEG upload through
+the file input.
 """
 
 from __future__ import annotations
@@ -122,7 +123,15 @@ def run_vision(web_url: str) -> None:
             expect(page.get_by_text("Workspace ready")).to_be_visible(timeout=STEP_TIMEOUT_MS)
             expect(page.locator(".workspace-empty")).to_be_visible(timeout=STEP_TIMEOUT_MS)
             expect(page.locator(".camera-card")).to_have_count(0)
+            # Planning first: quantities alone reveal no canvas, cost or camera.
             harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, harness.EXPECTED_STOCK)
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".camera-card")).to_have_count(0)
+            expect(page.get_by_role("button", name="Confirm design")).to_be_disabled(
+                timeout=STEP_TIMEOUT_MS
+            )
+            # Explicit model-backed design reveals geometry and the camera panel.
+            harness.develop_layout(page)
             camera = _camera(page)
             expect(camera.get_by_role("heading", name="Labware photo check")).to_be_visible(
                 timeout=STEP_TIMEOUT_MS
@@ -252,19 +261,22 @@ def run_vision(web_url: str) -> None:
             log("Stale observation version correctly rejected with 409.")
 
             # Revision change clears the camera UI; old image and report are 409.
+            # Regenerate the viewer after the width change before camera checks.
             old_image_url = f"{base}/api/projects/{project_id}/inspections/{job_id}/image"
             old_archive_url = (
                 f"{base}/api/projects/{project_id}/inspections/{job_id}/archive"
                 f"?observation_version={stale_version + 1}"
             )
-            harness.send_chat(page, harness.WIDTH_450_MESSAGE, "Within requested width")
-            expect(camera.get_by_text("no photo yet", exact=True)).to_be_visible(
-                timeout=STEP_TIMEOUT_MS
-            )
-            expect(camera.locator("ul.camera-cards > li")).to_have_count(0)
+            harness.send_chat(page, harness.WIDTH_450_MESSAGE, "Recorded a 450 mm maximum width")
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".camera-card")).to_have_count(0)
             assert page.request.get(old_image_url).status == 409
             assert page.request.get(old_archive_url).status == 409
             log("Revision change cleared the camera UI and stale reads are 409.")
+            harness.develop_layout(page)
+            expect(page.locator(".footprint strong")).to_contain_text("400")
+            expect(camera.get_by_text("no photo yet", exact=True)).to_be_visible()
+            expect(camera.locator("ul.camera-cards > li")).to_have_count(0)
 
             # Zero-object scene via a fresh fake-camera capture (new bytes, second model call).
             camera.get_by_role("button", name="Use camera").click()
@@ -310,12 +322,13 @@ def run_vision(web_url: str) -> None:
             expect(camera.locator("video.camera-video")).to_have_count(0)
             camera.get_by_role("button", name="Use camera").click()
             expect(camera.locator("video.camera-video")).to_be_visible(timeout=STEP_TIMEOUT_MS)
-            harness.send_chat(page, harness.WIDTH_650_MESSAGE, "Within requested width")
+            harness.send_chat(page, harness.WIDTH_650_MESSAGE, "Recorded a 650 mm maximum width")
             expect(camera.locator("video.camera-video")).to_have_count(0)
-            expect(camera.get_by_text("no photo yet", exact=True)).to_be_visible(
-                timeout=STEP_TIMEOUT_MS
-            )
+            expect(page.locator(".camera-card")).to_have_count(0)
             log("Stop button and revision stop verified.")
+            harness.develop_layout(page)
+            expect(page.locator(".footprint strong")).to_contain_text("600")
+            expect(camera.get_by_text("no photo yet", exact=True)).to_be_visible()
 
             # Real JPEG upload through the file input, then analyze.
             assert EXAMPLE_JPEG.exists()
@@ -352,6 +365,9 @@ def run_vision(web_url: str) -> None:
             expect(page.locator(".camera-card")).to_have_count(0)
             assert page.evaluate("window.resetTracks.every(t => t.readyState === 'ended')")
             harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, harness.EXPECTED_STOCK)
+            expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
+            expect(page.locator(".camera-card")).to_have_count(0)
+            harness.develop_layout(page)
             expect(_camera(page).locator(".camera-cards > li")).to_have_count(0)
             expect(_camera(page).get_by_text("no photo yet", exact=True)).to_be_visible()
             log("New project stops the camera and clears old images and inspection results.")

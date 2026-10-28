@@ -26,9 +26,13 @@ def candidate():
 
 
 async def fake_proposal(project, instruction, feedback, **kwargs):
-    raw = deepcopy(candidate())
+    limit = project.get("summary", {}).get("workspace_width_mm")
+    raw = deepcopy(
+        browser_stub_server._fixture_layout(project) if limit and limit < 500 else candidate()
+    )
     if "reject" in instruction.lower() or ("correction" in instruction.lower() and not feedback):
-        raw["placements"][1].update(x_mm=-160, z_mm=55)
+        first = raw["placements"][0]
+        raw["placements"][1].update(x_mm=first["x_mm"], z_mm=first["z_mm"])
     return raw, {"model": "offline-model-fixture", "input_tokens": 0, "output_tokens": 0}
 
 

@@ -48,7 +48,7 @@ def _project(revision=3):
     return {
         "id": "project-1",
         "revision": revision,
-        "summary": {"workspace_width_mm": 600},
+        "summary": {"workspace_width_mm": 600, "equipment": "pipette and tubes"},
         "design": {
             "constraint_status": "fits",
             "footprint": {"width_mm": 600, "depth_mm": 370, "height_mm": 400},
@@ -350,6 +350,25 @@ def test_design_endpoint_rejects_unsupported_workflow_before_model(client, monke
         json={"project_revision": 4, "instruction": "Arrange the deck."},
     )
     assert response.status_code == 409
+
+
+def test_design_endpoint_requires_equipment_before_model(client, monkeypatch):
+    source = _project(revision=4)
+    source["summary"]["equipment"] = None
+    _seed_session(source)
+
+    async def forbidden_develop(current, instruction):
+        raise AssertionError("must not call Meta before equipment is recorded")
+
+    monkeypatch.setattr(api, "develop_design", forbidden_develop)
+    monkeypatch.setattr(api, "describe_workflow", lambda p: {"design_available": True})
+    response = client.post(
+        "/api/projects/project-1/design",
+        json={"project_revision": 4, "instruction": "Propose a layout."},
+    )
+    assert response.status_code == 409
+    assert "equipment" in response.json()["detail"]
+    assert api._sessions["project-1"].project == source
 
 
 def test_design_endpoint_rejects_infeasible_width_before_model(client, monkeypatch):

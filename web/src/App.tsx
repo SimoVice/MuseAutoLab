@@ -169,17 +169,26 @@ export default function App() {
   }, []);
 
   const workflow = project?.workflow;
-  const designAvailable = Boolean(workflow?.design_available);
-  const parametersStarted = Boolean(workflow?.parameters_started);
+  const supportedLiquid = Boolean(workflow && workflow.kind === 'liquid_preparation' && workflow.design_available);
+  const hasEngineeringDesign = Boolean(project?.engineering_design);
   const recordedBrief = briefEntries(project?.brief);
   const hasBrief = recordedBrief.length > 0;
-  const showLiquidParams = parametersStarted || (project?.status === 'confirmed' && project?.plan?.status === 'ready');
+  const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || (project?.status === 'confirmed' && project?.plan?.status === 'ready'));
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
-  const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && designAvailable;
+  const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && hasEngineeringDesign;
+  const equipmentText = (project?.summary?.equipment ?? project?.brief?.equipment ?? '').trim();
   const showDesignAgent = Boolean(
-    project && designAvailable && project.workflow?.kind === 'liquid_preparation' && project.design?.constraint_status !== 'infeasible',
+    project && supportedLiquid && equipmentText !== '' && project.design?.constraint_status !== 'infeasible',
   );
+  const acceptedLayoutId = project?.engineering_design?.provenance.run_id;
+  useEffect(() => {
+    if (!acceptedLayoutId) return;
+    viewer.current?.scrollIntoView({
+      block: 'start',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
+  }, [acceptedLayoutId]);
   useEffect(() => {
     if (!showPreview) setPlaying(false);
   }, [showPreview]);
@@ -288,11 +297,11 @@ export default function App() {
     }
   }
 
-  const part = designAvailable ? project?.design.components.find((component) => component.id === selectedId) : undefined;
-  const dimensions = designAvailable ? project?.design.footprint : undefined;
+  const part = hasEngineeringDesign ? project?.design.components.find((component) => component.id === selectedId) : undefined;
+  const dimensions = hasEngineeringDesign ? project?.design.footprint : undefined;
   const summary = project?.summary;
   const status = project?.design.constraint_status;
-  const plan = designAvailable ? (project?.plan ?? null) : null;
+  const plan = supportedLiquid ? (project?.plan ?? null) : null;
   const fields = [
     { label: 'Stock', value: summary?.stock_concentration },
     { label: 'Targets', value: summary?.target_concentrations },
@@ -300,18 +309,18 @@ export default function App() {
     { label: 'Equipment', value: summary?.equipment },
     { label: 'Available width', value: summary?.workspace_width_mm != null ? `${formatDimension(summary.workspace_width_mm)} mm` : null },
   ];
-  const sourcing = designAvailable ? (project?.sourcing ?? null) : null;
+  const sourcing = hasEngineeringDesign ? (project?.sourcing ?? null) : null;
   const estimatedAmount = project?.design.estimated_cost.amount;
   const costCurrency = sourcing?.currency ?? project?.design.estimated_cost.currency ?? 'USD';
-  const costAmount = designAvailable ? (sourcing ? sourcing.subtotal : estimatedAmount) : null;
+  const costAmount = hasEngineeringDesign ? (sourcing ? sourcing.subtotal : estimatedAmount) : null;
   const costText = costAmount == null
     ? 'Not estimated yet'
     : `${sourcing?.is_lower_bound ? 'from ' : ''}${formatMoney(costAmount, costCurrency)}`;
   const coolingEnabled = Boolean(project?.summary?.cooling_enabled ?? project?.design?.cooling?.enabled ?? false);
   const effectiveTarget = project?.summary?.cooling_target_c ?? project?.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
-  const coolingNotes = designAvailable ? (project?.design?.cooling?.notes ?? []) : [];
+  const coolingNotes = hasEngineeringDesign ? (project?.design?.cooling?.notes ?? []) : [];
   const isConfirmed = project?.status === 'confirmed';
-  const headerLabel = hasBrief || designAvailable ? 'Lab automation project' : 'New automation project';
+  const headerLabel = hasBrief || hasEngineeringDesign ? 'Lab automation project' : 'New automation project';
 
   return (
     <div className="app-shell">
@@ -327,32 +336,41 @@ export default function App() {
         </div>
       </header>
       <main className="workspace">
-        <section className={`design-panel${isConfirmed && designAvailable ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
+        <section className={`design-panel${isConfirmed && hasEngineeringDesign ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
               <p className="kicker"><span className="kicker-dot" /> Design workspace</p>
               <h1 id="design-title">{headerLabel}</h1>
               <p className="design-intro">Automation designed around your lab.</p>
             </div>
-            <div className="revision"><span>Project revision</span><strong>{(hasBrief || designAvailable) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
+            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
           </div>
 
-          {!designAvailable ? (
+          {!hasEngineeringDesign ? (
             hasBrief ? (
               <div className="planning-panel" aria-labelledby="design-title">
                 <div className="planning-heading">
                   <div>
                     <h2>Project brief</h2>
-                    <p>{workflow?.label ?? 'General automation'} · {workflowStage(workflow?.status)}</p>
+                    <p>{workflow?.label ?? 'General automation'} · {supportedLiquid ? 'Planning' : workflowStage(workflow?.status)}</p>
                   </div>
-                  <span className="planning-status">{workflowStage(workflow?.status)}</span>
+                  <span className="planning-status">{supportedLiquid ? 'Planning' : workflowStage(workflow?.status)}</span>
                 </div>
+                <a className="brief-download" href={briefHref} download="project-brief.json">Download brief</a>
                 <dl>
                   {recordedBrief.map((entry) => (
                     <div key={entry.key}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>
                   ))}
                 </dl>
-                <p className="planning-note">{LIQUID_NOTE}</p>
+                {!supportedLiquid ? (
+                  <p className="planning-note">{LIQUID_NOTE}</p>
+                ) : status === 'infeasible' ? (
+                  <p className="planning-note">Requested width cannot fit this concept. Adjust the available width in chat to continue.</p>
+                ) : equipmentText === '' ? (
+                  <p className="planning-note">No machine has been generated yet. Discuss the equipment in chat so the layout can be proposed for this workflow.</p>
+                ) : (
+                  <p className="planning-note">No machine has been generated yet. Use the workstation layout panel below to develop a design with Meta.</p>
+                )}
               </div>
             ) : (
               <div className="workspace-empty" aria-labelledby="design-title">
@@ -364,7 +382,7 @@ export default function App() {
           ) : (
             <>
               <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
-                <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span className="viewer-badge">Unverified concept</span></div>
+                <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span><span className="viewer-badge">Meta-proposed layout</span> <span className="viewer-badge">Unverified concept</span></span></div>
                 <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
                   {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
@@ -380,7 +398,11 @@ export default function App() {
                 <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
                 <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
               </div>
-              {project && showDesignAgent && <DesignAgentPanel project={project} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
+            </>
+          )}
+          {project && showDesignAgent && <DesignAgentPanel project={project} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
+          {hasEngineeringDesign && (
+            <>
               {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}
               {project && showPreview && (
                 <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
@@ -457,23 +479,24 @@ export default function App() {
             </div>)}
             {busy && <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span> Working on your request…</div>}
             <div ref={lastMessage} />
-            {hasBrief && project && (
-              <div className="brief-card" aria-labelledby="brief-title">
+            {hasEngineeringDesign && hasBrief && project && (
+              <details className="brief-card" aria-labelledby="brief-title">
+                <summary>Project brief</summary>
                 <a className="brief-download" href={briefHref} download="project-brief.json">Download brief</a>
                 <div className="brief-heading"><div><h3 id="brief-title">Project brief</h3><p>{workflow?.label ?? 'General automation'}</p></div></div>
                 <dl>{recordedBrief.map((entry) => <div key={entry.key}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>)}</dl>
                 <p className="brief-note">Your requirements for this project revision.</p>
-              </div>
+              </details>
             )}
-            {designAvailable && showLiquidParams && (
+            {showLiquidParams && (
               <div className="summary-card">
                 <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
                 <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
-                {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy}>Confirm design <span>↗</span></button>}
+                {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
                 <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
               </div>
             )}
-            {designAvailable && showLiquidParams && project && plan == null && (
+            {showLiquidParams && project && plan == null && (
               <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
                 <div className="plan-heading">
                   <div>
@@ -485,7 +508,7 @@ export default function App() {
                 <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
               </div>
             )}
-            {designAvailable && showLiquidParams && project && plan && (
+            {showLiquidParams && project && plan && (
               <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
                 <div className="plan-heading">
                   <div>

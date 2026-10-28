@@ -350,6 +350,7 @@ a { color: inherit; text-decoration: none; }
 .planning-panel dd { margin: 0; color: #2c515a; font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; }
 .planning-note { margin: 14px 0 0; color: #7d9494; font-size: 11px; line-height: 1.55; }
 .brief-card { border: 1px solid #e0ebe9; border-radius: 10px; padding: 16px 17px; background: #fcfefd; margin-top: 12px; }
+details.brief-card summary { cursor: pointer; color: #31565c; font-size: 12px; font-weight: 700; }
 .brief-download { display: inline-block; margin-bottom: 10px; font-size: 11px; font-weight: 700; color: #16837e; text-decoration: underline; text-underline-offset: 2px; }
 .brief-heading h3 { margin: 0; color: #31565c; font-size: 12px; font-weight: 700; }
 .brief-heading p { margin: 5px 0 0; color: #91a6a3; font-size: 10px; }

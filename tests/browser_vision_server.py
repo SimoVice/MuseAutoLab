@@ -2,15 +2,9 @@
 
 Runs the actual product FastAPI app and domain code, keeps the chat
 ``generate_turn`` fake from ``browser_stub_server`` and replaces only
-``app.vision.analyze_image`` with a deterministic fake.
-
-The fake receives the real canonical image, waits briefly to emulate an
-async model call, then returns a fixed raw observation. The first model
-call returns two regions, every later call returns an empty scene so the
-browser test can cover the zero-object acknowledgement with a fresh
-captured image (the job cache reuses identical bytes without a new call).
-All image preparation, job orchestration, review validation and archive
-downloads stay real. No expected 3D objects are used as vision inputs.
+``app.vision.analyze_image`` with a deterministic fake and
+``app.design_agent.propose_layout`` with the shared explicit offline layout
+fixture. No Meta call occurs.
 """
 
 from __future__ import annotations
@@ -28,6 +22,7 @@ if str(ROOT) not in sys.path:
 import browser_stub_server as baseline  # noqa: E402
 
 import app.api  # noqa: E402
+import app.design_agent as design_agent  # noqa: E402
 import app.vision as vision  # noqa: E402
 
 CALL_COUNT = 0
@@ -105,14 +100,15 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     if args.host not in ("127.0.0.1", "localhost"):
         raise ValueError("This stub server binds only to loopback (127.0.0.1).")
-    # Keep the chat fake from the baseline smoke server; only vision is faked here.
+    # Keep the chat fake and explicit layout fixture; only vision is faked here.
     app.api.generate_turn = baseline._fake_generate_turn  # type: ignore[attr-defined]
+    design_agent.propose_layout = baseline._fake_propose_layout  # type: ignore[attr-defined]
     vision.analyze_image = _fake_analyze_image  # type: ignore[method-assign]
     import uvicorn
 
     print(
         f"[vision-server] Starting vision-stubbed API on http://{args.host}:{args.port} "
-        "(chat and vision are stubbed; jobs and images are real).",
+        "(chat, layout and vision are stubbed; jobs and images are real).",
         flush=True,
     )
     uvicorn.run(app.api.app, host=args.host, port=args.port, log_level="info")

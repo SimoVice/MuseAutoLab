@@ -7,6 +7,10 @@ application checks and compiles that proposal into actual 3D/CAD geometry.
 
 This feature operates on the existing workstation project. It does not generate
 arbitrary robots, validate hardware or implement the planned arm/camera module.
+The backend retains a built-in parametric workstation as the compiler's reference
+architecture. It is not a Meta-generated machine. The UI does not render that
+reference just because the task was classified: the first viewer appears only
+after an explicit model layout proposal passes its checks.
 
 ![Actual live Meta layout result](images/meta-layout-panel.png)
 
@@ -64,7 +68,8 @@ target and 1 mL per tube, using a pipette and microcentrifuge tubes. These value
 are an optional example, not a preset or a prerequisite for starting the chat.
 If you want the geometric example below, set the maximum width to at least 500 mm.
 
-In **Workstation layout**, enter:
+Once equipment is recorded, **Workstation layout** becomes available. Before that,
+the UI remains in planning without a 3D machine or prices. In the panel, enter:
 
 > Design an operating deck exactly 500 mm wide and 480 mm deep. Place the sample
 > rack at the front centre and preserve all five component sizes and the required
@@ -73,11 +78,17 @@ In **Workstation layout**, enter:
 Choose **Develop design with Meta**. A valid proposal changes the displayed
 geometry and creates a draft revision. Confirm again before running physics or
 generating project files. The operating deck excludes the appended cold bay.
+Before the first accepted proposal there is no viewer. Concentrations/volumes can
+be planned beforehand, but confirming the machine also requires an accepted
+layout. A repeated welcome is not part of the model's intended first reply: the
+interface has already asked the opening question.
 
 No model request happens merely by opening the panel. Requirements chat and
 layout design are separate actions. Chat/configuration changes rebuild the
 baseline and invalidate the previous accepted layout; develop a new layout after
-those changes. Confirmation preserves it. Projects remain process-local.
+those changes. The invalidated viewer and its dependent panels are hidden until
+then. A rejected candidate preserves the last accepted layout. Confirmation
+preserves it. Projects remain process-local.
 
 ## Supported design and failure behavior
 

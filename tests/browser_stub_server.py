@@ -2,32 +2,16 @@
 
 This server runs the actual product FastAPI app and domain logic from
 ``app.api`` / ``app.domain`` locally, but replaces the Meta model client
-(``app.api.generate_turn``) with a deterministic async fake.
-
-No Meta request is made and no API key is needed. The fake only
-understands the four known synthetic English messages sent by
-``tests/browser_smoke.py``:
-
-* a complete task filling stock concentration, target, final volume and
-  equipment,
-* an impossible 20 mg/mL target request,
-* a 450 mm workspace-width request,
-* a 300 mm workspace-width request,
-* a 650 mm workspace-width request.
-
-Any other message raises ``ValueError`` (surfaced by the API as HTTP 422)
-so the smoke test cannot silently pass with unexpected input.
-
-The backend domain still performs the actual layout changes
-(600x370 mm wide vs 400x470 mm compact), the infeasible-width handling,
-and the confirmation checks. No physical or WebGL-visual validation is
-implied.
+(``app.api.generate_turn``) with a deterministic async fake and the layout
+model call (``app.design_agent.propose_layout``) with an explicit offline
+fixture. No Meta request is made and no API key is needed.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,6 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import app.api  # noqa: E402
+import app.design_agent  # noqa: E402
 
 
 class _FakeTurn:
@@ -51,11 +36,8 @@ class _FakeTurn:
 async def _fake_generate_turn(
     project: dict, user_message: str, history: list[dict[str, str]], **kwargs
 ) -> tuple[_FakeTurn, dict[str, int]]:
-    """Deterministic replacement for ``app.model_client.generate_turn``.
+    """Deterministic replacement for ``app.model_client.generate_turn``."""
 
-    NOTE: the AI provider is stubbed here. This fake performs no model
-    call and only matches the synthetic messages used by the smoke test.
-    """
     if user_message == "Hello.":
         return _FakeTurn("What would you like to automate?", {}), {}
 
@@ -113,22 +95,15 @@ async def _fake_generate_turn(
     if user_message == "Add refrigerated storage at 4 C.":
         return _FakeTurn(
             "Recorded a 4 C refrigerated storage request.",
-            {
-                "cooling_enabled": True,
-                "cooling_target_c": 4,
-            },
+            {"cooling_enabled": True, "cooling_target_c": 4},
         ), usage
 
     if "20 mg/ml" in lowered:
         return _FakeTurn(
             "Recorded an impossible target concentration for this test.",
-            {
-                "target_concentrations": "20 mg/mL",
-            },
+            {"target_concentrations": "20 mg/mL"},
         ), usage
 
-    # Complete synthetic task: fills the four required text fields.
-    # Expected to contain "10 mg/mL" plus pipette/microcentrifuge wording.
     if (
         ("10 mg/ml" in lowered or "10mg/ml" in lowered)
         and "pipette" in lowered
@@ -147,9 +122,6 @@ async def _fake_generate_turn(
         )
         return turn, usage
 
-    # Width requests are matched on the requested number plus a mm unit.
-    # Each branch is checked after the complete-task branch so that the
-    # "1 mL" volume message cannot be mistaken for a width.
     if "450" in user_message and "mm" in lowered:
         turn = _FakeTurn(
             "Noted a 450 mm width limit for this synthetic concept (stubbed AI provider).",
@@ -177,6 +149,65 @@ async def _fake_generate_turn(
     )
 
 
+WIDE_IDS = ("source-rack", "sample-rack", "tip-rack", "tip-waste", "controller")
+# Fixed actual component envelopes are retained by the compiler; positions use
+# the default rack layout with the controller clamped clear of the rear strip
+# (z >= -depth/2 + 85 + size_z/2).
+_WIDE_POSITIONS = {
+    "source-rack": (-160.0, 55.0),
+    "sample-rack": (-45.0, 55.0),
+    "tip-rack": (70.0, 55.0),
+    "tip-waste": (200.0, 65.0),
+    "controller": (195.0, -50.0),
+}
+_COMPACT_POSITIONS = {
+    "source-rack": (-112.0, -45.0),
+    "sample-rack": (0.0, -45.0),
+    "tip-rack": (112.0, -45.0),
+    "tip-waste": (-120.0, 120.0),
+    "controller": (120.0, 120.0),
+}
+
+
+def _fixture_layout(project: dict) -> dict:
+    """Explicit offline layout fixture respecting the feasible width."""
+    summary = project.get("summary") or {}
+    width = summary.get("workspace_width_mm")
+    compact = (
+        isinstance(width, (int, float))
+        and not isinstance(width, bool)
+        and width < 600
+        and width >= 400
+    )
+    if compact:
+        deck = (400.0, 470.0)
+        positions = _COMPACT_POSITIONS
+    else:
+        deck = (600.0, 370.0)
+        positions = _WIDE_POSITIONS
+    return {
+        "schema_version": "1",
+        "deck_width_mm": deck[0],
+        "deck_depth_mm": deck[1],
+        "placements": [
+            {"component_id": cid, "x_mm": positions[cid][0], "z_mm": positions[cid][1]}
+            for cid in WIDE_IDS
+        ],
+        "rationale": "Offline fixture: valid synthetic operating-deck layout; "
+        "no provider request or hardware test.",
+        "assumptions": ["Synthetic offline fixture for gated browser tests."],
+    }
+
+
+async def _fake_propose_layout(project, instruction, feedback, **kwargs):
+    """Explicit offline model fixture for ``app.design_agent.propose_layout``."""
+    return deepcopy(_fixture_layout(project)), {
+        "model": "offline-layout-fixture",
+        "input_tokens": 0,
+        "output_tokens": 0,
+    }
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run the stubbed MuseAutoLab API for browser smoke testing."
@@ -193,15 +224,15 @@ def main(argv: list[str] | None = None) -> None:
     if args.host not in ("127.0.0.1", "localhost"):
         raise ValueError("This stub server binds only to loopback (127.0.0.1).")
 
-    # Replace only the model-callable used by the API module. Domain logic
-    # (apply_update / confirm_project) remains the actual product code.
+    # Only stub the model callables; domain, compiler and geometry stay real.
     app.api.generate_turn = _fake_generate_turn  # type: ignore[method-assign]
+    app.design_agent.propose_layout = _fake_propose_layout  # type: ignore[method-assign]
 
     import uvicorn
 
     print(
         f"[stub-server] Starting stubbed MuseAutoLab API on http://{args.host}:{args.port} "
-        "(AI provider is stubbed; no Meta request will be made).",
+        "(AI provider and layout model are stubbed; no Meta request will be made).",
         flush=True,
     )
     uvicorn.run(app.api.app, host=args.host, port=args.port, log_level="info")

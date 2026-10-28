@@ -190,7 +190,6 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     reply += "\nReview the plan below before confirming."
             if "workspace_width_mm" in patch:
                 width = updated["summary"]["workspace_width_mm"]
-                footprint = updated["design"]["footprint"]
                 if updated["design"]["constraint_status"] == "infeasible":
                     reply += (
                         f"\n\nA {width:g} mm width is below this concept's supported minimum. "
@@ -199,9 +198,9 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     )
                 else:
                     reply += (
-                        f"\n\nThe modeled footprint is {footprint['width_mm']:g} mm wide "
-                        f"for your {width:g} mm limit. Fixed component dimensions are unchanged; "
-                        "custom frame parts adjust. Motion and physical fit remain unverified."
+                        f"\n\nRecorded a {width:g} mm maximum width. "
+                        "Develop a fresh layout with Meta to check the arrangement; "
+                        "this message has not generated a new machine."
                     )
             reply += _cooling_feedback(patch, updated)
 
@@ -312,6 +311,15 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
             raise HTTPException(
                 status_code=409,
                 detail="Layout design is not available for this workflow.",
+            )
+        equipment = (
+            current.get("summary", {}).get("equipment")
+            or current.get("brief", {}).get("equipment")
+        )
+        if not isinstance(equipment, str) or not equipment.strip():
+            raise HTTPException(
+                status_code=409,
+                detail="Describe the equipment in chat before developing a workstation layout.",
             )
         design = current.get("design", {}) if isinstance(current, dict) else {}
         if design.get("constraint_status") == "infeasible":
