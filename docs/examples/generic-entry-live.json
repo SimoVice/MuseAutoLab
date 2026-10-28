@@ -1,0 +1,62 @@
+{
+  "recorded_on": "2026-10-28",
+  "kind": "Synthetic live Meta browser conversation",
+  "scope": "No recipe values in the opening. Later values are user-selected test inputs, not presets or experimental recommendations.",
+  "turns": [
+    {
+      "user_message": "I spend a lot of time preparing aliquots and dilutions by hand. I want help designing a flexible setup for this work.",
+      "assistant_reply": "That manual aliquoting and dilution work is a good candidate to automate. What liquids and sample types would this setup need to handle?",
+      "recorded_quantities": {
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "final_volume": null
+      },
+      "preparation_status": "incomplete",
+      "reported_usage": {
+        "prompt_tokens": 2582,
+        "completion_tokens": 800,
+        "total_tokens": 3382
+      }
+    },
+    {
+      "user_message": "I use a pipette and microcentrifuge tubes. My stock is 5 mg/ml. I have not chosen the target concentrations or final volumes yet. Help me understand what I need to decide next.",
+      "assistant_reply": "Your stock of 5 mg/ml is recorded. Stock is what you start from, targets are the diluted concentrations you want to compare, and final volume is how much liquid should be in each tube. What concentration range or comparison goal do you want your targets to cover?",
+      "recorded_quantities": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": null,
+        "final_volume": null
+      },
+      "preparation_status": "incomplete",
+      "reported_usage": {
+        "prompt_tokens": 3168,
+        "completion_tokens": 845,
+        "total_tokens": 4013
+      }
+    },
+    {
+      "user_message": "My targets will be 0.25, 0.5 and 1 mg/ml, with 0.5 ml per tube.",
+      "assistant_reply": "Thanks \u2014 with stock 5 mg/ml, targets 0.25, 0.5 and 1 mg/ml, and 0.5 ml per tube using pipette and microcentrifuge tubes, I have what\u2019s needed for a review. Please confirm these values are correct to proceed with the concept plan.\n\nCalculated preparation per tube:\n0.25 mg/mL: 25 \u00b5L stock + 475 \u00b5L diluent\n0.5 mg/mL: 50 \u00b5L stock + 450 \u00b5L diluent\n1 mg/mL: 100 \u00b5L stock + 400 \u00b5L diluent\nReview the plan below before confirming.",
+      "recorded_quantities": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.25 mg/mL, 0.5 mg/mL, 1 mg/mL",
+        "final_volume": "0.5 mL"
+      },
+      "preparation_status": "ready",
+      "reported_usage": {
+        "prompt_tokens": 3277,
+        "completion_tokens": 734,
+        "total_tokens": 4011
+      }
+    }
+  ],
+  "verified_stock_volumes_ul": [
+    25,
+    50,
+    100
+  ],
+  "verified_diluent_volumes_ul": [
+    475,
+    450,
+    400
+  ]
+}

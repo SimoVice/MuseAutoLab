@@ -44,9 +44,25 @@ Development assistants and their skills are not product runtime dependencies.
 ## Try a real design
 
 Follow the root README's locked setup and configure your own Meta Model API key.
-Start a liquid preparation project; for a synthetic example, describe aliquoting
-from a 10 mg/mL stock to 1 mg/mL, 1 mL per tube, using a pipette and
-microcentrifuge tubes with a maximum workspace width of 650 mm.
+Begin with the problem, without quantities:
+
+> I spend a lot of time preparing aliquots and dilutions by hand. I want help
+> designing a flexible setup for this work.
+
+Discuss the process and equipment with Meta. Then define the preparation together:
+available stock, desired target concentrations and final volumes. You can choose
+different values for each project and revise them through chat; no concentration
+or volume is selected by the opening. Ask Meta to explain the required inputs if
+you have not chosen them yet.
+
+The [recorded synthetic conversation](examples/generic-entry-live.json) shows a
+real three-turn browser check: generic problem, later stock only, then the user's
+chosen targets and volume. Example numbers are not defaults or recommendations.
+
+Only later, as a synthetic example, you might choose a 10 mg/mL stock, a 1 mg/mL
+target and 1 mL per tube, using a pipette and microcentrifuge tubes. These values
+are an optional example, not a preset or a prerequisite for starting the chat.
+If you want the geometric example below, set the maximum width to at least 500 mm.
 
 In **Workstation layout**, enter:
 

@@ -160,7 +160,11 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             patch = turn.patch()
             updated = apply_update(current, patch)
         except ModelClientError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from None
+            return JSONResponse(status_code=502, content={
+                "detail": str(exc),
+                "failure_kind": getattr(exc, "failure_kind", "model_request"),
+                "usage": getattr(exc, "usage", {}),
+            })
         except ValueError as exc:
             raise HTTPException(
                 status_code=422,

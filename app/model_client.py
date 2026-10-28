@@ -34,6 +34,13 @@ preparation is actually the task and the process context is understood. If the u
 gives quantities, use them immediately without forcing an interview.
 Other workflows such as inspection, transport, mixing or labeling get relevant planning
 questions, not liquid parameters.
+Users do not need a complete preparation recipe to begin. If they have not chosen target
+concentrations or final volumes, help define them rather than repeatedly demanding finished
+values. Explain the difference between stock, target and final volume briefly when useful;
+ask about the desired concentration range or comparison goal, then available volume per tube.
+Keep one focused next question. The user chooses their concentrations in later turns; there
+is no preset target, number of dilutions or final volume. Do not record a suggestion as a
+user requirement or calculate a completed recipe before the needed choices are supplied.
 Choose liquid_preparation only for aliquoting, dilution or pipette-based preparation. Moving or
 inspecting tubes, mixing with a stirrer, and mentioning a pipette alone do not establish that
 workflow. Classify the operation, not merely its objects.
@@ -447,7 +454,7 @@ async def generate_turn(
         "model": settings.model,
         "messages": messages,
         "reasoning_effort": "minimal",
-        "max_completion_tokens": 1400,
+        "max_completion_tokens": 2400,
         "response_format": {
             "type": "json_schema",
             "json_schema": {
@@ -481,15 +488,21 @@ async def generate_turn(
             "Could not reach Meta. Check the network connection and try again."
         ) from None
 
+    body = None
+    failure_kind = "response_format"
     try:
         body = response.json()
         choice = body["choices"][0]
         if choice.get("finish_reason") in {"length", "content_filter"}:
+            failure_kind = (
+                "token_limit" if choice["finish_reason"] == "length" else "content_filter"
+            )
             raise ValueError("incomplete model response")
         content = choice["message"]["content"]
         if not isinstance(content, str):
             raise TypeError("invalid message content")
         result = ExtractedTurn.model_validate_json(content)
+        failure_kind = "source_validation"
         result.verify_sources(user_message)
         effective_kind = result.workflow_kind or workflow["kind"]
         if effective_kind == "general" and any(
@@ -498,9 +511,16 @@ async def generate_turn(
         ):
             raise ValueError("Liquid parameters do not belong to this workflow")
     except (ValueError, TypeError, KeyError, IndexError, ValidationError):
-        raise ModelClientError(
+        error = ModelClientError(
             "Meta returned an incomplete or invalid response. The project was not changed."
-        ) from None
+        )
+        error.failure_kind = failure_kind
+        error.usage = _safe_usage(body) if isinstance(body, dict) else {}
+        LOGGER.warning(
+            "Meta model=%s failure_kind=%s token_usage=%s",
+            settings.model, failure_kind, error.usage,
+        )
+        raise error from None
 
     usage = _safe_usage(body)
     # Only counts/model ID are logged; prompts, responses and authentication are omitted.

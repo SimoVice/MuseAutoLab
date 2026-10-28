@@ -65,7 +65,7 @@ def test_request_uses_meta_schema_budget_and_preserves_zero_cost_usage():
     assert captured["authorization"] == "Bearer test-only-key"
     assert payload["model"] == "muse-spark-1.3-contributor"
     assert payload["reasoning_effort"] == "minimal"
-    assert payload["max_completion_tokens"] == 1400
+    assert payload["max_completion_tokens"] == 2400
     assert len(payload["messages"]) == 11  # Two instructions, eight history entries, current input.
     schema = payload["response_format"]["json_schema"]
     assert schema["strict"] is True
@@ -255,3 +255,26 @@ def test_generic_workflow_cannot_receive_liquid_parameters_without_routing():
         asyncio.run(run())
     assert project["summary"]["final_volume"] is None
     assert project["workflow"]["kind"] == "general"
+
+
+def test_undecided_preparation_keeps_quantities_empty_while_assistant_guides():
+    body = valid_response(assistant_message=(
+        "What concentration range would you like to compare? We can choose the targets "
+        "and final volume after that."
+    ))
+    turn, _ = run_turn(
+        lambda request: httpx.Response(200, json=body),
+        message="I prepare aliquots manually and have not chosen concentrations yet.",
+    )
+    assert turn.patch() == {}
+    assert "range" in turn.assistant_message
+
+
+def test_incomplete_response_reports_kind_and_usage_without_raw_output():
+    body = {"choices": [{"finish_reason": "length", "message": {"content": "{}"}}],
+            "usage": {"prompt_tokens": 42, "completion_tokens": 2400}}
+    with pytest.raises(ModelClientError) as caught:
+        run_turn(lambda request: httpx.Response(200, json=body))
+    assert caught.value.failure_kind == "token_limit"
+    assert caught.value.usage == {"prompt_tokens": 42, "completion_tokens": 2400}
+    assert not hasattr(caught.value, "response")
