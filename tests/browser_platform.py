@@ -94,6 +94,7 @@ def run_platform(url: str) -> None:
             expect(page.locator(".planning-panel")).to_contain_text("pipette")
             # Quantities alone still reveal no geometry; Confirm stays disabled.
             harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, harness.EXPECTED_STOCK)
+            page.locator("details.prep-plan > summary").click()
             expect(page.locator(".summary-card")).to_be_visible()
             expect(page.locator(".plan-card")).to_contain_text("100 µL")
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
@@ -104,12 +105,11 @@ def run_platform(url: str) -> None:
             expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
             expect(page.locator(".cost-block")).to_be_visible()
             expect(page.get_by_text("Meta-proposed layout").first).to_be_visible()
-            # Right brief is a single collapsed details element once 3D exists.
-            right = page.locator("details.brief-card, details.right-brief")
-            expect(right).to_have_count(1)
-            if right.first.get_attribute("open") is None:
-                right.locator("summary").first.click()
-            expect(right).to_contain_text("pipette")
+            expect(page.locator(".conversation-panel .brief-card")).to_have_count(0)
+            details = page.locator("details.project-details")
+            expect(details).not_to_have_attribute("open", "")
+            details.locator("summary").first.click()
+            expect(details.locator(".planning-panel")).to_contain_text("pipette")
             page.get_by_role("button", name="Confirm design").click()
             expect(page.locator(".chat-status")).to_contain_text("Confirmed")
             harness.send_chat(

@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.catalog import build_sourcing
 from app.design_agent import _semaphore, request_design_proposal
 from app.design_sources import project_source_basis, reference_context, resolve_reference
-from app.inspection_geometry import compile_inspection, inspection_components
+from app.inspection_geometry import compile_inspection, inspection_anchor, inspection_components
 from app.model_client import ModelClientError
 
 Number = Annotated[float, Field(strict=True, ge=180, le=500, allow_inf_nan=False)]
@@ -45,10 +45,20 @@ def clear_extension(project: dict) -> dict:
         result["design"]["components"] = [
             p for p in result["design"]["components"] if p["id"] not in ids
         ]
-        result["sourcing"] = build_sourcing(
-            result["selections"], result["summary"]["cooling_enabled"]
-        )
-    result["design"].pop("assembly_bounds", None)
+        if result["design"].get("foundation"):
+            from app.foundation_design import foundation_sourcing
+
+            result["sourcing"] = foundation_sourcing(result)
+        else:
+            result["sourcing"] = build_sourcing(
+                result["selections"], result["summary"]["cooling_enabled"]
+            )
+    if result["design"].get("foundation"):
+        from app.foundation_design import assembly_bounds
+
+        result["design"]["assembly_bounds"] = assembly_bounds(result)
+    else:
+        result["design"].pop("assembly_bounds", None)
     result["design_basis"] = project_source_basis(result)
     return result
 
@@ -171,14 +181,25 @@ async def propose_inspection(project: dict, instruction: str, feedback: str) -> 
         {"id": p["id"], "position": p["position"], "size": p["size"]}
         for p in clear_extension(project)["design"]["components"]
     ]
+    source_based = bool(project.get("design", {}).get("foundation"))
+    anchor = inspection_anchor(project)
     instructions = (
         "Propose a strict JSON inspection-arm extension for this accepted workstation. "
         "One supported concept: two horizontal links, front-right sidecar, downward camera. "
         "Choose link_lengths_mm (exactly two numbers, each 180..500) and mast_height_mm "
-        "(400..550), schema_version '1', concise rationale and at most6 assumptions. "
-        "Base joint is at x=base.position.x+base.size.x/2-80, "
-        "z=base.position.z+base.size.z/2+100. Reach sample-rack centre and x +/-20 at its z. "
+        "(400..550), schema_version '1', concise rationale and at most 6 assumptions. "
+        + ("For this Jubilee project, mast_height_mm is measured above the custom deck top, "
+           "and the arm may extend above the source frame. " if source_based else
+           "mast_height_mm is the absolute height above the application ground. ")
+        + ("Base joint is at x=foundation.position.x+foundation.size.x/2-80, "
+           "z=foundation.position.z+foundation.size.z/2+150. " if source_based else
+           "Base joint is at x=base.position.x+base.size.x/2-80, "
+           "z=base.position.z+base.size.z/2+100. ")
+        + "Reach sample-rack centre and x +/-20 at its z. "
         "For all targets abs(L1-L2) <= distance <= L1+L2. Prefer the shortest practical links. "
+        f"Compiler-computed anchor, targets and distances: {json.dumps(anchor)}. "
+        "Use these computed distances as authoritative: choose a total link length at least "
+        f"{max(anchor['target_distances_mm']) + 10:.2f} mm, including a 10 mm proposal margin. "
         "Compiler selects the leftmost elbow IK branch. All four pose envelopes must fit "
         "the total workspace width if specified, not just the pad. The sidecar increases "
         "depth; no collision, load, camera coverage or hardware control is validated. "

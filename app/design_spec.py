@@ -47,8 +47,17 @@ class LayoutProposal(BaseModel):
         return self
 
 
-def proposal_schema() -> dict:
-    return LayoutProposal.model_json_schema()
+class FoundationLayoutProposal(LayoutProposal):
+    """A custom insert and real source-assembly bed pose; the frame is not rescaled."""
+
+    deck_width_mm: Annotated[Number, Field(ge=240, le=300)]
+    deck_depth_mm: Annotated[Number, Field(ge=260, le=300)]
+    bed_drop_mm: Annotated[Number, Field(ge=95, le=150)]
+
+
+def proposal_schema(project: dict | None = None) -> dict:
+    sourced = bool(project and project.get("design", {}).get("foundation"))
+    return (FoundationLayoutProposal if sourced else LayoutProposal).model_json_schema()
 
 
 def _check(check_id: str, label: str, passed: bool, detail: str) -> dict:
@@ -67,14 +76,17 @@ def check_candidate(project: dict, raw: object) -> list[dict]:
     summary = project.get("summary") or {}
     width_limit = summary.get("workspace_width_mm")
     design = project.get("design") or {}
+    foundation = design.get("foundation")
+    minimum_width = foundation["bbox_mm"][0] if foundation else 400
     feasible = design.get("constraint_status") != "infeasible" and (
         width_limit is None or (isinstance(width_limit, (int, float))
-                                and not isinstance(width_limit, bool) and width_limit >= 400)
+                                and not isinstance(width_limit, bool)
+                                and width_limit >= minimum_width)
     )
     checks.append(_check("feasible_width", "Feasible workspace", feasible,
                          "Resolve the infeasible workspace width before developing a layout."))
     try:
-        proposal = LayoutProposal.model_validate(raw)
+        proposal = (FoundationLayoutProposal if foundation else LayoutProposal).model_validate(raw)
     except ValidationError as exc:
         for index, error in enumerate(exc.errors(include_url=False, include_input=False)):
             location = ".".join(str(part) for part in error["loc"]) or "proposal"
@@ -87,10 +99,11 @@ def check_candidate(project: dict, raw: object) -> list[dict]:
     )
     within_width = width_limit is None or (
         isinstance(width_limit, (int, float)) and not isinstance(width_limit, bool)
-        and proposal.deck_width_mm <= width_limit
+        and (foundation["bbox_mm"][0] if foundation else proposal.deck_width_mm) <= width_limit
     )
     checks.append(_check("workspace_width", "Workspace width", within_width,
-                         f"Proposed width {proposal.deck_width_mm:g} mm; "
+                         (f"Fixed source frame width {foundation['bbox_mm'][0]:.1f} mm; "
+                          if foundation else f"Proposed width {proposal.deck_width_mm:g} mm; ")
                          + ("no width limit specified." if width_limit is None
                             else f"workspace limit {width_limit} mm.")))
     components = {part.get("id"): part for part in design.get("components", [])
@@ -112,6 +125,17 @@ def check_candidate(project: dict, raw: object) -> list[dict]:
         return checks
     checks.append(_check("envelopes", "Component envelopes", True,
                          "Fixed project component envelopes are retained."))
+    if foundation:
+        from app.upstream_cad import foundation_metadata
+
+        meta = foundation_metadata(proposal.bed_drop_mm)
+        deck_top = meta["deck_origin_app_mm"][1] + 12
+        head_top = max(deck_top + offset + components[cid]["size"][1] / 2
+                       for cid, offset in (("carriage", 235), ("pipette", 140)))
+        checks.append(_check("head_envelope", "Head height envelope",
+                             head_top <= meta["bbox_mm"][1],
+                             "Proposed head stays below the source frame envelope; "
+                             "interior clearance and mounting remain unchecked."))
 
     for component_id, (xmin, xmax, zmin, zmax) in boxes.items():
         inside = (xmin >= -proposal.deck_width_mm / 2 + 10
@@ -120,9 +144,10 @@ def check_candidate(project: dict, raw: object) -> list[dict]:
                   and zmax <= proposal.deck_depth_mm / 2 - 10)
         checks.append(_check(f"edge_{component_id}", "Deck edge clearance", inside,
                              f"{component_id} requires at least 10 mm to each deck edge."))
-        rear_clear = zmin >= -proposal.deck_depth_mm / 2 + 85
-        checks.append(_check(f"rear_{component_id}", "Rear gantry strip", rear_clear,
-                             f"{component_id} must remain clear of the rear 85 mm strip."))
+        if not foundation:
+            rear_clear = zmin >= -proposal.deck_depth_mm / 2 + 85
+            checks.append(_check(f"rear_{component_id}", "Rear gantry strip", rear_clear,
+                                 f"{component_id} must remain clear of the rear 85 mm strip."))
     for a, b in combinations(MOVABLE_IDS, 2):
         ax0, ax1, az0, az1 = boxes[a]
         bx0, bx1, bz0, bz1 = boxes[b]
@@ -140,6 +165,11 @@ def apply_candidate(project: dict, raw: object, provenance: dict) -> dict:
         raise ValueError(" ".join(failures))
     if not isinstance(provenance, dict):
         raise ValueError("Provenance must be an object.")
+    if project.get("design", {}).get("foundation"):
+        from app.foundation_design import compile_source_layout
+
+        proposal = FoundationLayoutProposal.model_validate(raw)
+        return compile_source_layout(project, proposal.model_dump(), provenance)
     proposal = LayoutProposal.model_validate(raw)
     from app.domain import _extend_deck_for_cooling
     from app.inspection import clear_extension

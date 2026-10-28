@@ -25,6 +25,8 @@ def resolve_reference(reference_id: str) -> dict:
 
 
 def component_geometry_specs(project: dict) -> dict:
+    if project.get("design", {}).get("foundation"):
+        return {}
     motor_id = project.get("selections", {}).get("motors", "pololu-1209")
     if motor_id not in ("pololu-1209", "pololu-1208"):
         raise ValueError("No reviewed geometry is available for this motor.")
@@ -56,7 +58,11 @@ def project_source_basis(project: dict) -> dict:
     bindings = []
     for part in parts:
         pid = part["id"]
-        if pid == "carriage":
+        if pid == "foundation-jubilee":
+            bindings.append({"component_id": pid, "basis": "imported_open_hardware_cad",
+                             "reference_id": "jubilee-hardware",
+                             "detail": "Pinned original STEP; fixed frame and explicit bed pose."})
+        elif pid == "carriage" and pid in specs:
             motor = specs[pid]["motor"]
             bindings.append(
                 {
@@ -102,13 +108,19 @@ def project_source_basis(project: dict) -> dict:
         "checked_on": _DATA["checked_on"],
         "library_sha256": _DATA["sha256"],
         "architecture": (
-            "MuseAutoLab custom XYZ workstation; not an imported Jubilee robot"
+            "Imported Jubilee platform CAD with a custom liquid-preparation insert"
+            if project.get("design", {}).get("foundation") else
+            "MuseAutoLab legacy custom XYZ workstation; no imported base in this revision"
             if supported
             else "Workflow discovery; no machine adapter chosen"
         ),
         "bindings": bindings,
         "references": reference_library()["references"],
-        "open_hardware_status": "Reviewed reference projects; their CAD has not been imported",
+        "open_hardware_status": (
+            "Pinned original Jubilee STEP imported; custom interfaces and travel unverified"
+            if project.get("design", {}).get("foundation") else
+            "No source CAD imported in this revision; development in chat selects the pinned base"
+        ),
     }
 
 
@@ -116,8 +128,9 @@ def reference_context(project: dict) -> dict:
     basis = project_source_basis(project)
     return {
         "policy": "Recommend only library entries; never invent URLs, licenses, dimensions or "
-        "compatibility. A reviewed source is not tested hardware. Open projects are candidate "
-        "foundations, not the current custom robot. Missing evidence must remain explicit.",
+        "compatibility. A reviewed source is not tested hardware. Use the current architecture "
+        "and bindings to distinguish imported source CAD from proposed custom parts. "
+        "Missing evidence must remain explicit.",
         "architecture": basis["architecture"],
         "library_sha256": basis["library_sha256"],
         "geometry_bindings": basis["bindings"],

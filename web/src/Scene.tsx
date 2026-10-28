@@ -1,11 +1,12 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
-import { Component as ReactComponent, useEffect, useMemo, useRef, useState } from 'react';
+import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import type { Group } from 'three';
 import type { Component, InspectionExtension, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
+import FoundationMesh from './FoundationMesh';
 import {
   DIP_DOWN_TIME,
   DWELL_TIME,
@@ -34,7 +35,7 @@ function FitCamera({ width, height, depth }: { width: number; height: number; de
   useEffect(() => {
     const horizontalSpan = (width + depth * 0.58) / SCALE;
     const verticalSpan = (height + depth * 0.48) / SCALE;
-    camera.zoom = Math.min(size.width / (horizontalSpan * 1.25), size.height / (verticalSpan * 1.3));
+    camera.zoom = Math.min(size.width / (horizontalSpan * 1.1), size.height / (verticalSpan * 1.05));
     camera.updateProjectionMatrix();
   }, [camera, size.width, size.height, width, height, depth]);
   return null;
@@ -454,7 +455,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     <SceneBoundary key={viewKey}>
       <Canvas
         orthographic
-        camera={{ position: [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
+        camera={{ position: project.design.foundation ? [5, 10, -15] : [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
         dpr={[1, 1.5]}
         shadows="percentage"
         frameloop="demand"
@@ -467,10 +468,16 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         <directionalLight position={[-6, 5, -5]} intensity={0.7} />
         <FitCamera width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
         <group>
-          {staticParts.map((part) => <GeometryPart key={part.id} part={part}
+          {staticParts.filter((part) => part.kind !== 'upstream-cad').map((part) => <GeometryPart key={part.id} part={part}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
             selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
+        {project.design.foundation && <Suspense fallback={null}>
+          <group position={[-bounds.center[0] / SCALE, -bounds.center[1] / SCALE, -bounds.center[2] / SCALE]}>
+            <FoundationMesh bedDropMm={project.design.foundation.bed_drop_mm}
+              selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
+          </group>
+        </Suspense>}
         <RackDetails components={components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} />
         {physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh

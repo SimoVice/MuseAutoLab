@@ -14,8 +14,8 @@
       "evidence_sha256": "aad996dd4ead654813cdf0025634f115dfb197dcbe73b7b269f22ba2b3ecfb31",
       "checked_on": "2026-10-28",
       "facts": ["CoreXY multi-tool motion platform", "Published STEP, SolidWorks and fabrication files", "300 x 300 x 300 mm stated build volume"],
-      "use": "Alternative open hardware foundation to evaluate; not the current machine CAD",
-      "limits": "Current MuseAutoLab XYZ concept is not Jubilee, and its simulation does not validate Jubilee. Individual CAD files and build interfaces have not been audited or imported."
+      "use": "Pinned original jubilee.STEP is the foundation of new chat-generated liquid workstations; source assembly and attribution are retained",
+      "limits": "Only the identified STEP asset is imported. Custom inserts/tools/mounts, proposed bed pose, connections and hardware operation remain unverified. The legacy XYZ simulation does not validate Jubilee."
     },
     {
       "id": "science-jubilee",

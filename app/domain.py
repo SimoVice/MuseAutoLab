@@ -515,6 +515,44 @@ def apply_update(project: dict, patch: dict) -> dict:
     result["selections"] = deepcopy(stored_selections)
     result["sourcing"] = deepcopy(sourcing)
 
+    if project.get("design", {}).get("foundation") and not switching_away:
+        from app.foundation_design import assembly_bounds, foundation_sourcing
+
+        geometric = bool(set(summary_updates).intersection({
+            "workspace_width_mm", "cooling_enabled", "cooling_target_c",
+        }) or selections_patch)
+        if not geometric:
+            result["design"] = deepcopy(project["design"])
+            if project.get("engineering_design"):
+                result["engineering_design"] = deepcopy(project["engineering_design"])
+            if project.get("inspection_extension"):
+                result["inspection_extension"] = deepcopy(project["inspection_extension"])
+        else:
+            result["design"]["cooling"] = _cooling_info(enabled, target, stored_selections)
+            # Keep the last actual layout as the next proposal's context.
+            # Re-entering the foundation adapter here would reset all positions.
+            required = result["design"]["foundation"]["bbox_mm"][0]
+            result["design"]["constraint_status"] = (
+                "unconstrained" if width is None else "fits" if width >= required else "infeasible"
+            )
+            if not enabled:
+                result["design"]["components"] = [
+                    part for part in result["design"]["components"] if part["id"] != "cold-storage"
+                ]
+            result["design"]["assembly_bounds"] = assembly_bounds(result)
+        result["sourcing"] = foundation_sourcing(result)
+        if result.get("inspection_extension"):
+            from app.inspection import _extension_sourcing
+
+            _extension_sourcing(result)
+        result["design"]["estimated_cost"] = {
+            "amount": result["sourcing"]["subtotal"], "currency": "USD",
+        }
+        result["revision"] = project["revision"] + 1
+        result["status"] = "draft"
+        result["workflow"] = describe_workflow(result)
+        return add_geometry(result)
+
     if width is not None and width < COMPACT_WIDTH_MM:
         result["design"]["constraint_status"] = "infeasible"
         # Preserve last geometry but refresh cooling metadata and partial cost.

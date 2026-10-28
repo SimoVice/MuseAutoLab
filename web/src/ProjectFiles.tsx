@@ -184,6 +184,7 @@ export default function ProjectFiles({ project, onSelect }: Props) {
             {starting ? 'Starting…' : 'Generate project files'}
           </button>
           <p className="files-note">Generates CAD, documents and an archive for revision {project.revision}.</p>
+          {project.design.foundation && <p className="files-note">Full source CAD can take several minutes to export. Progress follows completed stages.</p>}
         </div>
       )}
 

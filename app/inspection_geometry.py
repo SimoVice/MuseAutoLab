@@ -143,6 +143,25 @@ def _bounds(components):
     }
 
 
+def inspection_anchor(project: dict) -> dict:
+    """Return the same fixed anchor and target distances used by the compiler."""
+    parts = {p["id"]: p for p in project["design"]["components"]}
+    pos, size = _valid_part(parts["base"], "base")
+    if project["design"].get("foundation"):
+        frame_pos, frame_size = _valid_part(parts["foundation-jubilee"], "foundation-jubilee")
+        edge = frame_pos[2] + frame_size[2] / 2 + 50
+        x = frame_pos[0] + frame_size[0] / 2 - 80
+    else:
+        edge = pos[2] + size[2] / 2
+        x = pos[0] + size[0] / 2 - 80
+    z = edge + 100
+    rack_pos, _ = _valid_part(parts["sample-rack"], "sample-rack")
+    targets = [[rack_pos[0] + offset, rack_pos[2]] for offset in (0, -20, 20)]
+    return {"x_mm": x, "z_mm": z, "edge_mm": edge, "base_top_mm": pos[1] + size[1] / 2,
+            "targets_xz_mm": targets,
+            "target_distances_mm": [math.hypot(tx - x, tz - z) for tx, tz in targets]}
+
+
 def compile_inspection(project: dict, proposal: dict) -> dict:
     """Compile an independent inspection module from an existing design snapshot."""
     spec = _proposal(proposal)
@@ -152,12 +171,16 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
         rack_pos, rack_size = _valid_part(parts["sample-rack"], "sample-rack")
     except (KeyError, TypeError):
         raise ValueError("The design must contain a base and sample-rack.") from None
-    if base_size[0] < 300:
+    source_based = bool(project["design"].get("foundation"))
+    if base_size[0] < (150 if source_based else 300):
         raise ValueError("The base is too narrow for the sidecar pad.")
-    edge = base_pos[2] + base_size[2] / 2
-    x, z = base_pos[0] + base_size[0] / 2 - 80, edge + 100
-    base_top = base_pos[1] + base_size[1] / 2
-    height = spec["mast_height_mm"]
+    anchor = inspection_anchor(project)
+    x, z, edge = anchor["x_mm"], anchor["z_mm"], anchor["edge_mm"]
+    base_top = anchor["base_top_mm"]
+    # Existing legacy projects specify a world height. Source-based projects
+    # instead specify a height above the custom deck so a bed revision carries
+    # the same extension with it.
+    height = spec["mast_height_mm"] + (base_top if source_based else 0)
     if base_top >= height - 40:
         raise ValueError("The proposed mast height is below the mounting surface.")
     pad_center_y = base_top - 10
@@ -277,7 +300,7 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
             interpretation="Manufacturer envelope; custom mount and arm. Vendor CAD not imported.",
         ),
         attachment=dict(
-            parent_component_id="base",
+            parent_component_id="foundation-jubilee" if source_based else "base",
             anchor_mm=[x, base_top, edge],
             concept_only=True,
             fasteners="unverified",
@@ -296,7 +319,8 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
             dict(
                 id="sidecar_width",
                 passed=True,
-                detail="The fixed sidecar pad stays within the base width.",
+                detail=("The sidecar pad stays within the source frame width."
+                        if source_based else "The fixed sidecar pad stays within the base width."),
             ),
         ],
         limitations=[
@@ -307,6 +331,8 @@ def compile_inspection(project: dict, proposal: dict) -> dict:
             "mounting and lens details are not supplier CAD.",
             "The downward camera is illustrative; field of view, image quality and inspection "
             "coverage are unverified.",
+            *(["The sidecar is positioned outside the platform envelope; its support and "
+               "connection to the platform are not designed."] if source_based else []),
         ],
     )
 

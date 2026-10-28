@@ -1,0 +1,14 @@
+Jubilee (c) by Joshua Vasquez
+
+Jubilee is licensed under a
+
+Creative Commons Attribution Attribution 4.0 International License.
+
+You should have received a copy of the license along with this
+work. If not, see <http://creativecommons.org/licenses/by/4.0/>.
+
+Source: https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/license.txt
+Changes: the original STEP is compressed without changing its contents;
+the preview is tessellated and simplified; the exported assembly is rotated
+and translated and its build plate may be moved, as described in the
+accompanying provenance manifest.

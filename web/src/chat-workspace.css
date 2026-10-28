@@ -1,0 +1,22 @@
+.agent-activity { margin: 6px 0 14px 34px; padding: 12px 13px; border: 1px solid #cfe3df; border-radius: 10px; background: #f3f9f7; max-width: min(85%, 420px); }
+.agent-activity-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 10px; font-size: 12px; color: #245059; }
+.agent-activity-heading span { color: #69818a; font-size: 11px; }
+.agent-activity-track { height: 8px; overflow: hidden; background: #dcebe7; border-radius: 8px; }
+.agent-activity-track span { display: block; width: 30%; height: 100%; background: #087d7d; border-radius: inherit; transition: width 650ms ease; }
+.agent-activity-track.waiting span { animation: agent-activity-wait 1.5s ease-in-out infinite alternate; }
+.agent-activity-track.complete span { width: 100%; }
+@keyframes agent-activity-wait { from { transform: translateX(0); } to { transform: translateX(230%); } }
+.action-runs { margin: 0 0 14px 34px; max-width: min(85%, 420px); color: #42646d; font-size: 11px; line-height: 1.55; background: #f2f7f6; border-radius: 7px; padding: 8px 10px; }
+.action-runs strong { color: #2c515a; }
+.project-details { margin-top: 20px; border: 1px solid #d8e6e5; border-radius: 12px; background: #fcfefe; padding: 6px 18px 18px; }
+.project-details > summary { cursor: pointer; padding: 12px 0; color: #31565c; font-size: 13px; font-weight: 750; }
+.project-details > summary:focus-visible { outline: 3px solid #318f94; outline-offset: 3px; border-radius: 6px; }
+.photo-check { margin-top: 16px; border: 1px dashed #cfdfdb; border-radius: 10px; padding: 6px 14px 14px; background: #fbfefd; }
+.photo-check > summary { cursor: pointer; padding: 10px 0; color: #247e78; font-size: 12px; font-weight: 700; }
+.prep-plan { margin-top: 12px; border: 1px solid #e0ebe9; border-radius: 10px; padding: 6px 15px 14px; background: #fcfefd; }
+.prep-plan > summary { cursor: pointer; padding: 10px 0; color: #31565c; font-size: 12px; font-weight: 700; }
+.prep-plan > summary:focus-visible { outline: 3px solid #318f94; outline-offset: 3px; border-radius: 6px; }
+.inspection-sweep { margin-top: 16px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px 14px; border-top: 1px dashed #cfdfdb; padding-top: 14px; }
+.inspection-sweep label { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: #55757b; }
+.inspection-sweep input { width: 100%; grid-column: 1 / -1; accent-color: #087d7d; }
+@media (prefers-reduced-motion: reduce) { .agent-activity-track span { transition: none; animation: none !important; } }

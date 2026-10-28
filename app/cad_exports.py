@@ -18,6 +18,14 @@ from pprint import pformat
 from tempfile import TemporaryDirectory
 
 from app.geometry import GEOMETRY_SOURCE_SHA256, geometry_for_component
+from app.upstream_cad import (
+    ASSET_ID,
+    STEP_PATH,
+    STEP_SHA256,
+    foundation_metadata,
+    load_foundation_cad,
+    original_step_bytes,
+)
 
 _SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 COORDINATE_MAPPING = "app(x,y,z)->CAD(x,z,y); CAD Z is UP"
@@ -34,6 +42,13 @@ def _components(project: dict) -> list[dict]:
     if not isinstance(components, list) or not components:
         raise ValueError("project.design.components must be a non-empty list.")
     out: list[dict] = []
+    foundation = project["design"].get("foundation")
+    if foundation is not None:
+        if not isinstance(foundation, dict):
+            raise ValueError("Invalid foundation metadata.")
+        expected = foundation_metadata(foundation.get("bed_drop_mm"))
+        if any(foundation.get(k) != v for k, v in expected.items()):
+            raise ValueError("Foundation metadata does not match the pinned source.")
     for comp in components:
         if not isinstance(comp, dict):
             raise ValueError("Each component must be an object.")
@@ -48,6 +63,35 @@ def _components(project: dict) -> list[dict]:
             raise ValueError("Component coordinates must be finite.")
         if any(s <= 0 for s in size):
             raise ValueError(f"Component '{comp['id']}' has non-positive size.")
+        if (
+            comp["kind"] == "upstream-cad"
+            or comp.get("foundation_asset_id") is not None
+            or comp["id"] == "foundation-jubilee"
+        ):
+            if (
+                foundation is None
+                or comp["kind"] != "upstream-cad"
+                or comp["id"] != "foundation-jubilee"
+                or comp.get("foundation_asset_id") != ASSET_ID
+                or pos != [0.0, expected["bbox_mm"][1] / 2, 0.0]
+                or size != expected["bbox_mm"]
+                or comp.get("geometry")
+                or set(comp)
+                - {"id", "kind", "label", "position", "size", "foundation_asset_id", "geometry"}
+            ):
+                raise ValueError("Invalid pinned foundation identity, position, size or geometry.")
+            out.append(
+                {
+                    "id": comp["id"],
+                    "kind": comp["kind"],
+                    "label": comp["label"],
+                    "position": pos,
+                    "size": size,
+                    "foundation_asset_id": ASSET_ID,
+                    "bed_drop_mm": expected["bed_drop_mm"],
+                }
+            )
+            continue
         geometry = comp.get("geometry") or geometry_for_component(comp)
         if geometry.get("schema_version") != "1" or not geometry.get("primitives"):
             raise ValueError(f"Invalid geometry for {comp['id']}.")
@@ -93,8 +137,11 @@ def _components(project: dict) -> list[dict]:
                 "position": pos,
                 "size": size,
                 "geometry": geometry,
-                **({"reference_geometry": comp["reference_geometry"]}
-                   if "reference_geometry" in comp else {}),
+                **(
+                    {"reference_geometry": comp["reference_geometry"]}
+                    if "reference_geometry" in comp
+                    else {}
+                ),
                 **(
                     {"rack_slot_count": comp["rack_slot_count"]}
                     if "rack_slot_count" in comp
@@ -105,6 +152,8 @@ def _components(project: dict) -> list[dict]:
     ids = [c["id"] for c in out]
     if len(set(ids)) != len(ids):
         raise ValueError("Component ids must be unique.")
+    if foundation is not None and ids.count("foundation-jubilee") != 1:
+        raise ValueError("Pinned foundation component is missing.")
     return out
 
 
@@ -204,16 +253,36 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         + "\n\n"
         + _COMPONENT_BUILDER_SOURCE
         + "\n\n"
+        + "def _standalone_solid(c):\n"
+        + "    if c['kind'] != 'upstream-cad': return _build_solid(c)\n"
+        + "    import gzip, hashlib, tempfile\n"
+        + "    from build123d import import_step, Pos, Rot\n"
+        + "    path = Path(__file__).resolve().parent / 'source/jubilee-original.step.gz'\n"
+        + "    raw = gzip.decompress(path.read_bytes())\n"
+        + f"    if hashlib.sha256(raw).hexdigest() != {STEP_SHA256!r}:\n"
+        + "        raise ValueError('Pinned source hash mismatch')\n"
+        + "    with tempfile.TemporaryDirectory() as tmp:\n"
+        + "        source = Path(tmp) / 'original.step'; source.write_bytes(raw)\n"
+        + "        original = import_step(source)\n"
+        + "    beds = [p for p in original.children if p.label == 'build_plate_assembly']\n"
+        + "    if len(beds) != 1: raise ValueError('Expected one bed assembly')\n"
+        + "    transform = Pos(-274.855945675, 425.743280356, -272.216535584) * Rot(90, 0, 0)\n"
+        + "    fixed = Compound([p for p in original.children "
+        + "if p.label != 'build_plate_assembly'])\n"
+        + "    bed = Pos(0, 0, -c['bed_drop_mm']) * transform * beds[0]\n"
+        + "    bed.label = 'build_plate_assembly'\n"
+        + "    return Compound(children=[transform * fixed, bed], label=c['id'])\n\n"
         + "def interfaces():\n    return []\n\n"
-        + "def build():\n    return Compound(children=[_build_solid(c) for c in COMPONENTS_MM], "
+        + "def build():\n    return Compound(children=[_standalone_solid(c) "
+        + "for c in COMPONENTS_MM], "
         + 'label="MuseAutoLab concept")\n\n'
         + "def build_deck():\n    return _build_solid(next(c for c in COMPONENTS_MM "
         + 'if c["id"] == "base"))\n\n'
         + 'if __name__ == "__main__":\n'
         + "    output = Path(__file__).resolve().parent\n"
         + "    workstation, deck = build(), build_deck()\n"
-        + "    if not workstation.is_valid or not deck.is_valid:\n"
-        + '        raise ValueError("Invalid concept geometry")\n'
+        + "    if not deck.is_valid:\n"
+        + '        raise ValueError("Invalid deck geometry")\n'
         + '    export_step(workstation, output / "workstation.step", unit=Unit.MM)\n'
         + '    export_step(deck, output / "deck.step", unit=Unit.MM)\n'
         + '    export_stl(deck, output / "deck.stl")\n'
@@ -262,7 +331,7 @@ def _workstation_svg(components: list[dict], project_id, revision) -> bytes:
     }
     for comp in components:
         x, _y, z = comp["position"]
-        for primitive in comp["geometry"]["primitives"]:
+        for primitive in comp.get("geometry", {}).get("primitives", []):
             dx, _dy, dz = primitive["position"]
             sx, _sy, sz = primitive["size"]
             rx, ry = px(x + dx - sx / 2), py(z + dz + sz / 2)
@@ -304,7 +373,11 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
     solids: list = []
     entries: list[dict] = []
     for comp in components:
-        solid = _build_solid(comp)
+        imported = comp["kind"] == "upstream-cad"
+        solid = load_foundation_cad(comp["bed_drop_mm"]) if imported else _build_solid(comp)
+        solid.label = comp["id"]
+        if imported:
+            solid.children[1].label = "build_plate_assembly"
         if solid is None or not solid.is_valid:
             raise ValueError(f"CAD solid for '{comp['id']}' is invalid.")
         try:
@@ -324,8 +397,20 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 "app_size": list(comp["size"]),
                 "cad_center": list(_cad_center(comp)),
                 "cad_size": list(_cad_box_size(comp)),
-                "shape": "shared primitives",
-                "primitive_manifest": comp["geometry"]["primitives"],
+                "shape": "pinned upstream CAD" if imported else "shared primitives",
+                **(
+                    {
+                        "foundation_asset_id": ASSET_ID,
+                        "bed_drop_mm": comp["bed_drop_mm"],
+                        "source_sha256": STEP_SHA256,
+                        "source_revision": "c877bd2e889560c83da2a68479641a4f7f0d9b83",
+                        "source_license": "CC-BY-4.0",
+                        "source_transform": "(X-274.855945675, 425.743280356-Z, Y-272.216535584)",
+                        "pose": "Only build_plate_assembly translated down by bed_drop_mm.",
+                    }
+                    if imported
+                    else {"primitive_manifest": comp["geometry"]["primitives"]}
+                ),
                 **(
                     {"rack_slot_count": comp["rack_slot_count"]}
                     if "rack_slot_count" in comp
@@ -333,11 +418,16 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 ),
                 "valid": True,
                 "volume_mm3": volume,
-                "volume_scope": "Sum of primitive solid volumes; "
-                "overlaps may be counted more than once.",
+                "volume_scope": (
+                    "Sum of imported solid volumes; overlaps may be counted more than once."
+                    if imported
+                    else "Sum of primitive solid volumes; overlaps may be counted more than once."
+                ),
                 "bbox_cad": bbox,
                 "solids": len(solid.solids()),
-                "provenance": "project.design.components geometry primitives",
+                "provenance": "Pinned upstream STEP"
+                if imported
+                else "project.design.components geometry primitives",
             }
         )
 
@@ -348,7 +438,7 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
     # exported alone by build123d's XDE writer without its parent hierarchy.
     deck_solid = _build_solid(deck)
     workstation = Compound(children=solids, label="MuseAutoLab concept")
-    if not workstation.is_valid:
+    if project["design"].get("foundation") is None and not workstation.is_valid:
         raise ValueError("Workstation compound is invalid.")
 
     with TemporaryDirectory() as tmp:
@@ -383,17 +473,26 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "Camera and arm attachment, loads, motion clearances and cabling: not engineered.",
         ],
         "fabrication_ready": False,
+        "assembly_validity_scope": (
+            "Component shapes checked individually; STEP assembly not separately checked."
+            if project["design"].get("foundation")
+            else "Compound and component shapes checked."
+        ),
         "layout_origin": (
             "Meta-proposed, geometrically screened layout"
             if project.get("engineering_design")
             else "Built-in concept layout"
         ),
-            "engineering_design": project.get("engineering_design"),
-            "design_basis": project.get("design_basis"),
+        "engineering_design": project.get("engineering_design"),
+        "design_basis": project.get("design_basis"),
         "process": "not selected; concept only",
         "material": "not selected; concept only",
         "notes": [
-            "Concept details and dimensions are illustrative; not fabrication-ready.",
+            "Custom concept details and dimensions are illustrative; not fabrication-ready.",
+            "The top-view SVG omits imported source geometry; "
+            "use the STEP for the complete assembly."
+            if project["design"].get("foundation")
+            else "Top view depicts concept primitives.",
             "Custom deck is a solid blank for concept review.",
             "Consumables remain separate visual and physics proxies; "
             "sample insert pattern follows the target count.",
@@ -410,7 +509,11 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "source_sha256": _SOURCE_SHA256,
             "geometry_source_sha256": GEOMETRY_SOURCE_SHA256,
             "build123d_version": _build123d_version(),
-            "input": "project.design.components geometry primitives (mm, y is UP)",
+            "input": (
+                "Pinned source STEP and project.design.components primitives (mm, y is UP)"
+                if project["design"].get("foundation") is not None
+                else "project.design.components geometry primitives (mm, y is UP)"
+            ),
         },
     }
     report_bytes = json.dumps(report, indent=2).encode("utf-8")
@@ -422,4 +525,11 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
         "cad/deck-model.py": _deck_model_source(components, project_id, revision).encode("utf-8"),
         "cad/workstation.svg": _workstation_svg(components, project_id, revision),
     }
+    if project["design"].get("foundation") is not None:
+        original_step_bytes()  # Verify the raw upstream source before packaging it.
+        files["cad/source/jubilee-original.step.gz"] = STEP_PATH.read_bytes()
+        for suffix in ("LICENSE.txt", "provenance.json"):
+            files[f"cad/source/jubilee-c877bd2.{suffix}"] = STEP_PATH.with_name(
+                f"jubilee-c877bd2.{suffix}"
+            ).read_bytes()
     return files

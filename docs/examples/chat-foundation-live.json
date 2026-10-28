@@ -1,0 +1,736 @@
+{
+  "checked_on": "2026-10-28",
+  "scope": "Synthetic live integration, no hardware validation",
+  "model": "muse-spark-1.3-contributor",
+  "turns": [
+    {
+      "message": "In the future I might want an arm and camera. Do not add it now.",
+      "status_code": 200,
+      "usage": {
+        "prompt_tokens": 6001,
+        "completion_tokens": 568,
+        "total_tokens": 6569
+      },
+      "assistant": "Noted \u2014 I'll keep a future arm/camera as a possibility and won't add it now. Your current plan is 1 mg/mL from 10 mg/mL stock at 1 mL final volume using pipette and tubes. Does that look ready to confirm for layout?",
+      "runs": [],
+      "foundation": null,
+      "proposal": null,
+      "extension": false
+    },
+    {
+      "message": "Develop the workstation using the real Jubilee CAD base and my existing pipette.",
+      "status_code": 200,
+      "usage": {
+        "prompt_tokens": 6083,
+        "completion_tokens": 375,
+        "total_tokens": 6458
+      },
+      "assistant": "Starting layout on the Jubilee base with your pipette.\n\nMeta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 21 geometry checks passed.",
+      "runs": [
+        {
+          "id": "design-7029b254",
+          "source_revision": 1,
+          "status": "accepted",
+          "model": "muse-spark-1.3-contributor",
+          "instruction": "Develop the workstation using the real Jubilee CAD base and my existing pipette.",
+          "attempts": [
+            {
+              "number": 1,
+              "proposal": {
+                "assumptions": [
+                  "Insert centre is origin for x_mm/z_mm; deck is 300x300 hypothesis over build-plate bbox.",
+                  "Component footprint sizes are fixed from current state and not rescaled.",
+                  "10mm edge clearance and 5mm footprint separation are maintained.",
+                  "Original Jubilee frame width and fixed parts are unchanged.",
+                  "bed_drop_mm only moves original build-plate subassembly down for illustration.",
+                  "No physical operation, mounting, or collision validation is claimed."
+                ],
+                "bed_drop_mm": 100.0,
+                "deck_depth_mm": 300.0,
+                "deck_width_mm": 300.0,
+                "placements": [
+                  {
+                    "component_id": "source-rack",
+                    "x_mm": -92.5,
+                    "z_mm": -105.0
+                  },
+                  {
+                    "component_id": "sample-rack",
+                    "x_mm": 92.5,
+                    "z_mm": -105.0
+                  },
+                  {
+                    "component_id": "tip-rack",
+                    "x_mm": -92.5,
+                    "z_mm": -30.0
+                  },
+                  {
+                    "component_id": "tip-waste",
+                    "x_mm": -112.5,
+                    "z_mm": 37.5
+                  },
+                  {
+                    "component_id": "controller",
+                    "x_mm": 95.0,
+                    "z_mm": 50.0
+                  }
+                ],
+                "rationale": "300x300 insert uses two-column layout to avoid three 95mm racks across. Back row holds source and sample racks; middle row holds tip-rack left with clear lane right; front row holds tip-waste left and controller right. All footprints keep 10mm edge clearance and at least 5mm separation. Frame width unchanged; bed drop is illustrative only and workspace is an unverified conservative hypothesis.",
+                "schema_version": "1"
+              },
+              "checks": [
+                {
+                  "id": "workflow",
+                  "label": "Supported workflow",
+                  "passed": true,
+                  "detail": "Liquid preparation with design enabled is required."
+                },
+                {
+                  "id": "feasible_width",
+                  "label": "Feasible workspace",
+                  "passed": true,
+                  "detail": "Resolve the infeasible workspace width before developing a layout."
+                },
+                {
+                  "id": "schema",
+                  "label": "Proposal format",
+                  "passed": true,
+                  "detail": "Required fields and values are valid."
+                },
+                {
+                  "id": "workspace_width",
+                  "label": "Workspace width",
+                  "passed": true,
+                  "detail": "Fixed source frame width 483.1 mm; no width limit specified."
+                },
+                {
+                  "id": "envelopes",
+                  "label": "Component envelopes",
+                  "passed": true,
+                  "detail": "Fixed project component envelopes are retained."
+                },
+                {
+                  "id": "head_envelope",
+                  "label": "Head height envelope",
+                  "passed": true,
+                  "detail": "Proposed head stays below the source frame envelope; interior clearance and mounting remain unchecked."
+                },
+                {
+                  "id": "edge_source-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "source-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_sample-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "sample-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_tip-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "tip-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_tip-waste",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "tip-waste requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_controller",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "controller requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "clearance_source-rack_sample-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_tip-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_tip-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-waste_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+                }
+              ],
+              "usage": {
+                "model": "muse-spark-1.3-contributor",
+                "input_tokens": 1389,
+                "output_tokens": 1410
+              }
+            }
+          ],
+          "message": "Meta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 21 geometry checks passed.",
+          "kind": "develop_layout"
+        }
+      ],
+      "foundation": {
+        "id": "jubilee-v2.2.2-c877bd2",
+        "component_id": "foundation-jubilee",
+        "schema_version": "1",
+        "source_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+        "static_mesh_url": "/assets/jubilee-c877bd2-static.glb",
+        "bed_mesh_url": "/assets/jubilee-c877bd2-bed.glb",
+        "source_to_app": "(X-274.855945675, Y-272.216535584, 425.743280356-Z)",
+        "bbox_mm": [
+          483.143869005,
+          564.358391585,
+          612.687507964
+        ],
+        "bed_drop_mm": 100.0,
+        "bed_drop_bounds_mm": [
+          0.0,
+          150.0
+        ],
+        "deck_origin_app_mm": [
+          -1.57118753,
+          272.86690226,
+          -6.13189038
+        ],
+        "workspace_size_mm": [
+          300.0,
+          300.0
+        ],
+        "workspace_scope": "Proposed conservative rectangle over the imported build-plate assembly bounding box; actual surface, mounting interfaces, physical travel and connections are unchecked.",
+        "license": "CC-BY-4.0",
+        "source_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/frame/cads/STEP/jubilee.STEP",
+        "preview_scope": "Simplified tessellation; upstream STEP is the geometric authority."
+      },
+      "proposal": {
+        "schema_version": "1",
+        "deck_width_mm": 300.0,
+        "deck_depth_mm": 300.0,
+        "placements": [
+          {
+            "component_id": "source-rack",
+            "x_mm": -92.5,
+            "z_mm": -105.0
+          },
+          {
+            "component_id": "sample-rack",
+            "x_mm": 92.5,
+            "z_mm": -105.0
+          },
+          {
+            "component_id": "tip-rack",
+            "x_mm": -92.5,
+            "z_mm": -30.0
+          },
+          {
+            "component_id": "tip-waste",
+            "x_mm": -112.5,
+            "z_mm": 37.5
+          },
+          {
+            "component_id": "controller",
+            "x_mm": 95.0,
+            "z_mm": 50.0
+          }
+        ],
+        "rationale": "300x300 insert uses two-column layout to avoid three 95mm racks across. Back row holds source and sample racks; middle row holds tip-rack left with clear lane right; front row holds tip-waste left and controller right. All footprints keep 10mm edge clearance and at least 5mm separation. Frame width unchanged; bed drop is illustrative only and workspace is an unverified conservative hypothesis.",
+        "assumptions": [
+          "Insert centre is origin for x_mm/z_mm; deck is 300x300 hypothesis over build-plate bbox.",
+          "Component footprint sizes are fixed from current state and not rescaled.",
+          "10mm edge clearance and 5mm footprint separation are maintained.",
+          "Original Jubilee frame width and fixed parts are unchanged.",
+          "bed_drop_mm only moves original build-plate subassembly down for illustration.",
+          "No physical operation, mounting, or collision validation is claimed."
+        ],
+        "bed_drop_mm": 100.0
+      },
+      "extension": false
+    },
+    {
+      "message": "Lower the existing build plate by another 30 mm and keep the frame unchanged.",
+      "status_code": 200,
+      "usage": {
+        "prompt_tokens": 6292,
+        "completion_tokens": 395,
+        "total_tokens": 6687
+      },
+      "assistant": "I'll lower the build plate by another 30 mm and keep the frame unchanged.\n\nMeta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 21 geometry checks passed.",
+      "runs": [
+        {
+          "id": "design-c0103988",
+          "source_revision": 2,
+          "status": "accepted",
+          "model": "muse-spark-1.3-contributor",
+          "instruction": "Lower the existing build plate by another 30 mm and keep the frame unchanged.",
+          "attempts": [
+            {
+              "number": 1,
+              "proposal": {
+                "assumptions": [
+                  "Frame width and native fixed parts unchanged from imported Jubilee CAD.",
+                  "300x300 workspace is a conservative placement hypothesis, not measured mounting.",
+                  "Bed drop only translates original build-plate subassembly downward.",
+                  "Component footprint sizes held fixed from current state.",
+                  "10 mm edge clearance and 5 mm separation enforced in plan view.",
+                  "No physical operation, mounting, or collision validation claimed."
+                ],
+                "bed_drop_mm": 130.0,
+                "deck_depth_mm": 300.0,
+                "deck_width_mm": 300.0,
+                "placements": [
+                  {
+                    "component_id": "source-rack",
+                    "x_mm": -50.0,
+                    "z_mm": -105.0
+                  },
+                  {
+                    "component_id": "sample-rack",
+                    "x_mm": 50.0,
+                    "z_mm": -105.0
+                  },
+                  {
+                    "component_id": "tip-rack",
+                    "x_mm": -47.5,
+                    "z_mm": -30.0
+                  },
+                  {
+                    "component_id": "controller",
+                    "x_mm": 50.0,
+                    "z_mm": -25.0
+                  },
+                  {
+                    "component_id": "tip-waste",
+                    "x_mm": -47.5,
+                    "z_mm": 47.5
+                  }
+                ],
+                "rationale": "Lowered prior 100 mm bed pose by 30 mm to 130 mm without altering frame width. Kept 300x300 insert and arranged two across per row to avoid three 95 mm racks across bed: rear row source/sample, middle row tip-rack/controller, front tip-waste under tip column. Maintains 10 mm edge and 5 mm separation. Pose is illustrative unverified travel only.",
+                "schema_version": "1"
+              },
+              "checks": [
+                {
+                  "id": "workflow",
+                  "label": "Supported workflow",
+                  "passed": true,
+                  "detail": "Liquid preparation with design enabled is required."
+                },
+                {
+                  "id": "feasible_width",
+                  "label": "Feasible workspace",
+                  "passed": true,
+                  "detail": "Resolve the infeasible workspace width before developing a layout."
+                },
+                {
+                  "id": "schema",
+                  "label": "Proposal format",
+                  "passed": true,
+                  "detail": "Required fields and values are valid."
+                },
+                {
+                  "id": "workspace_width",
+                  "label": "Workspace width",
+                  "passed": true,
+                  "detail": "Fixed source frame width 483.1 mm; no width limit specified."
+                },
+                {
+                  "id": "envelopes",
+                  "label": "Component envelopes",
+                  "passed": true,
+                  "detail": "Fixed project component envelopes are retained."
+                },
+                {
+                  "id": "head_envelope",
+                  "label": "Head height envelope",
+                  "passed": true,
+                  "detail": "Proposed head stays below the source frame envelope; interior clearance and mounting remain unchecked."
+                },
+                {
+                  "id": "edge_source-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "source-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_sample-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "sample-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_tip-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "tip-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_controller",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "controller requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_tip-waste",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "tip-waste requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "clearance_source-rack_sample-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_tip-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_tip-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-waste_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+                }
+              ],
+              "usage": {
+                "model": "muse-spark-1.3-contributor",
+                "input_tokens": 1389,
+                "output_tokens": 1462
+              }
+            }
+          ],
+          "message": "Meta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 21 geometry checks passed.",
+          "kind": "develop_layout"
+        }
+      ],
+      "foundation": {
+        "id": "jubilee-v2.2.2-c877bd2",
+        "component_id": "foundation-jubilee",
+        "schema_version": "1",
+        "source_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+        "static_mesh_url": "/assets/jubilee-c877bd2-static.glb",
+        "bed_mesh_url": "/assets/jubilee-c877bd2-bed.glb",
+        "source_to_app": "(X-274.855945675, Y-272.216535584, 425.743280356-Z)",
+        "bbox_mm": [
+          483.143869005,
+          564.358391585,
+          612.687507964
+        ],
+        "bed_drop_mm": 130.0,
+        "bed_drop_bounds_mm": [
+          0.0,
+          150.0
+        ],
+        "deck_origin_app_mm": [
+          -1.57118753,
+          242.86690226000002,
+          -6.13189038
+        ],
+        "workspace_size_mm": [
+          300.0,
+          300.0
+        ],
+        "workspace_scope": "Proposed conservative rectangle over the imported build-plate assembly bounding box; actual surface, mounting interfaces, physical travel and connections are unchecked.",
+        "license": "CC-BY-4.0",
+        "source_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/frame/cads/STEP/jubilee.STEP",
+        "preview_scope": "Simplified tessellation; upstream STEP is the geometric authority."
+      },
+      "proposal": {
+        "schema_version": "1",
+        "deck_width_mm": 300.0,
+        "deck_depth_mm": 300.0,
+        "placements": [
+          {
+            "component_id": "source-rack",
+            "x_mm": -50.0,
+            "z_mm": -105.0
+          },
+          {
+            "component_id": "sample-rack",
+            "x_mm": 50.0,
+            "z_mm": -105.0
+          },
+          {
+            "component_id": "tip-rack",
+            "x_mm": -47.5,
+            "z_mm": -30.0
+          },
+          {
+            "component_id": "controller",
+            "x_mm": 50.0,
+            "z_mm": -25.0
+          },
+          {
+            "component_id": "tip-waste",
+            "x_mm": -47.5,
+            "z_mm": 47.5
+          }
+        ],
+        "rationale": "Lowered prior 100 mm bed pose by 30 mm to 130 mm without altering frame width. Kept 300x300 insert and arranged two across per row to avoid three 95 mm racks across bed: rear row source/sample, middle row tip-rack/controller, front tip-waste under tip column. Maintains 10 mm edge and 5 mm separation. Pose is illustrative unverified travel only.",
+        "assumptions": [
+          "Frame width and native fixed parts unchanged from imported Jubilee CAD.",
+          "300x300 workspace is a conservative placement hypothesis, not measured mounting.",
+          "Bed drop only translates original build-plate subassembly downward.",
+          "Component footprint sizes held fixed from current state.",
+          "10 mm edge clearance and 5 mm separation enforced in plan view.",
+          "No physical operation, mounting, or collision validation claimed."
+        ],
+        "bed_drop_mm": 130.0
+      },
+      "extension": false
+    }
+  ],
+  "inspection_rejected_before_computed_reach_context": [
+    {
+      "id": "inspection-1aaa9368",
+      "source_revision": 2,
+      "status": "rejected",
+      "model": "muse-spark-1.3-contributor",
+      "instruction": "Now add an inspection arm and camera to this same workstation.",
+      "attempts": [
+        {
+          "number": 1,
+          "proposal": {
+            "assumptions": [
+              "Base joint computed from given foundation formula.",
+              "Targets are sample-rack centre and x +/-20 at same z.",
+              "Planar 2-link reach uses centreline distances.",
+              "Equalish links preferred for leftmost elbow branch.",
+              "Small margin added over 539.3mm max reach.",
+              "Camera is RPi Module 3 envelope; arm is custom, not open-source copy."
+            ],
+            "link_lengths_mm": [
+              280,
+              270
+            ],
+            "mast_height_mm": 450,
+            "rationale": "Max base-to-target distance ~539mm; 280+270=550mm covers centre and +/-20mm with small margin while minimizing length. Equalish links satisfy abs diff constraint and favor leftmost IK.",
+            "schema_version": "1"
+          },
+          "checks": [
+            {
+              "id": "inspection_geometry",
+              "label": "Inspection geometry",
+              "passed": false,
+              "detail": "Inspection target is unreachable with the proposed link lengths."
+            }
+          ],
+          "usage": {
+            "model": "muse-spark-1.3-contributor",
+            "input_tokens": 2786,
+            "output_tokens": 664
+          }
+        },
+        {
+          "number": 2,
+          "proposal": {
+            "assumptions": [
+              "Base joint from foundation formula.",
+              "Targets are sample-rack centre and x +/-20 at same z.",
+              "Planar 2-link reach uses centreline distances.",
+              "Equalish links preferred for leftmost elbow branch.",
+              "Small margin added over 539.3mm max reach.",
+              "Camera is RPi Module 3 envelope; arm is custom, not open-source copy."
+            ],
+            "link_lengths_mm": [
+              290,
+              280
+            ],
+            "mast_height_mm": 450,
+            "rationale": "Max base-to-target distance ~539.3mm; 290+280=570mm covers centre and +/-20mm with margin while keeping links short. Near-equal links satisfy abs diff constraint and favor leftmost IK.",
+            "schema_version": "1"
+          },
+          "checks": [
+            {
+              "id": "inspection_geometry",
+              "label": "Inspection geometry",
+              "passed": false,
+              "detail": "Inspection target is unreachable with the proposed link lengths."
+            }
+          ],
+          "usage": {
+            "model": "muse-spark-1.3-contributor",
+            "input_tokens": 2993,
+            "output_tokens": 1073
+          }
+        }
+      ],
+      "message": "The inspection proposal did not pass the checks. Your project was not changed.",
+      "kind": "add_inspection"
+    }
+  ],
+  "inspection_after_shared_computed_reach_context": {
+    "usage": {
+      "prompt_tokens": 6143,
+      "completion_tokens": 546,
+      "total_tokens": 6689
+    },
+    "runs": [
+      {
+        "id": "inspection-7c97f922",
+        "source_revision": 2,
+        "status": "accepted",
+        "model": "muse-spark-1.3-contributor",
+        "instruction": "Now add an inspection arm and camera to this same workstation.",
+        "attempts": [
+          {
+            "number": 1,
+            "proposal": {
+              "assumptions": [
+                "Base joint anchor and target distances are compiler-computed and authoritative.",
+                "Two horizontal links with leftmost elbow IK branch.",
+                "Front-right sidecar with downward camera; camera envelope fixed to Camera Module 3.",
+                "No collision, load, coverage, or control validation.",
+                "Existing components unchanged; hardware not selected or priced.",
+                "Total link length includes 10 mm proposal margin."
+              ],
+              "link_lengths_mm": [
+                300,
+                300
+              ],
+              "mast_height_mm": 450,
+              "rationale": "300+300=600 mm exceeds 592.89 mm required total (max 582.89 mm +10 mm margin); equal links give zero minimum reach, satisfying 575-583 mm targets with shortest practical round sizes. 450 mm mast places arm above deck and source frame for downward camera viewing.",
+              "schema_version": "1"
+            },
+            "checks": [
+              {
+                "id": "planar_reach",
+                "passed": true,
+                "detail": "All illustrated targets are reachable by planar inverse kinematics.",
+                "label": "planar reach"
+              },
+              {
+                "id": "sidecar_width",
+                "passed": true,
+                "detail": "The sidecar pad stays within the source frame width.",
+                "label": "sidecar width"
+              },
+              {
+                "id": "workspace_width",
+                "passed": true,
+                "detail": "No workspace width limit was specified; pose bounds are recorded.",
+                "label": "workspace width"
+              }
+            ],
+            "usage": {
+              "model": "muse-spark-1.3-contributor",
+              "input_tokens": 2954,
+              "output_tokens": 436
+            }
+          }
+        ],
+        "message": "Inspection arm and camera added to this project. Kinematic concept only; hardware and camera coverage are unverified.",
+        "kind": "add_inspection"
+      }
+    ],
+    "proposal": {
+      "schema_version": "1",
+      "link_lengths_mm": [
+        300.0,
+        300.0
+      ],
+      "mast_height_mm": 450.0,
+      "rationale": "300+300=600 mm exceeds 592.89 mm required total (max 582.89 mm +10 mm margin); equal links give zero minimum reach, satisfying 575-583 mm targets with shortest practical round sizes. 450 mm mast places arm above deck and source frame for downward camera viewing.",
+      "assumptions": [
+        "Base joint anchor and target distances are compiler-computed and authoritative.",
+        "Two horizontal links with leftmost elbow IK branch.",
+        "Front-right sidecar with downward camera; camera envelope fixed to Camera Module 3.",
+        "No collision, load, coverage, or control validation.",
+        "Existing components unchanged; hardware not selected or priced.",
+        "Total link length includes 10 mm proposal margin."
+      ]
+    }
+  },
+  "additional_failure": "An earlier expansion request hit a local prompt-construction TypeError after extraction. It made no inspection model proposal; extraction usage was not retained, so reported counts are incomplete for that failed request.",
+  "inspection_setup": "The accepted live bed-revision proposal was reconstructed into a fresh runtime project with the same source geometry and synthetic requirements before the rejected and accepted inspection checks."
+}

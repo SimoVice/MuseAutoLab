@@ -25,6 +25,7 @@ export type Component = {
   size: [number, number, number];
   geometry?: ComponentGeometry;
   reference_geometry?: Record<string, unknown>;
+  foundation_asset_id?: string;
 };
 
 export type DesignReference = {
@@ -172,6 +173,8 @@ export type Project = {
     constraint_status: 'unconstrained' | 'fits' | 'infeasible';
     estimated_cost: { amount: number | null; currency: string };
     cooling: DesignCooling;
+    foundation?: { id: string; bed_drop_mm: number; bbox_mm: [number, number, number] };
+    assembly_bounds?: { min_mm: [number, number, number]; max_mm: [number, number, number] };
   };
   plan?: PreparationPlan | null;
   engineering_design?: EngineeringDesign | null;
@@ -242,6 +245,7 @@ export type LayoutProposal = {
   schema_version: '1';
   deck_width_mm: number;
   deck_depth_mm: number;
+  bed_drop_mm?: number;
   placements: LayoutPlacement[];
   rationale: string;
   assumptions: string[];

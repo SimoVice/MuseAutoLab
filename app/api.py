@@ -11,11 +11,12 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.chat_actions import execute_chat_actions, extension_only_patch
 from app.design_agent import develop_design
 from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.inspection import clear_extension, develop_inspection
-from app.model_client import ModelClientError, generate_turn
+from app.model_client import ChatAction, ModelClientError, generate_turn
 from app.project_exports import (
     ExportError,
     export_archive,
@@ -213,8 +214,18 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             turn, usage = await generate_turn(
                 deepcopy(current), request.message, list(session.history)
             )
-            patch = turn.patch()
+            actions = list(turn.actions)
+            patch = extension_only_patch(turn.patch(), actions)
             updated = apply_update(current, patch)
+            if (not actions and current.get("engineering_design") and set(patch).intersection({
+                "workspace_width_mm", "cooling_enabled", "cooling_target_c",
+            })):
+                actions = [ChatAction(kind="develop_layout", source=request.message[:1000])]
+            action_runs = []
+            if actions:
+                updated, action_runs = await execute_chat_actions(updated, actions, request.message)
+                if any(run["status"] in ("failed", "rejected") for run in action_runs):
+                    updated = deepcopy(current)
         except ModelClientError as exc:
             return JSONResponse(status_code=502, content={
                 "detail": str(exc),
@@ -228,6 +239,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ) from None
 
         reply = turn.assistant_message
+        if action_runs:
+            reply += "\n\n" + "\n".join(run["message"] for run in action_runs)
         recommendations = []
         for recommendation in turn.recommendations:
             ref = resolve_reference(recommendation.reference_id)
@@ -248,7 +261,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     ]
                     reply += "\n\nCalculated preparation per tube:\n" + "\n".join(recipes)
                     reply += "\nReview the plan below before confirming."
-            if "workspace_width_mm" in patch:
+            if "workspace_width_mm" in patch and not action_runs:
                 width = updated["summary"]["workspace_width_mm"]
                 if updated["design"]["constraint_status"] == "infeasible":
                     reply += (
@@ -277,7 +290,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         )
         session.history = session.history[-8:]
         return {"project": deepcopy(updated), "assistant_message": display_reply, "usage": usage,
-                "recommendations": recommendations}
+                "recommendations": recommendations, "action_runs": action_runs}
 
 
 @app.post("/api/projects/{project_id}/configuration")

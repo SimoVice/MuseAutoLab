@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
+import AgentActivity, { finishAgentReveal } from './AgentActivity';
 import ComponentCatalog from './ComponentCatalog';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
-import DesignAgentPanel from './DesignAgentPanel';
 import CameraPanel from './CameraPanel';
-import InspectionPanel from './InspectionPanel';
 import DesignSources from './DesignSources';
+import './chat-workspace.css';
 import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectBrief, ProjectResponse } from './types';
 
 const WELCOME = 'What would you like to automate in your lab? Describe the task and what makes it difficult.';
-const PROPOSED_TARGET_C = 4;
 const LIQUID_NOTE = 'This workflow is at the concept stage. 3D previews and build files are currently available for liquid preparation.';
 const LOCAL_PROJECT = 'museautolab.workspace.v1';
+
 type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assistant'; content: string }[] };
+type ActionRun = { kind: string; status: 'accepted' | 'rejected' | 'failed' | 'ready'; message?: string; model?: string };
+type ChatResponse = ProjectResponse & { action_runs?: ActionRun[] };
+type AgentPhase = 'pending' | 'complete' | null;
 
 function restoredMessages(data: OpenedProject): ConversationEntry[] {
   return [{ id: 0, role: 'assistant', text: WELCOME }, ...(data.conversation ?? []).map((entry, index) => ({
@@ -34,10 +37,11 @@ function readableError(message: string) {
   }[field] ?? field));
 }
 
-async function request(path: string, body?: unknown): Promise<ProjectResponse> {
+async function request(path: string, body?: unknown, signal?: AbortSignal): Promise<ProjectResponse> {
   const response = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const data: unknown = await response.json().catch(() => null);
@@ -92,15 +96,18 @@ function briefEntries(brief: ProjectBrief | null | undefined): { key: keyof Proj
     .filter((entry) => entry.value !== '');
 }
 
+function sameDesign(a: Project | null, b: Project): boolean {
+  return JSON.stringify(a?.engineering_design ?? null) === JSON.stringify(b.engineering_design ?? null)
+    && JSON.stringify(a?.inspection_extension ?? null) === JSON.stringify(b.inspection_extension ?? null);
+}
+
 export default function App() {
   const [project, setProject] = useState<Project | null>(null);
   const [messages, setMessages] = useState<ConversationEntry[]>([{ id: 0, role: 'assistant', text: WELCOME }]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [designBusy, setDesignBusy] = useState(false);
   const [storageBusy, setStorageBusy] = useState(false);
-  const [extensionBusy, setExtensionBusy] = useState(false);
   const [inspectionTime, setInspectionTime] = useState(0);
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
@@ -110,16 +117,22 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [physicsView, setPhysicsView] = useState<PhysicsView | null>(null);
   const [physicsActive, setPhysicsActive] = useState(false);
-  const [coolingEnabledDraft, setCoolingEnabledDraft] = useState(false);
-  const [coolingTargetDraft, setCoolingTargetDraft] = useState(String(PROPOSED_TARGET_C));
+  const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [actionRuns, setActionRuns] = useState<ActionRun[]>([]);
   const lastMessage = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const viewer = useRef<HTMLDivElement>(null);
+  const details = useRef<HTMLDetailsElement>(null);
   const seenRevision = useRef<string | null>(null);
   const newProjectRequested = useRef(true);
   const skipRestore = useRef(false);
   const projectFile = useRef<HTMLInputElement>(null);
+  const chatAbort = useRef<AbortController | null>(null);
+  const revealRef = useRef<HTMLSpanElement | null>(null);
+  const sessionRef = useRef(0);
+  const projectRef = useRef<Project | null>(null);
+  projectRef.current = project;
 
   useEffect(() => {
     let active = true;
@@ -165,18 +178,11 @@ export default function App() {
       top: Math.max(0, lastMessage.current.offsetTop - conversation.current.clientHeight + 24),
       behavior: reducedMotion ? 'auto' : 'smooth',
     });
-  }, [messages, busy]);
+  }, [messages, busy, agentPhase]);
+
   useEffect(() => {
     if (selectedId && project && !project.design.components.some((part) => part.id === selectedId)) setSelectedId(null);
   }, [project, selectedId]);
-
-  useEffect(() => {
-    if (!project) return;
-    const enabled = Boolean(project.summary?.cooling_enabled ?? project.design?.cooling?.enabled ?? false);
-    const target = project.summary?.cooling_target_c ?? project.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
-    setCoolingEnabledDraft(enabled);
-    setCoolingTargetDraft(target == null ? String(PROPOSED_TARGET_C) : String(target));
-  }, [project]);
 
   const projectId = project?.id;
   const projectRevision = project?.revision;
@@ -191,6 +197,7 @@ export default function App() {
       seenRevision.current = key;
       setPlaying(false);
       setPhysicsView(null);
+      setInspectionTime(0);
       setResetKey((value) => value + 1);
     }
   }, [projectId, projectRevision]);
@@ -201,6 +208,8 @@ export default function App() {
       field.current?.focus({ preventScroll: true });
     }
   }, [project, initializing]);
+
+  useEffect(() => () => { chatAbort.current?.abort(); }, []);
 
   const handleVisionSelect = useCallback((id: string) => {
     setSelectedId(id);
@@ -215,17 +224,19 @@ export default function App() {
   const workflow = project?.workflow;
   const supportedLiquid = Boolean(workflow && workflow.kind === 'liquid_preparation' && workflow.design_available);
   const hasEngineeringDesign = Boolean(project?.engineering_design);
+  const hasFoundation = Boolean(project?.design.foundation);
   const recordedBrief = briefEntries(project?.brief);
   const hasBrief = recordedBrief.length > 0;
   const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || (project?.status === 'confirmed' && project?.plan?.status === 'ready'));
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
   const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && hasEngineeringDesign;
-  const equipmentText = (project?.summary?.equipment ?? project?.brief?.equipment ?? '').trim();
-  const showDesignAgent = Boolean(
-    project && supportedLiquid && equipmentText !== '' && project.design?.constraint_status !== 'infeasible',
-  );
   const acceptedLayoutId = project?.engineering_design?.provenance.run_id;
+  useEffect(() => {
+    if (actionRuns.some((run) => run.status === 'ready') && details.current) {
+      details.current.open = true;
+    }
+  }, [actionRuns]);
   useEffect(() => {
     if (!acceptedLayoutId) return;
     viewer.current?.scrollIntoView({
@@ -245,13 +256,10 @@ export default function App() {
   }
   const handlePhysicsView = useCallback((view: PhysicsView | null) => { setPhysicsView(view); }, []);
   const handlePhysicsActivate = useCallback(() => { setResetKey((value) => value + 1); setInspectionTime(0); setPlaying(false); setPhysicsActive(true); }, []);
-  const handleProjectUpdate = useCallback((updated: Project) => { setProject(updated); }, []);
-  const handleDesignBusy = useCallback((value: boolean) => { setDesignBusy(value); }, []);
-  const handleExtensionBusy = useCallback((value: boolean) => { setExtensionBusy(value); }, []);
   const handleInspection = useCallback((time: number) => {
     setInspectionTime(time); setPlaying(false); setPhysicsActive(false); setPhysicsView(null);
   }, []);
-  const uiBusy = busy || designBusy || storageBusy || extensionBusy;
+  const uiBusy = busy || storageBusy;
 
   async function saveProject() {
     if (!project || uiBusy) return;
@@ -274,6 +282,7 @@ export default function App() {
 
   async function openProject(file: File) {
     if (uiBusy || initializing) return;
+    chatAbort.current?.abort();
     setStorageBusy(true);
     setError(null);
     try {
@@ -284,6 +293,9 @@ export default function App() {
       });
       const data = await response.json() as OpenedProject & { detail?: string };
       if (!response.ok || !data.project) throw new Error(data.detail ?? 'Choose a valid MuseAutoLab project file.');
+      sessionRef.current += 1;
+      setAgentPhase(null);
+      setActionRuns([]);
       setProject(data.project);
       setMessages(restoredMessages(data));
       setSelectedId(null);
@@ -298,11 +310,14 @@ export default function App() {
   }
 
   function handleNewProject() {
-    if (busy || storageBusy || initializing) return;
+    if (uiBusy || initializing) return;
+    chatAbort.current?.abort();
+    sessionRef.current += 1;
+    setAgentPhase(null);
+    setActionRuns([]);
     skipRestore.current = true;
     try { localStorage.removeItem(LOCAL_PROJECT); } catch { /* Continue with a new session. */ }
     setStorageNotice(null);
-    setDesignBusy(false);
     newProjectRequested.current = true;
     seenRevision.current = null;
     setProject(null);
@@ -314,10 +329,7 @@ export default function App() {
     setPhysicsView(null);
     setPhysicsActive(false);
     setInspectionTime(0);
-    setExtensionBusy(false);
     setResetKey((value) => value + 1);
-    setCoolingEnabledDraft(false);
-    setCoolingTargetDraft(String(PROPOSED_TARGET_C));
     setConnectionAttempt((value) => value + 1);
   }
 
@@ -325,18 +337,49 @@ export default function App() {
     event?.preventDefault();
     const message = input.trim();
     if (!project || !message || uiBusy) return;
+    const session = sessionRef.current;
+    const base = projectRef.current;
+    chatAbort.current?.abort();
+    const controller = new AbortController();
+    chatAbort.current = controller;
     setBusy(true);
+    setAgentPhase('pending');
     setError(null);
     setInput('');
     setMessages((current) => [...current, { id: Date.now(), role: 'user', text: message }]);
     try {
-      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/messages`, { message });
-      setProject(result.project);
-      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message!, references: result.recommendations?.map((item) => item.reference) }]);
+      const raw = await request(`/api/projects/${encodeURIComponent(project.id)}/messages`, { message }, controller.signal) as ChatResponse;
+      if (controller.signal.aborted || sessionRef.current !== session) return;
+      const runs = Array.isArray(raw.action_runs) ? raw.action_runs : [];
+      const changed = !sameDesign(base, raw.project);
+      if (changed) {
+        setAgentPhase('complete');
+        await finishAgentReveal(controller.signal, revealRef.current);
+        if (controller.signal.aborted || sessionRef.current !== session) return;
+      } else {
+        setAgentPhase(null);
+      }
+      setProject(raw.project);
+      setActionRuns(runs);
+      const failed = runs.find((run) => run.status === 'rejected' || run.status === 'failed');
+      if (raw.assistant_message) {
+        setMessages((current) => [...current, {
+          id: Date.now() + 1, role: 'assistant', text: raw.assistant_message as string,
+          references: raw.recommendations?.map((item) => item.reference),
+        }]);
+      }
+      if (failed) setError(failed.message || 'That change was not applied. The current approved design is unchanged. Try a smaller request in chat.');
     } catch (reason) {
+      if (controller.signal.aborted || sessionRef.current !== session) return;
+      setAgentPhase(null);
       setInput(message);
       setError(reason instanceof Error ? reason.message : 'The request could not be completed. Please try again.');
-    } finally { setBusy(false); }
+    } finally {
+      if (!controller.signal.aborted && sessionRef.current === session) {
+        setBusy(false);
+        setAgentPhase(null);
+      }
+    }
   }
 
   async function confirm() {
@@ -349,26 +392,6 @@ export default function App() {
       if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The design could not be confirmed.');
-    } finally { setBusy(false); }
-  }
-
-  async function applyCooling() {
-    if (!project || uiBusy) return;
-    const parsed = Number(coolingTargetDraft);
-    if (coolingEnabledDraft && (!coolingTargetDraft.trim() || !Number.isFinite(parsed) || parsed < 2 || parsed > 20)) {
-      setError('Enter a target temperature between 2 and 20 °C.');
-      return;
-    }
-    const body: { cooling_enabled: boolean; cooling_target_c?: number } = { cooling_enabled: coolingEnabledDraft };
-    if (coolingTargetDraft.trim() !== '' && Number.isFinite(parsed) && parsed >= 2 && parsed <= 20) body.cooling_target_c = parsed;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/configuration`, body);
-      setProject(result.project);
-      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'The cooling settings could not be applied.');
     } finally { setBusy(false); }
   }
 
@@ -395,7 +418,7 @@ export default function App() {
   }
 
   const part = hasEngineeringDesign ? project?.design.components.find((component) => component.id === selectedId) : undefined;
-  const bounds = project?.inspection_extension?.assembly_bounds;
+  const bounds = project?.inspection_extension?.assembly_bounds ?? project?.design.assembly_bounds;
   const dimensions = hasEngineeringDesign ? bounds ? {
     width_mm: bounds.max_mm[0] - bounds.min_mm[0], depth_mm: bounds.max_mm[2] - bounds.min_mm[2],
     height_mm: bounds.max_mm[1] - bounds.min_mm[1],
@@ -416,12 +439,13 @@ export default function App() {
   const costAmount = hasEngineeringDesign ? (sourcing ? sourcing.subtotal : estimatedAmount) : null;
   const costText = costAmount == null
     ? 'Not estimated yet'
+    : costAmount === 0 && sourcing && sourcing.unpriced_count > 0 ? 'Pricing pending'
     : `${sourcing?.is_lower_bound ? 'from ' : ''}${formatMoney(costAmount, costCurrency)}`;
-  const coolingEnabled = Boolean(project?.summary?.cooling_enabled ?? project?.design?.cooling?.enabled ?? false);
-  const effectiveTarget = project?.summary?.cooling_target_c ?? project?.design?.cooling?.target_c ?? PROPOSED_TARGET_C;
-  const coolingNotes = hasEngineeringDesign ? (project?.design?.cooling?.notes ?? []) : [];
   const isConfirmed = project?.status === 'confirmed';
   const headerLabel = hasBrief || hasEngineeringDesign ? 'Lab automation project' : 'New automation project';
+  const showPhotoCheck = Boolean(project?.inspection_extension) || actionRuns.some((run) => run.kind === 'show_photo_check');
+  const requestedSources = actionRuns.some((run) => run.kind === 'show_sources' && run.status === 'ready');
+  const requestedPhoto = actionRuns.some((run) => run.kind === 'show_photo_check' && run.status === 'ready');
 
   return (
     <div className="app-shell">
@@ -435,7 +459,7 @@ export default function App() {
           <input ref={projectFile} type="file" accept=".json,application/json" className="sr-only" aria-label="Open saved project" onChange={(event) => { const file = event.target.files?.[0]; if (file) void openProject(file); }} />
           <button type="button" className="new-project-button" onClick={() => projectFile.current?.click()} disabled={uiBusy || initializing}>Open project</button>
           <button type="button" className="new-project-button" onClick={() => void saveProject()} disabled={!project || uiBusy || initializing}>Save project</button>
-          <button type="button" className="new-project-button" onClick={handleNewProject} disabled={busy || storageBusy || initializing}>New project</button>
+          <button type="button" className="new-project-button" onClick={handleNewProject} disabled={uiBusy || initializing}>New project</button>
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
         </div>
       </header>
@@ -471,10 +495,8 @@ export default function App() {
                   <p className="planning-note">{LIQUID_NOTE}</p>
                 ) : status === 'infeasible' ? (
                   <p className="planning-note">Requested width cannot fit this concept. Adjust the available width in chat to continue.</p>
-                ) : equipmentText === '' ? (
-                  <p className="planning-note">No machine has been generated yet. Discuss the equipment in chat so the layout can be proposed for this workflow.</p>
                 ) : (
-                  <p className="planning-note">No machine has been generated yet. Use the workstation layout panel below to develop a design with Meta.</p>
+                  <p className="planning-note">No machine has been generated yet. Discuss the equipment in chat so the layout can be proposed for this workflow.</p>
                 )}
               </div>
             ) : (
@@ -487,9 +509,9 @@ export default function App() {
           ) : (
             <>
               <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
-                <div className="viewer-topline"><span><Icon name="cube" size={16} /> Interactive 3D concept</span><span><span className="viewer-badge">Meta-proposed layout</span> <span className="viewer-badge">Unverified concept</span></span></div>
+                <div className="viewer-topline"><span><Icon name="cube" size={16} /> {hasFoundation ? 'Jubilee CAD · custom layout' : 'Interactive 3D concept'}</span><span><span className="viewer-badge">Meta-proposed layout</span></span></div>
                 <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-                  {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: project.plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
                   <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
                 </div>
@@ -503,167 +525,40 @@ export default function App() {
                 <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
                 <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
               </div>
-            </>
-          )}
-          {project && showDesignAgent && <DesignAgentPanel project={project} disabled={busy || storageBusy || extensionBusy} onProject={handleProjectUpdate} onBusy={handleDesignBusy} />}
-          {project && hasBrief && <DesignSources project={project} showBindings={hasEngineeringDesign} onHighlight={handleVisionSelect} />}
-          {project && hasEngineeringDesign && <InspectionPanel project={project} busy={uiBusy} resetKey={resetKey} onProject={handleProjectUpdate} onBusy={handleExtensionBusy} onInspect={handleInspection} />}
-          {hasEngineeringDesign && (
-            <>
-              {project && <CameraPanel project={project} onSelect={handleVisionSelect} />}
-              {project && showPreview && (
-                <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
-              )}
-              {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
-              {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
 
-
-              <section className="cooling-card" aria-labelledby="cooling-title">
-                <div className="cooling-heading">
-                  <div>
-                    <h2 id="cooling-title">Cold storage</h2>
-                    <p>Optional refrigerated bay for samples.</p>
-                  </div>
-                  <span className="cooling-state">{coolingEnabled ? `Target ${effectiveTarget}°C` : 'Off'}</span>
-                </div>
-                <label className="cooling-toggle" htmlFor="cooling-enabled">
-                  <input
-                    id="cooling-enabled"
-                    type="checkbox"
-                    checked={coolingEnabledDraft}
-                    onChange={(event) => setCoolingEnabledDraft(event.target.checked)}
-                    disabled={!project || uiBusy}
-                  />
-                  Refrigerated sample bay
-                </label>
-                <div className="cooling-row">
-                  <div className="cooling-field">
-                    <label htmlFor="cooling-target">Target temperature (°C)</label>
-                    <input
-                      id="cooling-target"
-                      type="number"
-                      min={2}
-                      max={20}
-                      step={0.5}
-                      value={coolingTargetDraft}
-                      onChange={(event) => setCoolingTargetDraft(event.target.value)}
-                      disabled={!project || uiBusy}
-                    />
-                  </div>
-                  <button type="button" className="cooling-apply" onClick={() => void applyCooling()} disabled={!project || uiBusy}>
-                    Apply cooling settings
-                  </button>
-                </div>
-                <p className="cooling-note">
-                  Proposed cooling with manual sample transfer. Thermal performance remains to be verified.
-                </p>
-                {coolingNotes.length > 0 && (
-                  <details className="cooling-notes"><summary>Design assumptions</summary><ul>
-                    {coolingNotes.map((note, index) => (
-                      <li key={index}>{note}</li>
-                    ))}
-                  </ul></details>
-                )}
-              </section>
-
-              <ComponentCatalog
-                sourcing={sourcing}
-                busy={uiBusy || !project}
-                onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
-                onHighlight={(componentId) => setSelectedId(componentId)}
-              />
-            </>
-          )}
-        </section>
-
-        <aside className="conversation-panel" aria-labelledby="conversation-title">
-          <div className="chat-heading"><div className="assistant-emblem"><Icon name="spark" size={19} /></div><div><h2 id="conversation-title">Design assistant</h2><p>Let’s make your workflow easier.</p></div><span className="chat-status">{project?.status === 'confirmed' ? 'Confirmed' : 'Draft'}</span></div>
-            <div className="conversation-scroll" ref={conversation}>
-            <div className="chat-date">Your design conversation</div>
-            {messages.map((message) => <div key={message.id} className={`message-row ${message.role}`}>
-              {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
-              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
-            </div>)}
-            {busy && <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span> Working on your request…</div>}
-            <div ref={lastMessage} />
-            {hasEngineeringDesign && hasBrief && project && (
-              <details className="brief-card" aria-labelledby="brief-title">
-                <summary>Project brief</summary>
-                <a className="brief-download" href={briefHref} download="project-brief.json">Download brief</a>
-                <div className="brief-heading"><div><h3 id="brief-title">Project brief</h3><p>{workflow?.label ?? 'General automation'}</p></div></div>
-                <dl>{recordedBrief.map((entry) => <div key={entry.key}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>)}</dl>
-                <p className="brief-note">Your requirements for this project revision.</p>
-              </details>
-            )}
-            {showLiquidParams && (
-              <div className="summary-card">
-                <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
-                <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
-                {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
-                <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
-              </div>
-            )}
-            {showLiquidParams && project && plan == null && (
-              <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
-                <div className="plan-heading">
-                  <div>
-                    <h3 id="plan-title">Preparation plan</h3>
-                    <p>Direct dilution · one tube per target</p>
-                  </div>
-                  <span className="plan-status plan-status-missing">Unavailable</span>
-                </div>
-                <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
-              </div>
-            )}
-            {showLiquidParams && project && plan && (
-              <div className="plan-card" aria-labelledby="plan-title" aria-live="polite">
-                <div className="plan-heading">
-                  <div>
-                    <h3 id="plan-title">Preparation plan</h3>
-                    <p>Direct dilution · one tube per target · no serial dilutions</p>
-                  </div>
-                  <span className={`plan-status plan-status-${plan.status}`}>{planStatusLabel(plan.status)}</span>
-                </div>
-                <p className="plan-message">{plan.message}</p>
-                <div className="plan-meta">
-                  <span><strong>Stock:</strong> {plan.stock ?? 'Not specified'}</span>
-                  <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Not specified'}</span>
-                </div>
-                {plan.steps.length > 0 ? (
-                  <div className="plan-table-wrap">
-                    <table className="plan-table">
-                      <caption className="sr-only">Per-target preparation volumes in microlitres</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Target</th>
-                          <th scope="col">Stock</th>
-                          <th scope="col">Diluent</th>
-                          <th scope="col">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {plan.steps.map((step) => (
-                          <tr key={step.id}>
-                            <th scope="row">{step.target}</th>
-                            <td>{formatVolumeUl(step.stock_volume_ul)}</td>
-                            <td>{formatVolumeUl(step.diluent_volume_ul)}</td>
-                            <td>{formatVolumeUl(step.total_volume_ul)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="plan-empty">No per-target volumes to show yet.</p>
-                )}
-                {plan.assumptions.length > 0 && (
-                  <div>
-                    <p className="plan-assumptions-heading">Assumptions</p>
-                    <ul className="plan-assumptions">
-                      {plan.assumptions.map((assumption, index) => (
-                        <li key={index}>{assumption}</li>
+              <details className="project-details" ref={details}>
+                <summary>Project details</summary>
+                {hasBrief && (
+                  <div className="planning-panel" aria-label="Project brief">
+                    <div className="planning-heading">
+                      <div>
+                        <h2>Project brief</h2>
+                        <p>{workflow?.label ?? 'General automation'}</p>
+                      </div>
+                    </div>
+                    <a className="brief-download" href={briefHref} download="project-brief.json">Download brief</a>
+                    <dl>
+                      {recordedBrief.map((entry) => (
+                        <div key={entry.key}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>
                       ))}
-                    </ul>
+                    </dl>
+                  </div>
+                )}
+                {project && <DesignSources project={project} showBindings={hasEngineeringDesign} onHighlight={handleVisionSelect} />}
+                <ComponentCatalog
+                  sourcing={sourcing}
+                  busy={uiBusy || !project}
+                  onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
+                  onHighlight={(componentId) => setSelectedId(componentId)}
+                />
+                {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
+                {project?.inspection_extension && (
+                  <div className="inspection-sweep">
+                    <button type="button" className="new-project-button" disabled={uiBusy} onClick={() => handleInspection(0)}>
+                      Reset inspection sweep
+                    </button>
+                    <label htmlFor="inspection-time">Camera sweep <span>{inspectionTime.toFixed(1)} / 6 s</span></label>
+                    <input id="inspection-time" type="range" min={0} max={6} step={0.05} value={inspectionTime} disabled={uiBusy} onChange={(event) => { const value = Number(event.target.value); handleInspection(value); }} />
                   </div>
                 )}
                 {showPreview && (
@@ -676,7 +571,112 @@ export default function App() {
                     <p className="preview-note">Illustrative animation; motion and dispensing are not validated.</p>
                   </div>
                 )}
-              </div>
+                {showPhotoCheck && project && (
+                  <details className="photo-check" open={requestedPhoto || undefined}>
+                    <summary>Photo check</summary>
+                    <CameraPanel project={project} onSelect={handleVisionSelect} />
+                  </details>
+                )}
+                {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
+                {project && !hasFoundation && showPreview && (
+                  <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
+                )}
+              </details>
+            </>
+          )}
+          {!hasEngineeringDesign && requestedSources && project && (
+            <details className="project-details" ref={details}>
+              <summary>Project sources</summary>
+              <DesignSources project={project} showBindings={false} onHighlight={handleVisionSelect} />
+            </details>
+          )}
+        </section>
+
+        <aside className="conversation-panel" aria-labelledby="conversation-title">
+          <div className="chat-heading"><div className="assistant-emblem"><Icon name="spark" size={19} /></div><div><h2 id="conversation-title">Design assistant</h2><p>Let’s make your workflow easier.</p></div><span className="chat-status">{project?.status === 'confirmed' ? 'Confirmed' : 'Draft'}</span></div>
+          <div className="conversation-scroll" ref={conversation}>
+            <div className="chat-date">Your design conversation</div>
+            {messages.map((message) => <div key={message.id} className={`message-row ${message.role}`}>
+              {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
+              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
+            </div>)}
+            {agentPhase && <AgentActivity phase={agentPhase} fillRef={revealRef} />}
+            <div ref={lastMessage} />
+            {showLiquidParams && (
+              <details className="prep-plan">
+                <summary>Preparation plan</summary>
+                <div className="summary-card">
+                  <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
+                  <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
+                  {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
+                  <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
+                </div>
+                {project && plan == null && (
+                  <div className="plan-card" aria-live="polite">
+                    <div className="plan-heading">
+                      <div>
+                        <h3>Preparation plan</h3>
+                        <p>Direct dilution · one tube per target</p>
+                      </div>
+                      <span className="plan-status plan-status-missing">Unavailable</span>
+                    </div>
+                    <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
+                  </div>
+                )}
+                {project && plan && (
+                  <div className="plan-card" aria-live="polite">
+                    <div className="plan-heading">
+                      <div>
+                        <h3>Preparation plan</h3>
+                        <p>Direct dilution · one tube per target · no serial dilutions</p>
+                      </div>
+                      <span className={`plan-status plan-status-${plan.status}`}>{planStatusLabel(plan.status)}</span>
+                    </div>
+                    <p className="plan-message">{plan.message}</p>
+                    <div className="plan-meta">
+                      <span><strong>Stock:</strong> {plan.stock ?? 'Not specified'}</span>
+                      <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Not specified'}</span>
+                    </div>
+                    {plan.steps.length > 0 ? (
+                      <div className="plan-table-wrap">
+                        <table className="plan-table">
+                          <caption className="sr-only">Per-target preparation volumes in microlitres</caption>
+                          <thead>
+                            <tr>
+                              <th scope="col">Target</th>
+                              <th scope="col">Stock</th>
+                              <th scope="col">Diluent</th>
+                              <th scope="col">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {plan.steps.map((step) => (
+                              <tr key={step.id}>
+                                <th scope="row">{step.target}</th>
+                                <td>{formatVolumeUl(step.stock_volume_ul)}</td>
+                                <td>{formatVolumeUl(step.diluent_volume_ul)}</td>
+                                <td>{formatVolumeUl(step.total_volume_ul)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="plan-empty">No per-target volumes to show yet.</p>
+                    )}
+                    {plan.assumptions.length > 0 && (
+                      <div>
+                        <p className="plan-assumptions-heading">Assumptions</p>
+                        <ul className="plan-assumptions">
+                          {plan.assumptions.map((assumption, index) => (
+                            <li key={index}>{assumption}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </details>
             )}
           </div>
           <div className="composer-area">

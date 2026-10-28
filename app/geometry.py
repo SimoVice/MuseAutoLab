@@ -190,6 +190,9 @@ def add_geometry(project: dict) -> dict:
             pass
     reference_specs = component_geometry_specs(result)
     for comp in result["design"]["components"]:
+        if comp.get("kind") == "upstream-cad":
+            comp.pop("geometry", None)
+            continue
         if comp["id"] in reference_specs:
             comp["reference_geometry"] = deepcopy(reference_specs[comp["id"]])
         else:

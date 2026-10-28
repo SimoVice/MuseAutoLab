@@ -120,29 +120,41 @@ do not claim you have analyzed an image from chat alone.
 Project packages can be generated with the 'Generate project files' control after confirmation.
 They contain a concept assembly guide, selected components, preparation data and concept CAD; do
 not claim a package exists until the interface reports it ready.
-Before layout generation the interface shows the project brief and preparation planning only;
-the presence of a liquid workflow does not mean a machine has been generated. Once the user
-describes equipment, liquid projects have a Workstation layout panel: Develop design with Meta
-action proposes bounded operating-deck dimensions and five component positions, validates
-them, and may request one correction. Direct layout-design requests there; chat alone does
-not run that action. It is not arbitrary machine generation. Effective chat/configuration
-updates rebuild the baseline concept and invalidate an earlier accepted layout proposal.
+Before layout generation the interface shows the project brief only. Liquid preparation does
+not imply that a machine exists. All design and expansion instructions are given in this chat.
+Return actions=[] for discovery, advice, hypothetical future examples and parameter collection.
+When the user explicitly asks to develop, generate, modify or rearrange the machine, return a
+develop_layout action. Equipment and a liquid workflow are required; a dilution recipe is not.
+For a geometric change to an existing design also return develop_layout. It runs a separate
+bounded Meta proposal and geometric screening; never claim success before that action returns.
+Use add_inspection only when the user asks to add an arm/camera module NOW to an accepted
+design. A future example or possibility is not an instruction to add it. Use remove_inspection
+for an explicit removal, confirm for an explicit approval, and show_files, show_sources,
+show_components or show_photo_check when the user asks for those existing tools.
+Every action has kind and source; source must be an exact span of this user's latest message.
+At most two actions, in dependency order. Do not invent executable code, URLs or CAD file paths.
+The default development path imports the pinned actual Jubilee STEP assembly, preserves its
+frame dimensions and permits a custom 240..300 by 260..300 mm insert, five fixed-size part
+positions, and a proposed vertical pose of its original build-plate assembly. A roughly
+483 mm wide frame cannot fit a smaller width without a different mechanical design. No
+arbitrary remeshing, source-part rescaling or hardware-ready interface is supported.
 Save project downloads a portable file; Open project rebuilds it without a Meta call. The last
 project is also remembered in this browser. Prior simulation/image jobs are not restored.
-After an accepted layout, Expand this workstation can ask Meta to propose a bounded two-link
-inspection-arm/camera module, check planar reach and recorded-pose width, and add it to the
-same project. Direct expansion requests to Add arm and camera with Meta; chat alone does not
-run that action. Its sweep is kinematic only, not captured imagery or validated hardware.
-Effective requirement/configuration/layout edits clear that extension for fresh design.
+After an accepted layout, add_inspection proposes a bounded two-link arm/camera concept and
+checks planar reach and recorded-pose width on the same project. Its sweep is kinematic,
+not captured imagery or validated hardware. A new layout clears that extension for redesign.
+Quantity-only changes preserve the accepted geometry. Existing tools are under Project details;
+there are no dedicated future-module fields. Physics is unavailable for the imported Jubilee
+foundation: the old ideal XYZ simulation must not be represented as Jubilee validation.
 Ground component/project advice in the reviewed_reference_library supplied below. It is a
 dated curated library, not a live web search. Return recommendations as reference_id/reason
 objects using only the supplied IDs; use an empty list for ordinary discovery questions.
 Do not invent products, licenses, URLs, dimensions, ready-to-build interfaces or compatibility.
-Jubilee and Science Jubilee are documented alternative foundations, NOT the current robot
-CAD or installed drivers. Manufacturer envelopes support only the explicitly bound parts;
-the custom frame, pipette, racks, arm and mounts remain concept geometry. A source review
-is not laboratory validation. Explain missing source evidence rather than presenting it as
-verified. Do not set user requirement fields from a source or your own recommendation.
+Use the supplied current foundation and geometry bindings to distinguish actual imported
+Jubilee CAD from legacy custom geometry. Science Jubilee control code is not installed.
+Manufacturer envelopes support only explicitly bound parts; the custom insert, pipette, racks,
+arm and mounts remain concept geometry. A source review or imported CAD is not laboratory
+validation. Do not set user requirements from a source or your own recommendation.
 Keep the assistant_message brief and constructive."""
 
 REQUIREMENT_KEYS = (
@@ -205,6 +217,15 @@ class SourceRecommendation(BaseModel):
         return value
 
 
+class ChatAction(BaseModel):
+    """A bounded user-requested product operation, never executable model code."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["develop_layout", "add_inspection", "remove_inspection", "confirm",
+                  "show_files", "show_sources", "show_components", "show_photo_check"]
+    source: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
 class ExtractedTurn(BaseModel):
     """Strict envelope for the model's single-turn response."""
 
@@ -214,6 +235,7 @@ class ExtractedTurn(BaseModel):
     recommendations: Annotated[list[SourceRecommendation], Field(max_length=3)] = Field(
         default_factory=list
     )
+    actions: Annotated[list[ChatAction], Field(max_length=2)] = Field(default_factory=list)
     stock_concentration: Annotated[str | None, Field(max_length=500)] = None
     target_concentrations: Annotated[str | None, Field(max_length=500)] = None
     final_volume: Annotated[str | None, Field(max_length=500)] = None
@@ -291,6 +313,11 @@ class ExtractedTurn(BaseModel):
 
     def verify_sources(self, user_message: str) -> None:
         """Verify each change against a literal span from the latest user message."""
+        for action in self.actions:
+            if action.source not in user_message:
+                raise ValueError("Action source must occur literally in this message")
+        if len({action.kind for action in self.actions}) != len(self.actions):
+            raise ValueError("Do not repeat an action within one turn")
         for key in REQUIREMENT_KEYS:
             value = getattr(self, key)
             source = getattr(self, f"source_{key}")
@@ -478,6 +505,8 @@ async def generate_turn(
                 "current_plan": project.get("plan"),
                 "cooling": design.get("cooling"),
                 "catalogue": _catalogue_facts(project),
+                "foundation": design.get("foundation"),
+                "has_accepted_layout": bool(project.get("engineering_design")),
                 "inspection_extension": ({
                     "status": "digital_concept",
                     "proposal": project["inspection_extension"]["proposal"],

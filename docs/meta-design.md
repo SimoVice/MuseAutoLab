@@ -1,3 +1,5 @@
+> Historical implementation record: the screenshots and panel instructions below describe the previous custom-frame UI. New projects use original Jubilee CAD and all requests in chat. See the [current flow](../README.md) and [source asset](jubilee-cad-asset.md). Compiler 3 preserves source identity/pose; compiler 1/2 inputs reopen as a draft requiring a new design.
+
 # Meta-proposed workstation layouts
 
 MuseAutoLab turns a laboratory task into a revisioned workstation proposal. The

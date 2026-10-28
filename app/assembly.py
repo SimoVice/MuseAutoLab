@@ -315,6 +315,24 @@ def assembly_steps(project: dict) -> list[dict]:
         })
     for step in steps:
         step["title"] = step["title"].split(" — ", 1)[-1]
+    if project.get("design", {}).get("foundation"):
+        for step in steps:
+            if step["id"] == "frame":
+                step.update(title="Source platform and custom insert",
+                            component_ids=["foundation-jubilee", "base"], instructions=[
+                    "Review the original Jubilee assembly at its pinned revision and source BOM.",
+                    "Review the proposed bed pose and custom insert; source parts are unscaled.",
+                    "Design and verify insert attachment, bed travel, cabling and tool interfaces "
+                    "before physical work. Imported geometry does not establish an adapter.",
+                ], checks=["Original source identity and attribution retained.",
+                           "Bed pose and custom interfaces require physical review."])
+            if step["id"] == "motion-pipette":
+                step["instructions"][0] = (
+                    "Review the custom pipette and adapter concept inside the source frame. "
+                    "A working attachment to the original tool carriage is not established.")
+            step["checks"] = [
+                "Jubilee physical simulation is not implemented; no MuJoCo pass is claimed."
+                if "MuJoCo" in check else check for check in step["checks"]]
     return steps
 
 
@@ -503,8 +521,9 @@ def _source_basis_html(project: dict) -> str:
             f'<td>{html.escape(ref["use"])}</td><td>{html.escape(ref["limits"])}</td></tr>'
         )
     return ('<section class="card"><h2>Design sources and geometry basis</h2>'
-            '<p>Manufacturer envelopes are distinct from custom geometry. Open projects '
-            'are reviewed foundations, not imported robot CAD or validated adapters.</p>'
+            '<p>' + html.escape(basis["architecture"]) + '. '
+            'Manufacturer envelopes and proposed custom interfaces have distinct bindings. '
+            'Imported CAD does not establish a validated adapter.</p>'
             '<table><thead><tr><th>Part</th><th>Basis</th><th>Reference</th><th>Scope</th>'
             '</tr></thead><tbody>' + bindings + '</tbody></table>'
             '<table><thead><tr><th>Primary reference</th><th>License / rights</th>'
@@ -626,6 +645,14 @@ STEPS
     page = page.replace("OVERVIEW_SVG", _overview_svg(project))
     page = page.replace("ROWS", "".join(comp_rows))
     page = page.replace("STEPS", "".join(step_sections))
+    if project.get("design", {}).get("foundation"):
+        page = page.replace(
+            "The interactive model and workstation STEP use the same component primitive geometry.",
+            "The interactive model uses simplified meshes of the pinned Jubilee STEP plus custom "
+            "primitives. The exported workstation STEP retains the original source assembly "
+            "and the same bed pose and custom parts.")
+        page = page.replace("Physics uses conservative component envelopes.",
+                            "Jubilee physical simulation is not implemented.")
     return page.encode("utf-8")
 
 
@@ -746,6 +773,29 @@ def build_readme(project: dict) -> bytes:
             "pipette mechanism, arm and mounts remain custom concepts. Jubilee and Science "
             "Jubilee are documented alternative foundations, not this machine's imported CAD.\n"
         )
+    if project.get("design", {}).get("foundation"):
+        start = text.index("## Physical motion model")
+        end = text.index("\n## ", start + 4)
+        text = text[:start] + (
+            "## Physical motion model\n\n"
+            "simulation/result.json records not_run: the imported Jubilee platform has no "
+            "physical simulation adapter. The legacy XYZ result cannot validate this assembly.\n"
+        ) + text[end:]
+        text += (
+            "\n## Imported Jubilee CAD\n\n"
+            "The original pinned STEP is included losslessly in cad/source with its license "
+            "and provenance. The workstation STEP retains this assembly, lowers only its "
+            "build_plate_assembly by the accepted proposal, and adds custom parts. "
+            "The frame is not rescaled. The viewer mesh is approximate; original STEP is "
+            "the authority. cad/workstation.svg shows custom parts only. Mounting, connections, "
+            "travel and all source/custom collisions remain unverified.\n"
+        )
+        text = text.replace(
+            "Manufacturer envelopes cover only explicitly bound shapes; the frame, racks, "
+            "pipette mechanism, arm and mounts remain custom concepts. Jubilee and Science "
+            "Jubilee are documented alternative foundations, not this machine's imported CAD.",
+            "Jubilee is the imported source platform. The insert, pipette, racks, arm and mounts "
+            "are custom concepts; Science Jubilee controls are not installed.")
     return text.encode("utf-8")
 
 
@@ -756,7 +806,8 @@ def build_extension_plan(project: dict) -> bytes:
             "project_id": _project_id(project), "revision": _revision(project),
             "status": "digital_concept", "installed": False,
             "inspection_extension": project["inspection_extension"],
-            "physics_scope": "liquid_preparation_only",
+            "physics_scope": ("not_run_imported_foundation" if project["design"].get("foundation")
+                              else "liquid_preparation_only"),
             "cooling_transfer_mode": cooling["transfer_mode"],
         }, indent=2, sort_keys=True).encode("utf-8")
     plan = {

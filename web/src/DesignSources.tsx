@@ -31,9 +31,11 @@ export default function DesignSources({ project, showBindings, onHighlight }: {
     {showBindings && <div className="source-bindings">
       {bound.map((item) => <div key={`${item.component_id}:${item.primitive_id ?? ''}`}>
         <button type="button" onClick={() => onHighlight(item.component_id)}>{project.design.components.find((part) => part.id === item.component_id)?.label ?? item.component_id}</button>
-        <span>Manufacturer dimensions</span><p>{item.detail}</p>
+        <span>{item.basis === 'imported_open_hardware_cad' ? 'Original open hardware CAD' : 'Manufacturer dimensions'}</span><p>{item.detail}</p>
       </div>)}
-      <p className="source-scope">The frame, labware fixtures, pipette mechanism and inspection arm remain custom concepts. The current machine is not a Jubilee replica.</p>
+      <p className="source-scope">{project.design.foundation
+        ? 'The platform is original Jubilee CAD. The insert, pipette adapter, labware fixtures and inspection arm are custom concepts; interfaces and physical operation remain unverified.'
+        : 'The frame, labware fixtures, pipette mechanism and inspection arm remain custom concepts. No source platform is imported in this revision.'}</p>
     </div>}
     <details className="source-library"><summary>Browse references and technical scope</summary>
       {basis.references.filter((source) => ids.has(source.id)).map((source) => <Reference key={source.id} source={source} />)}

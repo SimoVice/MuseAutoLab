@@ -2,6 +2,47 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-28: Original source CAD and one conversational workspace
+
+Integrated original, pinned Jubilee STEP under its CC BY 4.0 attribution, with
+lossless source packaging, source-derived viewer meshes, an immutable frame and a
+bounded proposed bed pose. Runtime Meta chooses a custom insert/layout and can
+propose an inspection sidecar when requested. The existing accepted layout remains
+the revision context; quantity changes preserve it, while invalid changes roll back
+the complete request. The source platform BOM stays unpriced rather than reusing
+the earlier custom four-axis list. Source physics is not implemented; its packages
+explicitly record not_run.
+
+Moved design, cooling and expansion requests into ordinary chat. Removed permanent
+future-module request fields; secondary sources, components, files, previews and
+requested photo inspection live in collapsed details. A real request/check indicator
+and short accepted-result fill precede model publication. Portable compiler 3 rebuilds
+the allowlisted source identity/pose; earlier inputs retain conversation but require
+a new design.
+
+The UI implementation used Muse Spark Contributor through OpenCode Go at low effort
+with public baseline inputs. CAD integration/export/persistence used GPT-6.1 Terra at
+xhigh, with local review and integration. Development roles are separate from actual
+runtime Meta calls in the shareable synthetic example.
+
+Verification includes 341 regular Python regressions, focused chat/storage/source tests, three
+distinct offline Chrome flows (foundation, platform and photo), lint and frontend
+build. The source export suite passed 8 tests in 703.10 seconds: full STEP and
+independently regenerated output retained the lowered bed, validity, solid count
+and bounds; a tampered source was rejected. The fixture CAD set was 408,150,757 bytes
+uncompressed and 80,215,348 bytes zipped. The smaller native-reference export was
+discarded because it lost the bed pose. Former design/evolution/source browser entry
+points now use the consolidated chat flow; specialized geometry/export/physics
+assertions remain in Python tests.
+
+Seven successful live Meta calls reported 30,251 input and 5,192 output tokens across
+a future-example no-op, source design, 30 mm bed revision and inspection proposal.
+An earlier inspection was rejected after two insufficient-reach proposals; giving
+Meta the compiler's computed distances enabled acceptance. An earlier local prompt
+construction failure and its incomplete usage record are also disclosed in the
+example. No model reliability, paid balance, hardware, calibration, fabrication or
+laboratory performance claim follows from these checks.
+
 ## 2026-10-27: Repository initialization
 
 This revision adds:

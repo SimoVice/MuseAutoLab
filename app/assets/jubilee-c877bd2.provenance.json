@@ -1,0 +1,33 @@
+{
+  "asset_id": "jubilee-v2.2.2-c877bd2",
+  "title": "Jubilee V2.2.2 frame assembly",
+  "author": "Joshua Vasquez, Machine Agency, University of Washington",
+  "source_revision": "c877bd2e889560c83da2a68479641a4f7f0d9b83",
+  "source_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/frame/cads/STEP/jubilee.STEP",
+  "source_license_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/license.txt",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "original_step_bytes": 45857044,
+  "original_step_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+  "gzip_sha256": "91fcc86d329d706d25d83b31e382daabfd2fe5f1697aac1ccec10eda5121096e",
+  "static_preview_glb_sha256": "b6ccc45b055344b356dd86139d9018708ffb907fac8de9cddbd22b5dd8451697",
+  "bed_preview_glb_sha256": "bf53a9f357ceb7e79b6998010e6868703da4441eaecca7c693936c8811452a6e",
+  "source_step_bounds_mm": {"min": [33.284011172, 272.216535584, 119.399526374], "max": [516.427880177, 836.574927169, 732.087034338]},
+  "source_solid_count": 809,
+  "preview": {
+    "description": "Derived visual approximation; not a fabrication file. Source geometry is retained for CAD exports.",
+    "process": "Split the single top-level build_plate_assembly from the other top-level children, then OpenCascade tessellation linear deflection 0.8 mm and angular deflection 0.5 rad, merged identical positions; static geometry simplified with meshoptimizer to target 900000 indices and relative error 0.002. The smaller bed mesh is not simplified.",
+    "static_triangles": 299984,
+    "static_vertices": 149302,
+    "bed_triangles": 32296,
+    "bed_vertices": 16149,
+    "static_reported_relative_error": 0.0002990013745147735,
+    "bounds_mm": {"min": [33.298473358, 272.413391113, 120.086288452], "max": [513.267089844, 836.413391113, 732.086303711]},
+    "build123d_version": "0.13.0",
+    "cadquery_ocp_novtk_version": "8.0.1.1.0",
+    "numpy_version": "2.5.4",
+    "meshoptimizer_version": "1.1.1"
+  },
+  "modifications": "STEP is retained byte-for-byte under gzip. Export applies a rigid rotation and translation; the build plate subassembly can additionally be translated vertically, while all other parts remain in their upstream positions. The viewer uses a simplified tessellation and a uniform illustrative material. Custom project components are separate from the upstream assembly.",
+  "limitations": "Imported build-plate assembly bounds do not verify its mounting interfaces, fixture fit, tool reach, collisions, temperature, physical performance or laboratory operation."
+}

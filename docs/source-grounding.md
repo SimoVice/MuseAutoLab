@@ -14,7 +14,7 @@ manufacturer dimensions are the same reviewed data used in the real application.
 
 | Reference | Role in this version |
 | --- | --- |
-| [Jubilee hardware](https://github.com/machineagency/jubilee/tree/c877bd2e889560c83da2a68479641a4f7f0d9b83), CC BY 4.0 | Open hardware foundation to evaluate; its CoreXY platform is not the current custom XYZ machine |
+| [Jubilee hardware](https://github.com/machineagency/jubilee/tree/c877bd2e889560c83da2a68479641a4f7f0d9b83), CC BY 4.0 | Actual pinned STEP foundation for new chat-developed workstations; fixed source parts remain unscaled |
 | [Science Jubilee](https://github.com/machineagency/science-jubilee/tree/bb918fa78f300f57cc379a80731cfca7bdb55c66), repository MIT | Documented pipette/camera workflow and integration reference; upstream hardware rights remain separate |
 | [Pololu 1209](https://www.pololu.com/product/1209/specs) | Published 35 × 35 × 36 mm motor-body dimensions, excluding shaft |
 | [Pololu 1208](https://www.pololu.com/product/1208/specs) | Published alternative body dimensions, 35 × 35 × 28 mm |
@@ -28,18 +28,21 @@ new camera/arm hardware remains unpriced.
 
 ## Actual geometry versus references
 
-Selecting either Pololu motor now changes the internal motor primitive in the
+In legacy custom-frame projects, selecting either Pololu motor changes the internal primitive in the
 shared viewer/CAD geometry to that variant's documented body size. The enclosing
 carriage remains a custom concept, and shaft/mount/transmission clearances remain
 unverified. The inspection camera uses the manufacturer's overall envelope; its
 board/lens drawing is schematic. Its custom neck is a separate component.
 Purchased-body dimensions are not scaled to fit a requested layout.
 
-The frame, pipette mechanism, racks, waste and articulated arm still use original
-concept geometry. No Jubilee/Science Jubilee CAD or control software is imported.
-Those projects ground comparisons and integration advice; a link to them does not
-turn the current machine into a build-ready derivative. The app labels these
-distinctions in **Design foundations** and identifies each component's basis.
+New designs import the actual [Jubilee STEP asset](jubilee-cad-asset.md), with its
+original hash, revision, attribution and license. The frame and fixed native parts
+remain unchanged. Only the original build-plate subassembly's proposed vertical
+pose changes. Custom inserts, pipette adapters, racks, waste and articulated arm
+remain concept geometry. Source geometry is not a tested liquid handler; travel,
+connections, mounting and source/custom collisions are unverified. Science Jubilee
+software is an integration reference and is not installed. The viewer uses
+approximate source-derived meshes; the original STEP is the CAD authority.
 
 ## Runtime advice and evidence
 
@@ -57,12 +60,12 @@ bindings. The same `design_basis` travels with `project.json`, the CAD geometry
 report and the assembly guide; accepted design provenance records the library hash.
 Source-only references and custom geometry remain distinguishable in exports.
 
-Portable files now use compiler version 2. Version-1 files can reopen, but the
-new envelope geometry creates a draft revision and explicitly asks for another
-review/confirmation. Unknown compiler versions remain rejected. Old jobs and
-validation claims are never revived by that upgrade.
+Portable files use compiler version 3, with an allowlisted foundation ID and bed
+pose. Version 1/2 inputs and conversation reopen, but their incompatible prior
+design/extension is cleared, creating a draft that asks for a new design in chat.
+Unknown compiler versions remain rejected. Old jobs/results are not restored.
 
-On 2026-10-28, one real Meta advice request recommended the two pinned open projects
+Before the source-CAD integration on 2026-10-28, one real Meta advice request recommended the two pinned open projects
 without inventing opening concentrations/volumes. A separate real layout request
 accepted on its first attempt and exported the documented motor geometry and the
 same source manifest to CAD. The [curated live example](examples/source-grounding-live.json)
@@ -73,7 +76,7 @@ records the actual outputs/usage over shareable synthetic inputs. Two calls repo
 
 ```powershell
 .venv/Scripts/python.exe -m pytest tests/test_design_sources.py tests/test_sourced_geometry.py -q
-.venv/Scripts/python.exe tests/browser_sources.py
+.venv/Scripts/python.exe tests/browser_foundation.py
 ```
 
 The browser fixture stubs Meta only; actual source resolution, API, geometry,

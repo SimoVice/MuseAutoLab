@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import browser_stub_server as baseline  # noqa: E402
+import browser_foundation_server as baseline  # noqa: E402
 
 import app.api  # noqa: E402
 import app.design_agent as design_agent  # noqa: E402
@@ -101,8 +101,8 @@ def main(argv: list[str] | None = None) -> None:
     if args.host not in ("127.0.0.1", "localhost"):
         raise ValueError("This stub server binds only to loopback (127.0.0.1).")
     # Keep the chat fake and explicit layout fixture; only vision is faked here.
-    app.api.generate_turn = baseline._fake_generate_turn  # type: ignore[attr-defined]
-    design_agent.propose_layout = baseline._fake_propose_layout  # type: ignore[attr-defined]
+    app.api.generate_turn = baseline.chat  # type: ignore[attr-defined]
+    design_agent.propose_layout = baseline.layout  # type: ignore[attr-defined]
     vision.analyze_image = _fake_analyze_image  # type: ignore[method-assign]
     import uvicorn
 

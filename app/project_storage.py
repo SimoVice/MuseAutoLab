@@ -10,8 +10,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
-from app.design_spec import LayoutProposal, apply_candidate
+from app.design_spec import FoundationLayoutProposal, LayoutProposal, apply_candidate
 from app.domain import apply_update, confirm_project, new_project
+from app.upstream_cad import ASSET_ID
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
 Text = Annotated[str, Field(max_length=1000)]
@@ -49,7 +50,7 @@ class Inputs(StrictModel):
 
 class SavedDesign(StrictModel):
     schema_version: Literal["1"]
-    proposal: LayoutProposal
+    proposal: LayoutProposal | FoundationLayoutProposal
     provenance: dict[str, JsonValue]
 
 
@@ -61,12 +62,14 @@ class HistoryEntry(StrictModel):
 class Snapshot(StrictModel):
     format: Literal["museautolab-project"]
     schema_version: Annotated[int, Field(ge=1, le=1)]
-    compiler_version: Literal["1", "2"]
+    compiler_version: Literal["1", "2", "3"]
     saved_at: Annotated[str, Field(min_length=10, max_length=50)]
     project_id: Annotated[str, Field(min_length=36, max_length=36)]
     revision: Annotated[int, Field(ge=0, le=1000000)]
     status: Literal["draft", "confirmed"]
     inputs: Inputs
+    foundation_id: Literal["jubilee-v2.2.2-c877bd2"] | None = None
+    foundation_bed_drop_mm: Annotated[Number, Field(ge=0, le=150)] | None = None
     engineering_design: SavedDesign | None
     inspection_extension: dict[str, JsonValue] | None = None
     history: Annotated[list[HistoryEntry], Field(max_length=8)]
@@ -111,7 +114,7 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
     payload = {
         "format": "museautolab-project",
         "schema_version": 1,
-        "compiler_version": "2",
+        "compiler_version": "3",
         "saved_at": datetime.now(timezone.utc).isoformat(),
         "project_id": project.get("lineage_id", project["id"]),
         "revision": project["revision"],
@@ -122,6 +125,10 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
             "workflow_kind": project["workflow"]["kind"],
             "selections": deepcopy(project["selections"]),
         },
+        "foundation_id": (project.get("design", {}).get("foundation") or {}).get("id"),
+        "foundation_bed_drop_mm": (project.get("design", {}).get("foundation") or {}).get(
+            "bed_drop_mm"
+        ),
         "engineering_design": deepcopy(project.get("engineering_design")),
         "inspection_extension": (
             {
@@ -149,6 +156,19 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     except (ValidationError, ValueError) as exc:
         raise ValueError("Unsupported or invalid MuseAutoLab project file.") from exc
     inputs = saved.inputs
+    if saved.compiler_version != "3" and (
+        saved.foundation_id is not None or saved.foundation_bed_drop_mm is not None
+    ):
+        raise ValueError("Older project files cannot specify a source CAD foundation.")
+    proposal = saved.engineering_design.proposal if saved.engineering_design else None
+    if (saved.foundation_id is None) != (saved.foundation_bed_drop_mm is None):
+        raise ValueError("A saved source CAD foundation requires its bed position.")
+    if saved.compiler_version == "3" and proposal is not None:
+        source_proposal = isinstance(proposal, FoundationLayoutProposal)
+        if source_proposal != (saved.foundation_id == ASSET_ID):
+            raise ValueError("The saved layout does not match its CAD foundation.")
+        if source_proposal and proposal.bed_drop_mm != saved.foundation_bed_drop_mm:
+            raise ValueError("The saved bed position does not match its accepted layout.")
     summary, brief = inputs.summary.model_dump(), inputs.brief.model_dump()
     if inputs.workflow_kind != "liquid_preparation" and any(
         summary[key] is not None
@@ -168,7 +188,18 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     project = apply_update(new_project(), patch)
     if width is not None:
         project = apply_update(project, {"workspace_width_mm": width})
-    if saved.engineering_design:
+    upgraded = saved.compiler_version in ("1", "2")
+    if not upgraded and saved.foundation_id:
+        from app.foundation_design import adopt_foundation
+
+        project = adopt_foundation(project, bed_drop_mm=saved.foundation_bed_drop_mm)
+        if width is not None and width < project["design"]["foundation"]["bbox_mm"][0]:
+            project["design"]["constraint_status"] = "infeasible"
+        if proposal is None:
+            from app.geometry import add_geometry
+
+            project = add_geometry(project)
+    if saved.engineering_design and not upgraded:
         if not summary["equipment"] or saved.revision < 1:
             raise ValueError("A saved layout requires equipment and a design revision.")
         project = apply_candidate(
@@ -178,11 +209,10 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         )
     if project["summary"] != summary or project["brief"] != brief:
         raise ValueError("The saved inputs are inconsistent with the current project format.")
-    if saved.inspection_extension is not None:
+    if saved.inspection_extension is not None and not upgraded:
         from app.inspection import restore_extension
 
         project = restore_extension(project, saved.inspection_extension)
-    upgraded = saved.compiler_version == "1"
     if saved.status == "confirmed" and not upgraded:
         project = confirm_project(project)
     project["revision"] = saved.revision + int(upgraded)
@@ -196,7 +226,8 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     }
     if upgraded:
         project["rebuild_notice"] = (
-            "Project upgraded to manufacturer-sourced component envelopes. "
-            "Review the new geometry and confirm again."
+            "This older project retains its inputs and conversation, but its previous design "
+            "and inspection extension cannot be carried over to the new CAD foundation. "
+            "Ask Meta in chat to develop a new workstation design and confirm it again."
         )
     return project, [entry.model_dump() for entry in saved.history]

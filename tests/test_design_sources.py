@@ -122,14 +122,15 @@ def test_advice_api_returns_resolved_sources_and_preserves_inputs(monkeypatch):
 def test_legacy_saved_project_requires_reconfirmation_after_geometry_upgrade():
     original = confirm_project(layout_project())
     saved = make_snapshot(original, [])
-    assert saved["compiler_version"] == "2"
+    assert saved["compiler_version"] == "3"
     saved["compiler_version"] = "1"
     before = deepcopy(saved)
     restored, _ = restore_snapshot(saved)
     assert saved == before
     assert restored["revision"] == original["revision"] + 1
     assert restored["status"] == "draft"
-    assert "manufacturer-sourced" in restored["rebuild_notice"]
+    assert "chat" in restored["rebuild_notice"]
+    assert not restored.get("engineering_design")
     reopened, _ = restore_snapshot(make_snapshot(restored, []))
     assert reopened["revision"] == restored["revision"]
     assert reopened["design"] == restored["design"]

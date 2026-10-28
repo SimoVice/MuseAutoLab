@@ -93,6 +93,28 @@ def _summarize_project(project: dict) -> dict:
 
 def _developer_instructions(project: dict) -> str:
     state = _summarize_project(project)
+    foundation = project.get("design", {}).get("foundation")
+    if foundation:
+        return (
+            "Design a custom liquid-preparation insert on the actual imported Jubilee CAD. "
+            "Return strict JSON: schema_version '1', deck_width_mm240..300, "
+            "deck_depth_mm260..300, bed_drop_mm95..150, placements for exactly source-rack, "
+            "sample-rack, tip-rack, tip-waste, controller, rationale and assumptions. "
+            "Coordinates x_mm/z_mm are relative to the insert centre. Keep fixed component "
+            "sizes, 10mm to every insert edge and5mm separation between footprints. "
+            "There is no legacy rear85mm exclusion on this insert. Use two rows/columns "
+            "rather than placing three95mm racks across a300mm bed. "
+            "For revisions, retain the current insert dimensions, placements and bed pose "
+            "unless the user's requested change needs them changed. Use actual current "
+            "positions below, not an assumed starter layout. The source frame and "
+            "native fixed parts are immutable. bed_drop_mm translates only the original "
+            "build-plate subassembly downward; it is an illustrative unverified travel pose. "
+            "The300mm workspace is a conservative placement hypothesis, not measured mounting "
+            "or calibrated travel. Changes must keep the original frame width fixed; an "
+            "overall width below the imported frame is impossible. Do not claim physical "
+            "operation, mounting or collision validation. "
+            f"Foundation: {json.dumps(foundation)}. State: {json.dumps(state)}"
+        )
     return (
         "You propose a liquid preparation workstation deck layout as strict JSON only. "
         "Millimetres; y is vertical, z is depth; placements are component centres (x_mm, z_mm). "
@@ -127,7 +149,7 @@ async def propose_layout(
     to check_candidate so the caller can run one bounded correction.
     """
     return await request_design_proposal(
-        _developer_instructions(project), proposal_schema(), "layout_proposal", instruction,
+        _developer_instructions(project), proposal_schema(project), "layout_proposal", instruction,
         feedback, client=client, settings=settings,
     )
 

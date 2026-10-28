@@ -21,7 +21,8 @@ from app.assembly import assembly_steps, build_document_files
 from app.cad_exports import build_cad_files
 
 TOTAL_STAGES = 4
-MAX_PACKAGE_BYTES = 50 * 1024 * 1024
+MAX_PACKAGE_BYTES = 128 * 1024 * 1024
+MAX_UNCOMPRESSED_BYTES = 512 * 1024 * 1024
 MAX_RETAINED_JOBS_PER_PROJECT = 3
 
 _cad_lock = threading.Lock()
@@ -106,8 +107,8 @@ def _ensure_safe_files(files: dict[str, bytes]) -> None:
         if not isinstance(payload, (bytes, bytearray)):
             raise ValueError(f"File payload must be bytes: {name}")
         total += len(payload)
-    if total > MAX_PACKAGE_BYTES:
-        raise ValueError("Generated package exceeds the 50 MB limit.")
+    if total > MAX_UNCOMPRESSED_BYTES:
+        raise ValueError("Generated files exceed the 512 MB uncompressed limit.")
 
 
 def _public_metadata(job: dict) -> dict:
@@ -128,11 +129,13 @@ def _public_metadata(job: dict) -> dict:
 
 def _prune_project_jobs(project_id: str) -> None:
     ids = [jid for jid, job in _jobs.items() if job["project_id"] == project_id]
-    if len(ids) <= MAX_RETAINED_JOBS_PER_PROJECT:
+    source_based = any(_jobs[jid]["snapshot"]["design"].get("foundation") for jid in ids)
+    limit = 1 if source_based else MAX_RETAINED_JOBS_PER_PROJECT
+    if len(ids) <= limit:
         return
     # Keep active jobs and the newest ready jobs.
     ids.sort(key=lambda jid: _jobs[jid]["created_seq"])
-    while len(ids) > MAX_RETAINED_JOBS_PER_PROJECT:
+    while len(ids) > limit:
         candidate = None
         for jid in ids:
             if _jobs[jid]["status"] in ("queued", "running"):
@@ -187,6 +190,18 @@ async def _run_job(job_id: str) -> None:
         job["stage"] = "simulation"
 
         def _sim() -> dict[str, bytes]:
+            if snapshot.get("design", {}).get("foundation"):
+                return {
+                    "simulation/result.json": json.dumps({
+                        "project_id": snapshot["id"], "revision": snapshot["revision"],
+                        "status": "not_run", "scope": "unsupported_imported_foundation",
+                        "reason": "The imported platform's contacts, drives and adapters have "
+                                  "not been mapped or validated in MuJoCo.",
+                    }, indent=2).encode(),
+                    "simulation/README.md": b"# Simulation scope\n\nThis imported-CAD revision "
+                    b"has not been simulated. The legacy XYZ physics model does not validate "
+                    b"the Jubilee platform, bed travel, custom mount, or added modules.\n",
+                }
             from app.simulation_jobs import simulation_files_for_project
 
             return simulation_files_for_project(deepcopy(snapshot))
@@ -243,7 +258,7 @@ async def _run_job(job_id: str) -> None:
             _ensure_safe_files(all_files)
             archive = _build_archive_bytes(all_files)
             if len(archive) > MAX_PACKAGE_BYTES:
-                raise ValueError("Generated package exceeds the 50 MB limit.")
+                raise ValueError("Generated archive exceeds the 128 MB limit.")
             return all_files, archive
 
         all_files, archive = await loop.run_in_executor(None, _archive)
