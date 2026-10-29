@@ -43,7 +43,7 @@ def run(url):
             harness.send_chat(page, "In the future I might want an arm and camera.", "expansion")
             assert not snapshots[-1]["project"].get("inspection_extension")
             field = page.get_by_label("Describe your workflow or request a change")
-            field.fill("Develop the workstation from the real CAD base.")
+            field.fill("Use Jubilee and develop the workstation.")
             page.get_by_role("button", name="Send message").click()
             expect(page.get_by_role("progressbar")).to_be_visible()
             expect(page.locator("canvas")).to_have_count(0)
@@ -89,7 +89,7 @@ def run(url):
                 page.get_by_role("button", name="Save project", exact=True).click()
             saved = downloaded.value.path()
             data = json.loads(Path(saved).read_text(encoding="utf8"))
-            assert data["compiler_version"] == "3"
+            assert data["compiler_version"] == "4"
             assert data["foundation_id"] == "jubilee-v2.2.2-c877bd2"
             page.get_by_label("Open saved project").set_input_files(saved)
             expect(page.locator(".storage-notice")).to_contain_text("rebuilt")

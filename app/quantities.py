@@ -55,6 +55,33 @@ _NUMBER_AT_START = re.compile(_NUMBER_START)
 _AND_SPLIT = re.compile(r"(?:,\s*|\s+)(?:and|e)\s+", re.IGNORECASE)
 _PER_SLASH = re.compile(r"\s+per\s+", re.IGNORECASE)
 _SLASH_SPACES = re.compile(r"\s*/\s*")
+# Trailing per-container quantity context for volumes. The app plans one
+# independent tube per target, so an explicit trailing phrase such as
+# "per tube" describes the same single-container volume.
+_VOLUME_CONTEXT = re.compile(
+    r"\s+(?:"
+    r"per\s+tubes?"
+    r"|in\s+each\s+tubes?"
+    r"|for\s+each\s+tubes?"
+    r"|per\s+samples?"
+    r"|in\s+each\s+samples?"
+    r"|for\s+each\s+samples?"
+    r"|per\s+wells?"
+    r"|in\s+each\s+wells?"
+    r"|for\s+each\s+wells?"
+    r"|per\s+provett[ae]"
+    r"|per\s+ogni\s+provett[ae]"
+    r"|in\s+ogni\s+provett[ae]"
+    r"|per\s+campion[ei]"
+    r"|per\s+pozzett[oi]"
+    r")\s*\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_volume_context(working: str) -> str:
+    """Remove one trailing per-container phrase from a volume input."""
+    return _VOLUME_CONTEXT.sub("", working)
 
 
 def _replace_micro(text: str) -> str:
@@ -148,8 +175,19 @@ def normalize_concentration(text: str) -> str:
 
 
 def normalize_volume(text: str) -> str:
-    """Return canonical volume text such as '0.5 mL'."""
-    return _normalize_single(text, "Volume", VOLUME_ALIASES, VOLUME_SUPPORTED, False)
+    """Return canonical volume text such as '0.5 mL'.
+
+    A single trailing per-container phrase ("per tube", "in each tube",
+    "per sample", "per well" and listed Italian equivalents, with a
+    trailing full stop and clear plural variants) is quantity context for
+    the app's one-tube-per-target plan and is removed before parsing.
+    """
+    if not isinstance(text, str):
+        raise ValueError("Volume must be text such as '0.5 mL'.")
+    if len(text) > MAX_INPUT_CHARS:
+        raise ValueError("Volume exceeds the 1000 character limit.")
+    stripped = _strip_volume_context(_replace_micro(text.strip()))
+    return _normalize_single(stripped, "Volume", VOLUME_ALIASES, VOLUME_SUPPORTED, False)
 
 
 def _split_targets_commas(piece: str) -> list[str]:

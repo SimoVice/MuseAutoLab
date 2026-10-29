@@ -32,7 +32,7 @@ def test_source_layout_and_inspection_roundtrip_without_serialized_geometry():
     project = confirm_project(apply_extension(source_project(), inspection_proposal(), {}))
     history = [{"role": "user", "content": "Keep the source machine."}]
     snapshot = make_snapshot(project, history)
-    assert snapshot["compiler_version"] == "3" and snapshot["foundation_id"] == ASSET_ID
+    assert snapshot["compiler_version"] == "4" and snapshot["foundation_id"] == ASSET_ID
     assert "design" not in snapshot
     restored, conversation = restore_snapshot(snapshot)
     assert restored["engineering_design"] == project["engineering_design"]

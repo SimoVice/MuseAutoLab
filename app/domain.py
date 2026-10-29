@@ -515,7 +515,8 @@ def apply_update(project: dict, patch: dict) -> dict:
     result["selections"] = deepcopy(stored_selections)
     result["sourcing"] = deepcopy(sourcing)
 
-    if project.get("design", {}).get("foundation") and not switching_away:
+    commercial = project.get("design", {}).get("platform", {}).get("id") == "opentrons-ot2"
+    if (project.get("design", {}).get("foundation") or commercial) and not switching_away:
         from app.foundation_design import assembly_bounds, foundation_sourcing
 
         geometric = bool(set(summary_updates).intersection({
@@ -531,7 +532,8 @@ def apply_update(project: dict, patch: dict) -> dict:
             result["design"]["cooling"] = _cooling_info(enabled, target, stored_selections)
             # Keep the last actual layout as the next proposal's context.
             # Re-entering the foundation adapter here would reset all positions.
-            required = result["design"]["foundation"]["bbox_mm"][0]
+            required = (result["design"]["platform"]["minimum_operating_width_mm"] if commercial
+                        else result["design"]["foundation"]["bbox_mm"][0])
             result["design"]["constraint_status"] = (
                 "unconstrained" if width is None else "fits" if width >= required else "infeasible"
             )
@@ -540,13 +542,18 @@ def apply_update(project: dict, patch: dict) -> dict:
                     part for part in result["design"]["components"] if part["id"] != "cold-storage"
                 ]
             result["design"]["assembly_bounds"] = assembly_bounds(result)
-        result["sourcing"] = foundation_sourcing(result)
+        if commercial:
+            from app.platform_profiles import commercial_sourcing
+
+            result["sourcing"] = commercial_sourcing()
+        else:
+            result["sourcing"] = foundation_sourcing(result)
         if result.get("inspection_extension"):
             from app.inspection import _extension_sourcing
 
             _extension_sourcing(result)
         result["design"]["estimated_cost"] = {
-            "amount": result["sourcing"]["subtotal"], "currency": "USD",
+            "amount": None if commercial else result["sourcing"]["subtotal"], "currency": "USD",
         }
         result["revision"] = project["revision"] + 1
         result["status"] = "draft"

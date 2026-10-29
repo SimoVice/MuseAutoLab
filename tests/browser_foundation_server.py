@@ -13,10 +13,59 @@ from foundation_fixtures import source_proposal  # noqa: E402
 import app.api as api  # noqa: E402
 import app.design_agent as agent  # noqa: E402
 import app.inspection as inspection  # noqa: E402
+from app.engineering import EngineeringOption, EngineeringUpdate  # noqa: E402
 from app.model_client import ChatAction, ExtractedTurn  # noqa: E402
 
 
 async def chat(project, message, history, **kwargs):
+    if message == "Help me compare the platform options.":
+        return ExtractedTurn(
+            assistant_message="Would you prefer an assembled platform or "
+            "buildable open hardware? The assembled route needs compatible instruments and "
+            "a quote; the open route needs assembly and tool integration.",
+            engineering=EngineeringUpdate(
+                options=[
+                    EngineeringOption(
+                        platform_id="jubilee",
+                        reason="Build and customize.",
+                        tradeoffs=["Assembly and tool integration required."],
+                    ),
+                    EngineeringOption(
+                        platform_id="opentrons-ot2",
+                        reason="Buy assembled.",
+                        tradeoffs=["Quote and compatible pipettes required."],
+                    ),
+                ]
+            ),
+        ), {}
+    if message in ("I prefer the open-source buildable one.", "I prefer the prebuilt one."):
+        return ExtractedTurn(
+            assistant_message="Developing the selected platform.",
+            engineering=EngineeringUpdate(
+                platform_choice="jubilee" if "open-source" in message else "opentrons-ot2",
+                choice_source=message,
+            ),
+        ), {}
+    if message == "Use Jubilee and develop the workstation.":
+        return ExtractedTurn(
+            assistant_message="Checking the requested change.",
+            engineering=EngineeringUpdate(platform_choice="jubilee", choice_source="Use Jubilee"),
+            actions=[ChatAction(kind="develop_layout", source=message)],
+        ), {}
+    if message == "The stock concentration is 10 mg/mL.":
+        return ExtractedTurn(
+            assistant_message="Recorded the stock concentration.",
+            stock_concentration="10 mg/mL",
+            source_stock_concentration="10 mg/mL",
+        ), {}
+    if message.startswith("Use target concentrations of 1, 0.5 and 0.1 mg/mL"):
+        return ExtractedTurn(
+            assistant_message="Updated the preparation quantities.",
+            target_concentrations="1, 0.5 and 0.1 mg/mL",
+            source_target_concentrations="1, 0.5 and 0.1 mg/mL",
+            final_volume="1 mL per tube",
+            source_final_volume="1 mL per tube",
+        ), {}
     requests = {
         "Develop the workstation from the real CAD base.": "develop_layout",
         "Lower the bed by another 30 mm.": "develop_layout",
@@ -24,6 +73,8 @@ async def chat(project, message, history, **kwargs):
         "Remove the inspection module.": "remove_inspection",
         "Show project files.": "show_files",
         "Open photo check.": "show_photo_check",
+        "How do I buy the pieces and assemble this?": "show_build_plan",
+        "Develop the machine now.": "develop_layout",
     }
     if message in requests:
         await asyncio.sleep(0.3)  # Explicit offline response latency.
@@ -43,6 +94,17 @@ async def chat(project, message, history, **kwargs):
 
 
 async def layout(project, instruction, feedback, **kwargs):
+    if project.get("design", {}).get("platform"):
+        return {
+            "schema_version": "1",
+            "slot_assignments": [
+                {"component_id": "source-rack", "slot_id": "1"},
+                {"component_id": "sample-rack", "slot_id": "2"},
+                {"component_id": "tip-rack", "slot_id": "3"},
+            ],
+            "rationale": "Offline fixture: distinct official slots.",
+            "assumptions": [],
+        }, {"model": "offline-commercial-fixture"}
     return source_proposal(130 if "another 30" in instruction else 100), {
         "model": "offline-source-layout-fixture",
         "input_tokens": 0,

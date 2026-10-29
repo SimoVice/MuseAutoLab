@@ -132,6 +132,15 @@ def _money(value) -> str:
 
 def assembly_steps(project: dict) -> list[dict]:
     """Return the proposed concept assembly sequence for the snapshot."""
+    if project.get("design", {}).get("platform"):
+        from app.platform_profiles import engineering_guidance
+
+        guidance = engineering_guidance(project)
+        return [{"id": f"prebuilt-setup-{i}", "title": step["title"],
+                 "component_ids": ["base"], "instructions": [step["detail"], step["url"]],
+                 "checks": ["Follow official instructions for the actual purchased configuration.",
+                            "Reference CAD is schematic; do not fabricate the purchased robot."],
+                 "requires_design": True} for i, step in enumerate(guidance["steps"], 1)]
     index = _comp_index(project)
     cooling = _cooling(project)
     fp = _footprint(project)
@@ -546,6 +555,15 @@ def build_guide_html(project: dict, steps: list[dict]) -> bytes:
         "No fastener sizes, torque values, wiring pinouts, or calibration steps are given.",
         "Cold target is a requested setting with manual transfer, never a measured temperature.",
     ]
+    if project.get("design", {}).get("platform"):
+        limitations = [
+            "Assembled instrument setup; no manufacturer machine CAD or fabrication design.",
+            "Published enclosure dimensions and software slots only; internal shapes, deck "
+            "height and rack proxies are illustrative.",
+            "Confirm compatible instrument pipettes, labware, tips and calibration with "
+            "the manufacturer before purchasing or running a protocol.",
+            "No control driver, dynamics validation or laboratory test is implemented.",
+        ]
     comp_rows = []
     for comp in _components(project):
         comp_rows.append(
@@ -653,6 +671,18 @@ STEPS
             "and the same bed pose and custom parts.")
         page = page.replace("Physics uses conservative component envelopes.",
                             "Jubilee physical simulation is not implemented.")
+    if project.get("design", {}).get("platform"):
+        page = page.replace("Concept assembly guide", "Instrument purchase and setup guide")
+        page = page.replace(
+            "Concept assembly sequence. Mounts, wiring and hardware performance remain "
+            "to be engineered.",
+            "Configure and install an assembled instrument using the manufacturer's instructions.")
+        page = page.replace(
+            "The custom sample insert follows the target count without changing its "
+            "outside dimensions.",
+            "Rack proxies mark the chosen software slots; exact labware fit is unverified.")
+        page = page.replace("Physics uses conservative component envelopes.",
+                            "OT-2 physical simulation is not implemented.")
     return page.encode("utf-8")
 
 
@@ -699,6 +729,25 @@ def build_preview_source(project: dict) -> bytes:
 
 
 def build_readme(project: dict) -> bytes:
+    if project.get("design", {}).get("platform"):
+        return (
+            "# Assembled-platform setup proposal\n\n"
+            f"Project {_project_id(project)} revision {_revision(project)}.\n\n"
+            "The OT-2 is purchased assembled. This package proposes labware slot assignments "
+            "and purchase/setup guidance; it is not a fabrication-ready robot. The STEP, "
+            "STL and editable script represent schematic reference geometry, not vendor CAD. "
+            "Do not fabricate the purchased frame or deck from these proxies.\n\n"
+            "Open assembly-guide.html, purchase-and-assembly.md and engineering-guidance.json. "
+            "bill-of-materials.csv is an unpriced quotation checklist, not a custom motor BOM. "
+            "Verify compatible pipettes, labware and tips, installation space, actual quote, "
+            "stock/delivery and manufacturer calibration.\n\n"
+            "simulation/result.json records not_run: no OT-2 control/dynamics adapter "
+            "is installed. "
+            "The logical preview is not an executable laboratory protocol.\n\n"
+            "The pinned Apache-2.0 software deck definition and its license/provenance are "
+            "in references/. Coordinates are deck-relative; absolute deck height and "
+            "internal shapes are illustrative. No physical validation is claimed.\n"
+        ).encode("utf8")
     text = (
         "# Concept project files\n\n"
         f"Project {_project_id(project)} revision {_revision(project)} — concept only.\n\n"
@@ -928,4 +977,22 @@ def build_document_files(project: dict) -> dict[str, bytes]:
             writer.writerow([frame["time_s"], angles["shoulder"], angles["elbow"],
                              *frame["camera_mm"], *frame["target_mm"]])
         files["inspection-poses.csv"] = buffer.getvalue().encode("utf-8")
+    from app.platform_profiles import engineering_guidance
+
+    guidance = engineering_guidance(project)
+    if guidance["steps"]:
+        files["engineering-guidance.json"] = json.dumps(guidance, indent=2).encode("utf8")
+        lines = ["# Purchase and assembly plan", "", guidance["message"], ""]
+        for step in guidance["steps"]:
+            lines.extend([f"## {step['title']}", "", step["detail"], "", step["url"], ""])
+        files["purchase-and-assembly.md"] = "\n".join(lines).encode("utf8")
+    if project.get("design", {}).get("platform"):
+        from pathlib import Path
+
+        directory = Path(__file__).parent / "data" / "ot2"
+        for filename in ("deck.json", "LICENSE.txt", "provenance.json"):
+            files[f"references/ot2-{filename}"] = (directory / filename).read_bytes()
+        files["extensions.md"] = (b"# Integration scope\n\nCustom inspection/cooling "
+            b"integration on the assembled platform is not implemented. Discuss requirements "
+            b"in chat; no compatible mount or hardware control is claimed.\n")
     return files

@@ -32,8 +32,10 @@ def test_source_library_has_primary_urls_pins_and_scoped_rights():
             "www.pololu.com",
             "www.raspberrypi.com",
             "docs.opentrons.com",
+            "opentrons.com",
         }
-        assert ref["checked_on"] == "2026-10-28"
+        assert ref["checked_on"] == ("2026-10-29" if ref["id"] == "opentrons-ot2"
+                                     else "2026-10-28")
         assert ref["use"] and ref["limits"] and ref["license"]
         if ref["kind"] in ("open_hardware", "open_source"):
             assert re.fullmatch("[a-f0-9]{40}", ref["revision"])
@@ -115,14 +117,14 @@ def test_advice_api_returns_resolved_sources_and_preserves_inputs(monkeypatch):
         assert sources.status_code == 200
         assert "attachment" in sources.headers["content-disposition"]
         assert sources.json()["source_basis"]["bindings"] == []
-        assert len(client.get("/api/references").json()["references"]) == 6
+        assert len(client.get("/api/references").json()["references"]) == 7
     api._sessions.clear()
 
 
 def test_legacy_saved_project_requires_reconfirmation_after_geometry_upgrade():
     original = confirm_project(layout_project())
     saved = make_snapshot(original, [])
-    assert saved["compiler_version"] == "3"
+    assert saved["compiler_version"] == "4"
     saved["compiler_version"] = "1"
     before = deepcopy(saved)
     restored, _ = restore_snapshot(saved)

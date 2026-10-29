@@ -29,3 +29,23 @@ Science Jubilee driver or tool CAD is included. Manufacturer dimensions from
 Pololu, Raspberry Pi and Opentrons are documented nominal envelopes, not
 redistributed vendor CAD. Their exact scopes, dates, URLs and unresolved interfaces
 are in `app/data/design-references-2026-10-28.json` and each project's source bindings.
+
+## Opentrons software deck definition
+
+`app/data/ot2/deck.json` is an unmodified software deck definition from the
+Opentrons project, under Apache License 2.0. Its adjacent `LICENSE.txt` preserves
+the upstream license; `provenance.json` records retrieval, scope and raw hash.
+
+- Repository: https://github.com/Opentrons/opentrons
+- Revision: `95a8a37922cfd5f46ad26c983bcc1659fa13b6e1`
+- Path: `shared-data/deck/definitions/3/ot2_standard.json`
+- Source: https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/deck/definitions/3/ot2_standard.json
+- License: https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE
+- Raw SHA-256: `f9bde02d43314e42c64d12f1a0d6d4f4aceb448371d37def27de76ff8a308e90`
+
+This is software slot data, not manufacturer machine CAD. MuseAutoLab translates
+the slot coordinates into its schematic view, adds custom proxies and uses
+separately documented manufacturer enclosure dimensions. Absolute deck pose,
+internal mechanisms and labware fit are unverified. No Opentrons control code is
+installed and no endorsement or compatibility certification is claimed. Exported
+commercial packages retain the deck definition, license and provenance.

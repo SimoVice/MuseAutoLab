@@ -68,6 +68,10 @@ def adopt_foundation(project: dict, *, bed_drop_mm: float = 100) -> dict:
     metadata = foundation_metadata(bed_drop_mm)
     result = deepcopy(project)
     design = result["design"]
+    if design.pop("platform", None):
+        from app.domain import _layout
+
+        design["components"] = deepcopy(_layout(False)["components"])
     design["foundation"] = metadata
     result.pop("engineering_design", None)
     extension = result.pop("inspection_extension", None)

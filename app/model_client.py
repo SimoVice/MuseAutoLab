@@ -14,6 +14,7 @@ from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.design_sources import reference_context, resolve_reference
+from app.engineering import EngineeringUpdate, state_for
 from app.quantities import normalize_concentration, normalize_targets, normalize_volume
 from app.workflows import describe_workflow
 
@@ -23,6 +24,42 @@ DEFAULT_MODEL = "muse-spark-1.3-contributor"
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 
 SYSTEM_INSTRUCTIONS = """You are MuseAutoLab's general laboratory automation assistant.
+Act like a practical engineer interviewing the user, not a fixed machine configurator.
+Use the recorded engineering requirements and reviewed_platforms. Ask the next useful
+missing question about process/throughput, existing equipment, bench space, budget,
+assembly skills/time or priorities. Do not repeat known facts or demand every optional
+field before helping. Propose suitable alternatives with reasons and concrete tradeoffs.
+Explain the buy-assembled route versus building open hardware before choosing a base.
+Never automatically choose Jubilee. No 3D design runs until a platform is explicitly
+selected. 'Prebuilt dock' normally means an assembled automation base; if the context
+could mean a pipette holder instead, ask one short clarifying question.
+Return engineering.requirements only for facts supplied in this message, with literal
+supporting sources; fields: procurement (prebuilt/open_hardware), budget, throughput,
+assembly, priorities. Free text values must occur literally in their sources. Suggestions
+are not requirements. engineering.options are your actual proposals, using only the
+reviewed platform IDs, with a reason and tradeoffs tailored to known needs. They are
+not predefined user choices. Discuss missing fit/budget evidence explicitly. The first
+supported options are buildable Jubilee and an assembled Opentrons OT-2. State their
+different implementation scopes; this bounded catalogue is not universal robot synthesis.
+Set engineering.platform_choice and choice_source only for a clear choice now: a named
+platform, one previously offered procurement route, a numbered option, or unambiguous
+confirmation of one proposed option. A question, hypothetical future example, negation,
+or yes after two alternatives is not a selection. Keep options=[] when not proposing.
+If platform_choice is null, choice_source must also be null, without an explanation there.
+After the user's clear selection and recorded liquid/equipment context, return
+develop_layout so the selected architecture is actually developed. A recipe is optional
+at this stage. Explain what needs buying/fabricating and link only reviewed references.
+Use show_build_plan for purchase/assembly guidance. Never imply orders were placed.
+For an OT-2, specify compatible instrument pipettes/racks and official configuration/
+quotation/setup/calibration. Manual pipettes are not assumed compatible.
+Requested throughput is a need, not proven capacity: exact rack capacity, supported
+labware, pipette range and cycle time still need checking before claiming the workflow fits.
+No manufacturer's machine CAD is imported; its view is schematic with an official deck-slot
+grid. The 630 mm
+body needs 200 mm clearance around it, including 1030 mm total width. Price/availability
+are unconfirmed, not zero. Custom inspection/cooling integration is unsupported on OT-2.
+For Jubilee, describe sourcing the upstream BOM, fabrication and assembly plus unresolved
+custom tool interfaces. Retain source attribution. Hardware control is not implemented.
 The interface already displays the opening welcome/question before the user's first message.
 Do not repeat it, introduce yourself again, or ask what the user wants to automate when the
 current message already states the task. Continue directly with the next missing fact.
@@ -52,9 +89,11 @@ fields; keep module-specific quantity and cooling fields null.
 General concept planning may reason about candidate approaches but never claim 3D models, costs,
 simulation results, build files or validated hardware already exist. 3D simulation and build
 packages are only available for the liquid preparation workflow.
-For a liquid preparation task, once stock, targets, final volume and equipment are supplied in
-recorded state or the current message, invite review and confirmation instead of asking another
-question. The supported demonstrator uses one independent tube per target; do not block completion
+For a liquid preparation task with an accepted selected-platform design, once stock, targets,
+final volume and equipment are supplied, invite review and confirmation. If no platform is
+selected, discuss the needs and platform options first. If stock is missing after targets and
+volume, ask specifically for the stock concentration; never invent it from your suggestions.
+The supported demonstrator uses one independent tube per target; do not block completion
 by asking for replicates, batch size or targets that the user has already specified.
 Use direct wording and skip generic praise such as 'great fit' or 'perfect'.
 Keep capability limits short and only mention them when actually relevant, not as an apology
@@ -89,7 +128,10 @@ Extract a workspace width only when the user states a specific maximum width, co
 to mm.
 For every non-null field also return its paired source field: a short exact substring copied
 from the current user message that supports this value. Prefer copying quantity values verbatim.
-For quantities use the exact quantity or list as source, without surrounding prose. Canonical
+For quantities use the exact quantity or list as source, without surrounding prose. Extract
+final_volume as just the quantity, e.g. '1 mL'; 'per tube' describes each target container,
+not a unit. An exact supporting span '1 mL per tube' is accepted. Distinguish batch totals
+and rates, which this direct per-target calculator does not support. Canonical
 notation is allowed only when it is equivalent to that literal source; never invent a number or
 an unstated unit. Equipment values must occur in their source. Generic brief values must occur
 in their literal source. Workflow kind classification is semantic inference, but its source must
@@ -133,7 +175,7 @@ for an explicit removal, confirm for an explicit approval, and show_files, show_
 show_components or show_photo_check when the user asks for those existing tools.
 Every action has kind and source; source must be an exact span of this user's latest message.
 At most two actions, in dependency order. Do not invent executable code, URLs or CAD file paths.
-The default development path imports the pinned actual Jubilee STEP assembly, preserves its
+Only after Jubilee has been selected, its development path imports the pinned STEP, preserving
 frame dimensions and permits a custom 240..300 by 260..300 mm insert, five fixed-size part
 positions, and a proposed vertical pose of its original build-plate assembly. A roughly
 483 mm wide frame cannot fit a smaller width without a different mechanical design. No
@@ -144,8 +186,8 @@ After an accepted layout, add_inspection proposes a bounded two-link arm/camera 
 checks planar reach and recorded-pose width on the same project. Its sweep is kinematic,
 not captured imagery or validated hardware. A new layout clears that extension for redesign.
 Quantity-only changes preserve the accepted geometry. Existing tools are under Project details;
-there are no dedicated future-module fields. Physics is unavailable for the imported Jubilee
-foundation: the old ideal XYZ simulation must not be represented as Jubilee validation.
+there are no dedicated future-module fields. Physics is unavailable for Jubilee and OT-2:
+the old ideal XYZ simulation must not be represented as validation of either platform.
 Ground component/project advice in the reviewed_reference_library supplied below. It is a
 dated curated library, not a live web search. Return recommendations as reference_id/reason
 objects using only the supplied IDs; use an empty list for ordinary discovery questions.
@@ -207,7 +249,7 @@ class SourceRecommendation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reference_id: Literal["jubilee-hardware", "science-jubilee", "pololu-1209", "pololu-1208",
-                          "rpi-camera-module-3", "opentrons-temp-module-gen2"]
+                          "rpi-camera-module-3", "opentrons-temp-module-gen2", "opentrons-ot2"]
     reason: Annotated[str, Field(min_length=1, max_length=350)]
 
     @field_validator("reference_id")
@@ -222,7 +264,8 @@ class ChatAction(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     kind: Literal["develop_layout", "add_inspection", "remove_inspection", "confirm",
-                  "show_files", "show_sources", "show_components", "show_photo_check"]
+                  "show_files", "show_sources", "show_components", "show_photo_check",
+                  "show_build_plan"]
     source: Annotated[str, Field(min_length=1, max_length=1000)]
 
 
@@ -236,6 +279,7 @@ class ExtractedTurn(BaseModel):
         default_factory=list
     )
     actions: Annotated[list[ChatAction], Field(max_length=2)] = Field(default_factory=list)
+    engineering: EngineeringUpdate = Field(default_factory=EngineeringUpdate)
     stock_concentration: Annotated[str | None, Field(max_length=500)] = None
     target_concentrations: Annotated[str | None, Field(max_length=500)] = None
     final_volume: Annotated[str | None, Field(max_length=500)] = None
@@ -435,11 +479,18 @@ def _safe_usage(response: dict) -> dict[str, int]:
 
 def _strict_schema() -> dict:
     schema = ExtractedTurn.model_json_schema()
-    props = schema.get("properties", {})
-    for prop in props.values():
-        prop.pop("default", None)
-    schema["required"] = sorted(props.keys())
-    schema["additionalProperties"] = False
+    def require_all(node):
+        if isinstance(node, dict):
+            node.pop("default", None)
+            if "properties" in node:
+                node["required"] = sorted(node["properties"])
+                node["additionalProperties"] = False
+            for item in node.values():
+                require_all(item)
+        elif isinstance(node, list):
+            for item in node:
+                require_all(item)
+    require_all(schema)
     return schema
 
 
@@ -494,18 +545,29 @@ async def generate_turn(
         "brief": project.get("brief", {}) if isinstance(project, dict) else {},
         "workflow": workflow,
         "reviewed_reference_library": reference_context(project),
+        "engineering": state_for(project),
     }
+    from app.platform_profiles import platform_profiles
+
+    state["reviewed_platforms"] = platform_profiles()
+    accepted_layout = bool(project.get("engineering_design"))
+    if not accepted_layout:
+        state["reviewed_reference_library"]["geometry_bindings"] = []
+        state["reviewed_reference_library"]["architecture"] = (
+            "Workflow discovery; no accepted machine design"
+        )
     if design_available:
         design = project.get("design", {}) if isinstance(project, dict) else {}
         state.update(
             {
                 "summary": project.get("summary"),
-                "current_footprint_mm": design.get("footprint"),
+                "current_footprint_mm": design.get("footprint") if accepted_layout else None,
                 "constraint_status": design.get("constraint_status"),
                 "current_plan": project.get("plan"),
                 "cooling": design.get("cooling"),
-                "catalogue": _catalogue_facts(project),
+                "catalogue": _catalogue_facts(project) if accepted_layout else None,
                 "foundation": design.get("foundation"),
+                "platform": design.get("platform"),
                 "has_accepted_layout": bool(project.get("engineering_design")),
                 "inspection_extension": ({
                     "status": "digital_concept",
@@ -577,6 +639,7 @@ async def generate_turn(
         result = ExtractedTurn.model_validate_json(content)
         failure_kind = "source_validation"
         result.verify_sources(user_message)
+        result.engineering.verify_sources(user_message, project)
         effective_kind = result.workflow_kind or workflow["kind"]
         if effective_kind == "general" and any(
             getattr(result, key) is not None

@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from app.design_agent import develop_design
 from app.domain import confirm_project
+from app.engineering import state_for
 from app.foundation_design import adopt_foundation, is_source_based
 from app.inspection import clear_extension, develop_inspection
 from app.model_client import ModelClientError
@@ -48,6 +49,13 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
         kind = action.kind
         try:
             if kind == "develop_layout":
+                selected = state_for(result)["selected_platform_id"]
+                if selected is None:
+                    runs.append({"kind": kind, "status": "ready", "message":
+                        "Before developing the machine, would you prefer an assembled platform "
+                        "or a buildable open-hardware system? We can compare the reviewed options "
+                        "against your budget, equipment and assembly preferences first."})
+                    continue
                 if result["workflow"]["kind"] != "liquid_preparation":
                     raise ValueError(
                         "Describe the workflow first. This CAD adapter supports liquid preparation."
@@ -57,16 +65,28 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                         "Describe the equipment in chat before developing the workstation."
                     )
                 width = result["summary"].get("workspace_width_mm")
-                required = foundation_metadata()["bbox_mm"][0]
+                commercial = selected == "opentrons-ot2"
+                required = 1030 if commercial else foundation_metadata()["bbox_mm"][0]
                 if width is not None and width < required:
                     raise ValueError(
-                        f"The real Jubilee frame is about {required:.1f} mm wide. "
+                        f"The selected platform requires about {required:.1f} mm of width "
+                        "including its known operating clearances. "
                         f"It cannot fit a {width:g} mm width without redesigning the frame. "
                         "The accepted machine is preserved; allow more space "
                         "or choose another base."
                     )
-                base = deepcopy(result) if is_source_based(result) else adopt_foundation(result)
+                if commercial:
+                    from app.commercial_design import adopt_commercial
+                    from app.platform_profiles import commercial_sourcing
+
+                    base = (deepcopy(result) if result["design"].get("platform", {}).get("id")
+                            == selected else adopt_commercial(result))
+                    base["sourcing"] = commercial_sourcing()
+                else:
+                    base = deepcopy(result) if is_source_based(result) else adopt_foundation(result)
                 result, run = await develop_design(base, instruction)
+                if commercial:
+                    result["sourcing"] = commercial_sourcing()
                 runs.append({**run, "kind": kind})
                 if run["status"] != "accepted":
                     return _rollback(project, runs)
@@ -99,6 +119,13 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                     }
                 )
             else:
+                if kind == "show_build_plan":
+                    runs.append({"kind": kind, "status": "ready", "message":
+                        "Purchase and assembly guidance is in Project details. Prices and "
+                        "unresolved compatibility are kept explicit." if state_for(result)[
+                        "selected_platform_id"] else "Choose a proposed platform first so the "
+                        "purchase and assembly steps match your needs."})
+                    continue
                 if kind == "show_files" and result["status"] != "confirmed":
                     raise ValueError("Complete the preparation plan and confirm this design "
                                      "before generating project files.")

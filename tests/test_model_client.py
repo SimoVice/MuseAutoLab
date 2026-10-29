@@ -213,7 +213,7 @@ def test_general_context_hides_liquid_template_and_catalogue():
         assert key not in state
     references = state["reviewed_reference_library"]
     assert references["geometry_bindings"] == []
-    assert references["architecture"] == "Workflow discovery; no machine adapter chosen"
+    assert references["architecture"] == "Workflow discovery; no accepted machine design"
 
 
 def test_canonicalization_cannot_change_concentration_or_capitalized_prefix():

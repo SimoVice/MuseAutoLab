@@ -72,6 +72,38 @@ def test_confirmation_gate_and_missing_job(client):
     wait_done(client, base + "/" + job["id"])
 
 
+def test_commercial_package_keeps_setup_sources_and_no_legacy_physics(client):
+    from test_commercial_design import proposal
+    from test_engineering_conversation import unselected_project
+
+    from app.commercial_design import adopt_commercial, compile_commercial_layout
+    from app.engineering import EngineeringUpdate, apply_engineering_update
+    from app.platform_profiles import commercial_sourcing
+
+    project = apply_update(unselected_project(), {
+        "target_concentrations": "1 mg/mL", "final_volume": "1 mL per tube"})
+    project = apply_engineering_update(project, EngineeringUpdate(
+        platform_choice="opentrons-ot2", choice_source="Use OT-2"), "Use OT-2")
+    project = compile_commercial_layout(adopt_commercial(project), proposal(), {})
+    project["sourcing"] = commercial_sourcing()
+    project = confirm_project(project)
+    api._sessions[project["id"]] = api.ProjectSession(project=project)
+    base = f"/api/projects/{project['id']}/exports"
+    created = client.post(base).json()
+    job = wait_done(client, base + "/" + created["id"])
+    assert job["status"] == "ready"
+    with zipfile.ZipFile(io.BytesIO(client.get(job["download_url"]).content)) as archive:
+        result = json.loads(archive.read("simulation/result.json"))
+        assert result["status"] == "not_run"
+        assert "selected platform" in result["reason"]
+        assert "references/ot2-deck.json" in archive.namelist()
+        guide = archive.read("assembly-guide.html").decode()
+        assert "Instrument purchase and setup guide" in guide
+        assert "custom sample insert follows" not in guide
+        assert "no compatible mount or hardware control" in archive.read("extensions.md").decode()
+        assert "quote" in archive.read("purchase-and-assembly.md").decode().lower()
+
+
 def test_archive_manifest_hashes_cache_and_attachments(client):
     project, base = seed(client)
     original = deepcopy(project)

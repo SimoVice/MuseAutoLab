@@ -73,6 +73,7 @@ def _summarize_project(project: dict) -> dict:
                     "id": item.get("id"),
                     "position": item.get("position"),
                     "size": item.get("size"),
+                    "slot_id": item.get("slot_id"),
                 }
             )
     return {
@@ -93,6 +94,21 @@ def _summarize_project(project: dict) -> dict:
 
 def _developer_instructions(project: dict) -> str:
     state = _summarize_project(project)
+    platform = project.get("design", {}).get("platform")
+    if platform and platform.get("id") == "opentrons-ot2":
+        return (
+            "Propose the requested labware arrangement on the explicitly selected, assembled "
+            "Opentrons OT-2 platform. Strict JSON: schema_version '1', slot_assignments "
+            "for exactly source-rack/sample-rack/tip-rack, each a distinct string slot_id "
+            "from '1' to '11', rationale and assumptions. Slot12 is fixed trash. Retain "
+            "existing assignments unless the user's request needs a change. Do not alter "
+            "the body, invent pipette compatibility, rescale labware or claim vendor CAD. "
+            "Only the manufacturer outer envelope and pinned software deck grid are sourced; "
+            "internal parts and deck height are schematic. This is a setup/layout proposal, "
+            "not hardware control, a certified protocol or fabrication design. Cooling and "
+            "custom inspection integration are not supported on this profile. "
+            f"Platform: {json.dumps(platform)}; current state: {json.dumps(state)}"
+        )
     foundation = project.get("design", {}).get("foundation")
     if foundation:
         return (

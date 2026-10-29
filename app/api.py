@@ -15,6 +15,7 @@ from app.chat_actions import execute_chat_actions, extension_only_patch
 from app.design_agent import develop_design
 from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
+from app.engineering import EngineeringUpdate, apply_engineering_update, state_for
 from app.inspection import clear_extension, develop_inspection
 from app.model_client import ChatAction, ModelClientError, generate_turn
 from app.project_exports import (
@@ -217,6 +218,25 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             actions = list(turn.actions)
             patch = extension_only_patch(turn.patch(), actions)
             updated = apply_update(current, patch)
+            engineering = getattr(turn, "engineering", EngineeringUpdate())
+            updated = apply_engineering_update(
+                updated, engineering, request.message,
+                bump=updated["revision"] == current["revision"]
+            )
+            new_choice = state_for(updated)["selected_platform_id"]
+            preserve_layout = any(phrase in request.message.casefold() for phrase in (
+                "keep the machine layout unchanged", "keep the layout unchanged",
+                "do not change the layout", "lascia invariata la disposizione",
+            ))
+            if (preserve_layout and current.get("engineering_design")
+                    and not engineering.platform_choice
+                    and all(current["summary"].get(k) == updated["summary"].get(k) for k in (
+                        "workspace_width_mm", "cooling_enabled", "cooling_target_c"))):
+                actions = [action for action in actions if action.kind != "develop_layout"]
+            if (engineering.platform_choice and new_choice and not actions
+                    and updated["workflow"]["kind"] == "liquid_preparation"
+                    and (updated["summary"].get("equipment") or updated["brief"].get("equipment"))):
+                actions = [ChatAction(kind="develop_layout", source=engineering.choice_source)]
             if (not actions and current.get("engineering_design") and set(patch).intersection({
                 "workspace_width_mm", "cooling_enabled", "cooling_target_c",
             })):
@@ -239,8 +259,20 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ) from None
 
         reply = turn.assistant_message
+        from app.platform_profiles import engineering_guidance
+
+        if state_for(updated)["selected_platform_id"] or any(
+            run["kind"] == "show_build_plan" for run in action_runs
+        ):
+            updated["engineering_guidance"] = engineering_guidance(updated)
         if action_runs:
             reply += "\n\n" + "\n".join(run["message"] for run in action_runs)
+            if any(run["kind"] == "develop_layout" and run["status"] == "accepted"
+                   for run in action_runs):
+                proposal = updated.get("engineering_design", {}).get("proposal", {})
+                rationale = proposal.get("rationale")
+                if rationale:
+                    reply += "\n\nDesign reasoning: " + rationale[:600]
         recommendations = []
         for recommendation in turn.recommendations:
             ref = resolve_reference(recommendation.reference_id)

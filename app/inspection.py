@@ -31,6 +31,9 @@ class InspectionProposal(BaseModel):
 
 
 def _require_layout(project: dict) -> None:
+    if project.get("design", {}).get("platform"):
+        raise ValueError("Custom inspection-arm integration is not implemented for this "
+                         "assembled platform. We can plan its requirements separately.")
     if not project.get("engineering_design") or project["workflow"]["kind"] != "liquid_preparation":
         raise ValueError("Develop a workstation layout with Meta before adding the inspection arm.")
     if project["design"]["constraint_status"] == "infeasible":

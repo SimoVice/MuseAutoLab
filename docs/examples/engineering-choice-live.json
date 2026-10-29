@@ -1,0 +1,783 @@
+{
+  "date": "2026-10-29",
+  "model": "muse-spark-1.3-contributor",
+  "scope": "Synthetic bounded integration check, not a benchmark or hardware test",
+  "runtime_roles": "Meta extracts needs, proposes options, chooses bounded layouts; application compiles/checks geometry and calculates dilutions.",
+  "final_run_reported_usage": {
+    "input_tokens": 35971,
+    "output_tokens": 5015
+  },
+  "results": {
+    "no_design_before_choice": true,
+    "two_distinct_adapters": true,
+    "per_tube_prompt_keeps_design": true,
+    "stock_volume_ul": [
+      100,
+      50,
+      10
+    ]
+  },
+  "earlier_failures": [
+    {
+      "failure_kind": "source_validation",
+      "http": 502,
+      "reported_usage": {
+        "input_tokens": 8260,
+        "output_tokens": 1280
+      },
+      "detail": "An earlier first-turn response was rejected; exact source mismatch was not captured. A later first turn passed."
+    },
+    {
+      "failure_kind": "response_format",
+      "http": 502,
+      "reported_usage": {
+        "input_tokens": 9523,
+        "output_tokens": 950
+      },
+      "detail": "Quantity response had platform_choice null and irrelevant non-null choice_source. The parser now discards that non-operative evidence; real choices retain literal-source and intent checks."
+    }
+  ],
+  "limitations": [
+    "Curated two-platform catalogue, not universal robot synthesis",
+    "Source and schematic checks do not validate laboratory hardware",
+    "OT-2 quoted capacity, labware and pipettes still need checking",
+    "Both layout calls accepted first attempt; no correction claimed",
+    "Earlier partial-run usage is outside the final-run totals; no billing claim"
+  ],
+  "turns": [
+    {
+      "message": "I prepare 20 tubes per run and have 1200 mm of bench width. Compare an assembled platform with a buildable open-source platform. Explain the tradeoffs and ask for my choice before designing anything.",
+      "http": 200,
+      "assistant": "With 20 tubes per run and 1200 mm bench width, here are your two routes:\n\n1) Buy assembled OT-2: faster to deploy, official setup and compatible pipettes/racks, schematic deck layout. Needs 1030 mm total width with clearance, fits your 1200 mm. Tradeoffs: quote needed for price/stock, manual pipette not reusable, no custom arm/cooling integration.\n\n2) Build open-hardware Jubilee: open BOM/fabrication, supports custom pipette + camera concepts, 300x300x300 mm stated volume. Tradeoffs: sourcing, assembly, calibration and liquid validation are on you.\n\nWhich do you prefer - assembled OT-2 or buildable Jubilee - before I design anything?\n\nRecorded a 1200 mm maximum width. Develop a fresh layout with Meta to check the arrangement; this message has not generated a new machine.",
+      "usage": {
+        "prompt_tokens": 7627,
+        "completion_tokens": 1083,
+        "total_tokens": 8710
+      },
+      "actions": [],
+      "error": null,
+      "engineering": {
+        "schema_version": "1",
+        "requirements": {
+          "procurement": null,
+          "budget": null,
+          "throughput": "20 tubes per run",
+          "assembly": null,
+          "priorities": null
+        },
+        "options": [
+          {
+            "platform_id": "jubilee",
+            "reason": "Buildable open source route with custom tool flexibility for 20-tube runs.",
+            "tradeoffs": [
+              "Requires sourcing, fabrication and assembly labor",
+              "Calibration and liquid handling unverified",
+              "Supports inspection concept",
+              "Parts/price need verification"
+            ]
+          },
+          {
+            "platform_id": "opentrons-ot2",
+            "reason": "Assembled route with official setup for pipette-based preparation.",
+            "tradeoffs": [
+              "Needs official quote for price/stock/delivery",
+              "Manual pipette not assumed compatible",
+              "1030 mm operating width fits 1200 mm bench",
+              "No custom arm/cooling integration"
+            ]
+          }
+        ],
+        "selected_platform_id": null,
+        "selection_source": null
+      },
+      "plan": {
+        "status": "incomplete",
+        "message": "Missing required parameters: target concentrations, final volume. Provide stock concentration (e.g. '10 mM'), target concentrations (e.g. '1 mM, 2 mM') and final volume (e.g. '1 mL').",
+        "stock": null,
+        "final_volume_ul": null,
+        "steps": [],
+        "assumptions": []
+      },
+      "proposal": null,
+      "platform": null,
+      "foundation": null
+    },
+    {
+      "message": "I prefer the prebuilt one. Proceed with its design.",
+      "http": 200,
+      "assistant": "Understood — proceeding with the assembled OT-2 route for your 20-tube runs. I will develop its schematic deck layout next.\n\nMeta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 7 geometry checks passed.\n\nDesign reasoning: Retain current validated OT-2 layout: source-rack in 1, sample-rack in 2, tip-rack in 3 keeps left-to-right workflow clear of fixed trash in 12 and within pinned deck grid. No moves needed.",
+      "usage": {
+        "prompt_tokens": 8026,
+        "completion_tokens": 675,
+        "total_tokens": 8701
+      },
+      "actions": [
+        {
+          "id": "design-7c0f1519",
+          "source_revision": 3,
+          "status": "accepted",
+          "model": "muse-spark-1.3-contributor",
+          "instruction": "I prefer the prebuilt one. Proceed with its design.",
+          "attempts": [
+            {
+              "number": 1,
+              "proposal": {
+                "assumptions": [],
+                "rationale": "Retain current validated OT-2 layout: source-rack in 1, sample-rack in 2, tip-rack in 3 keeps left-to-right workflow clear of fixed trash in 12 and within pinned deck grid. No moves needed.",
+                "schema_version": "1",
+                "slot_assignments": [
+                  {
+                    "component_id": "source-rack",
+                    "slot_id": "1"
+                  },
+                  {
+                    "component_id": "sample-rack",
+                    "slot_id": "2"
+                  },
+                  {
+                    "component_id": "tip-rack",
+                    "slot_id": "3"
+                  }
+                ]
+              },
+              "checks": [
+                {
+                  "id": "platform",
+                  "label": "Selected platform",
+                  "passed": true,
+                  "detail": "The OT-2 platform must be selected explicitly."
+                },
+                {
+                  "id": "workflow",
+                  "label": "Supported workflow",
+                  "passed": true,
+                  "detail": "Liquid preparation with design enabled is required."
+                },
+                {
+                  "id": "workspace_width",
+                  "label": "Workspace width including ventilation",
+                  "passed": true,
+                  "detail": "The 630 mm body plus 200 mm ventilation clearance on each side requires at least 1030 mm; other access requirements are unchecked."
+                },
+                {
+                  "id": "cooling",
+                  "label": "Cooling integration",
+                  "passed": true,
+                  "detail": "Cooling integration on this platform is unsupported."
+                },
+                {
+                  "id": "inspection",
+                  "label": "Inspection integration",
+                  "passed": true,
+                  "detail": "Custom inspection integration on this platform is unsupported."
+                },
+                {
+                  "id": "schema",
+                  "label": "Proposal format",
+                  "passed": true,
+                  "detail": "Three distinct components occupy distinct slots 1–11; trash remains in slot 12."
+                },
+                {
+                  "id": "slot_envelopes",
+                  "label": "Illustrative rack envelopes",
+                  "passed": true,
+                  "detail": "The 95 × 70 mm placeholders are compared with the pinned nominal slot rectangles; actual labware fit and clearances are unchecked."
+                }
+              ],
+              "usage": {
+                "model": "muse-spark-1.3-contributor",
+                "input_tokens": 1526,
+                "output_tokens": 213
+              }
+            }
+          ],
+          "message": "Meta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 7 geometry checks passed.",
+          "kind": "develop_layout"
+        }
+      ],
+      "error": null,
+      "engineering": {
+        "schema_version": "1",
+        "requirements": {
+          "procurement": "prebuilt",
+          "budget": null,
+          "throughput": "20 tubes per run",
+          "assembly": null,
+          "priorities": null
+        },
+        "options": [
+          {
+            "platform_id": "jubilee",
+            "reason": "Buildable open source route with custom tool flexibility for 20-tube runs.",
+            "tradeoffs": [
+              "Requires sourcing, fabrication and assembly labor",
+              "Calibration and liquid handling unverified",
+              "Supports inspection concept",
+              "Parts/price need verification"
+            ]
+          },
+          {
+            "platform_id": "opentrons-ot2",
+            "reason": "Assembled route with official setup for pipette-based preparation.",
+            "tradeoffs": [
+              "Needs official quote for price/stock/delivery",
+              "Manual pipette not assumed compatible",
+              "1030 mm operating width fits 1200 mm bench",
+              "No custom arm/cooling integration"
+            ]
+          }
+        ],
+        "selected_platform_id": "opentrons-ot2",
+        "selection_source": "I prefer the prebuilt one."
+      },
+      "plan": {
+        "status": "incomplete",
+        "message": "Missing required parameters: target concentrations, final volume. Provide stock concentration (e.g. '10 mM'), target concentrations (e.g. '1 mM, 2 mM') and final volume (e.g. '1 mL').",
+        "stock": null,
+        "final_volume_ul": null,
+        "steps": [],
+        "assumptions": []
+      },
+      "proposal": {
+        "schema_version": "1",
+        "slot_assignments": [
+          {
+            "component_id": "source-rack",
+            "slot_id": "1"
+          },
+          {
+            "component_id": "sample-rack",
+            "slot_id": "2"
+          },
+          {
+            "component_id": "tip-rack",
+            "slot_id": "3"
+          }
+        ],
+        "rationale": "Retain current validated OT-2 layout: source-rack in 1, sample-rack in 2, tip-rack in 3 keeps left-to-right workflow clear of fixed trash in 12 and within pinned deck grid. No moves needed.",
+        "assumptions": []
+      },
+      "platform": {
+        "id": "opentrons-ot2",
+        "label": "Opentrons OT-2",
+        "manufacturer": "Opentrons",
+        "kind": "prebuilt_platform",
+        "envelope_mm": [
+          630.0,
+          660.0,
+          570.0
+        ],
+        "envelope_order": "width, height, depth",
+        "source_url": "https://opentrons.com/products/ot-2-robot",
+        "specifications_url": "https://docs.opentrons.com/ot-2/system-description/specs/",
+        "deck_slots_url": "https://docs.opentrons.com/python-api/deck-slots/",
+        "deck_definition_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/deck/definitions/3/ot2_standard.json",
+        "deck_definition_revision": "95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+        "deck_definition_sha256": "f9bde02d43314e42c64d12f1a0d6d4f4aceb448371d37def27de76ff8a308e90",
+        "deck_definition_license": "Apache-2.0",
+        "deck_definition_license_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE",
+        "slot_size_mm": [
+          128.0,
+          86.0
+        ],
+        "operating_clearance_mm": 200.0,
+        "minimum_operating_width_mm": 1030.0,
+        "operating_clearance_scope": "Allow 200 mm around the device for ventilation; width includes the body plus both side clearances. Other access needs are unchecked.",
+        "envelope_source_scope": "Catalogue specifies width 630, depth 570 and height 660 mm; specifications page lists the same dimensions without an axis order.",
+        "usable_slot_ids": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11"
+        ],
+        "fixed_trash_slot_id": "12",
+        "pipette_mounts": 2,
+        "geometry_scope": "Manufacturer outer envelope and deck slot coordinates; all represented internal and frame geometry is schematic and unverified.",
+        "limitations": [
+          "Labware, pipette compatibility, adapter interfaces and travel are unchecked.",
+          "OT-2 needs compatible instrument pipettes; manual pipettes are not assumed compatible.",
+          "Cooling and custom inspection modules are unsupported pending integration.",
+          "No physical collision, control or laboratory validation is represented."
+        ]
+      },
+      "foundation": null
+    },
+    {
+      "message": "Use target concentrations of 1, 0.5 and 0.1 mg/mL, with a final volume of 1 mL per tube. Keep the machine layout unchanged.",
+      "http": 200,
+      "assistant": "Got it — using 1, 0.5 and 0.1 mg/mL targets at 1 mL per tube with your selected OT-2 layout unchanged. With your 10 mg/mL stock this stays direct dilution, one tube per target. Review and confirm when ready.\n\nCalculated preparation per tube:\n1 mg/mL: 100 µL stock + 900 µL diluent\n0.5 mg/mL: 50 µL stock + 950 µL diluent\n0.1 mg/mL: 10 µL stock + 990 µL diluent\nReview the plan below before confirming.",
+      "usage": {
+        "prompt_tokens": 9575,
+        "completion_tokens": 723,
+        "total_tokens": 10298
+      },
+      "actions": [],
+      "error": null,
+      "engineering": {
+        "schema_version": "1",
+        "requirements": {
+          "procurement": "prebuilt",
+          "budget": null,
+          "throughput": "20 tubes per run",
+          "assembly": null,
+          "priorities": null
+        },
+        "options": [
+          {
+            "platform_id": "jubilee",
+            "reason": "Buildable open source route with custom tool flexibility for 20-tube runs.",
+            "tradeoffs": [
+              "Requires sourcing, fabrication and assembly labor",
+              "Calibration and liquid handling unverified",
+              "Supports inspection concept",
+              "Parts/price need verification"
+            ]
+          },
+          {
+            "platform_id": "opentrons-ot2",
+            "reason": "Assembled route with official setup for pipette-based preparation.",
+            "tradeoffs": [
+              "Needs official quote for price/stock/delivery",
+              "Manual pipette not assumed compatible",
+              "1030 mm operating width fits 1200 mm bench",
+              "No custom arm/cooling integration"
+            ]
+          }
+        ],
+        "selected_platform_id": "opentrons-ot2",
+        "selection_source": "I prefer the prebuilt one."
+      },
+      "plan": {
+        "status": "ready",
+        "message": "Dilution plan ready for 3 target(s) at 1000.0 uL final volume per tube.",
+        "stock": "10 mg/mL",
+        "final_volume_ul": 1000.0,
+        "steps": [
+          {
+            "id": "1",
+            "target": "1 mg/mL",
+            "stock_volume_ul": 100.0,
+            "diluent_volume_ul": 900.0,
+            "total_volume_ul": 1000.0
+          },
+          {
+            "id": "2",
+            "target": "0.5 mg/mL",
+            "stock_volume_ul": 50.0,
+            "diluent_volume_ul": 950.0,
+            "total_volume_ul": 1000.0
+          },
+          {
+            "id": "3",
+            "target": "0.1 mg/mL",
+            "stock_volume_ul": 10.0,
+            "diluent_volume_ul": 990.0,
+            "total_volume_ul": 1000.0
+          }
+        ],
+        "assumptions": [
+          "Direct dilution: each target is prepared in a separate tube from stock; no serial dilutions are used.",
+          "Stock volume = target / stock × final volume; diluent = final volume − stock volume.",
+          "Concentrations are converted to common units and volumes to µL.",
+          "Verify tube capacity, pipette range, mixing and hardware before use; the preparation is not laboratory validated."
+        ]
+      },
+      "proposal": {
+        "schema_version": "1",
+        "slot_assignments": [
+          {
+            "component_id": "source-rack",
+            "slot_id": "1"
+          },
+          {
+            "component_id": "sample-rack",
+            "slot_id": "2"
+          },
+          {
+            "component_id": "tip-rack",
+            "slot_id": "3"
+          }
+        ],
+        "rationale": "Retain current validated OT-2 layout: source-rack in 1, sample-rack in 2, tip-rack in 3 keeps left-to-right workflow clear of fixed trash in 12 and within pinned deck grid. No moves needed.",
+        "assumptions": []
+      },
+      "platform": {
+        "id": "opentrons-ot2",
+        "label": "Opentrons OT-2",
+        "manufacturer": "Opentrons",
+        "kind": "prebuilt_platform",
+        "envelope_mm": [
+          630.0,
+          660.0,
+          570.0
+        ],
+        "envelope_order": "width, height, depth",
+        "source_url": "https://opentrons.com/products/ot-2-robot",
+        "specifications_url": "https://docs.opentrons.com/ot-2/system-description/specs/",
+        "deck_slots_url": "https://docs.opentrons.com/python-api/deck-slots/",
+        "deck_definition_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/deck/definitions/3/ot2_standard.json",
+        "deck_definition_revision": "95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+        "deck_definition_sha256": "f9bde02d43314e42c64d12f1a0d6d4f4aceb448371d37def27de76ff8a308e90",
+        "deck_definition_license": "Apache-2.0",
+        "deck_definition_license_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE",
+        "slot_size_mm": [
+          128.0,
+          86.0
+        ],
+        "operating_clearance_mm": 200.0,
+        "minimum_operating_width_mm": 1030.0,
+        "operating_clearance_scope": "Allow 200 mm around the device for ventilation; width includes the body plus both side clearances. Other access needs are unchecked.",
+        "envelope_source_scope": "Catalogue specifies width 630, depth 570 and height 660 mm; specifications page lists the same dimensions without an axis order.",
+        "usable_slot_ids": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11"
+        ],
+        "fixed_trash_slot_id": "12",
+        "pipette_mounts": 2,
+        "geometry_scope": "Manufacturer outer envelope and deck slot coordinates; all represented internal and frame geometry is schematic and unverified.",
+        "limitations": [
+          "Labware, pipette compatibility, adapter interfaces and travel are unchecked.",
+          "OT-2 needs compatible instrument pipettes; manual pipettes are not assumed compatible.",
+          "Cooling and custom inspection modules are unsupported pending integration.",
+          "No physical collision, control or laboratory validation is represented."
+        ]
+      },
+      "foundation": null
+    },
+    {
+      "message": "I prefer the open-source buildable one. Proceed with its design.",
+      "http": 200,
+      "assistant": "Understood — building the open-hardware Jubilee route. I’ll develop that layout next, based on the pinned Jubilee STEP plus custom liquid-handling fixtures. It will need BOM sourcing, fabrication and assembly, and pipette mounting/calibration still need review.\n\nMeta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 21 geometry checks passed.\n\nDesign reasoning: Retains revision-3 300x300 insert, 100mm bed drop, and current 2-column layout. Two 95mm racks per row with x=+-70 avoids three-across crowding, keeps 10mm edge and >5mm gaps, waste rear-left and controller front-right.",
+      "usage": {
+        "prompt_tokens": 7740,
+        "completion_tokens": 911,
+        "total_tokens": 8651
+      },
+      "actions": [
+        {
+          "id": "design-629c8269",
+          "source_revision": 3,
+          "status": "accepted",
+          "model": "muse-spark-1.3-contributor",
+          "instruction": "I prefer the open-source buildable one. Proceed with its design.",
+          "attempts": [
+            {
+              "number": 1,
+              "proposal": {
+                "assumptions": [
+                  "Positions interpreted as volume centres relative to base centre.",
+                  "Deck 300x300 retained from current state; no rescale of frame.",
+                  "Fixed component footprint sizes retained as given.",
+                  "Bed drop 100mm is illustrative travel pose only.",
+                  "300mm workspace is conservative hypothesis, unvalidated.",
+                  "No physical mounting or collision validation claimed."
+                ],
+                "bed_drop_mm": 100.0,
+                "deck_depth_mm": 300.0,
+                "deck_width_mm": 300.0,
+                "placements": [
+                  {
+                    "component_id": "source-rack",
+                    "x_mm": -70.0,
+                    "z_mm": -65.0
+                  },
+                  {
+                    "component_id": "sample-rack",
+                    "x_mm": 70.0,
+                    "z_mm": -65.0
+                  },
+                  {
+                    "component_id": "tip-rack",
+                    "x_mm": -70.0,
+                    "z_mm": 35.0
+                  },
+                  {
+                    "component_id": "tip-waste",
+                    "x_mm": -70.0,
+                    "z_mm": 110.0
+                  },
+                  {
+                    "component_id": "controller",
+                    "x_mm": 70.0,
+                    "z_mm": 50.0
+                  }
+                ],
+                "rationale": "Retains revision-3 300x300 insert, 100mm bed drop, and current 2-column layout. Two 95mm racks per row with x=+-70 avoids three-across crowding, keeps 10mm edge and >5mm gaps, waste rear-left and controller front-right.",
+                "schema_version": "1"
+              },
+              "checks": [
+                {
+                  "id": "workflow",
+                  "label": "Supported workflow",
+                  "passed": true,
+                  "detail": "Liquid preparation with design enabled is required."
+                },
+                {
+                  "id": "feasible_width",
+                  "label": "Feasible workspace",
+                  "passed": true,
+                  "detail": "Resolve the infeasible workspace width before developing a layout."
+                },
+                {
+                  "id": "schema",
+                  "label": "Proposal format",
+                  "passed": true,
+                  "detail": "Required fields and values are valid."
+                },
+                {
+                  "id": "workspace_width",
+                  "label": "Workspace width",
+                  "passed": true,
+                  "detail": "Fixed source frame width 483.1 mm; workspace limit 1200.0 mm."
+                },
+                {
+                  "id": "envelopes",
+                  "label": "Component envelopes",
+                  "passed": true,
+                  "detail": "Fixed project component envelopes are retained."
+                },
+                {
+                  "id": "head_envelope",
+                  "label": "Head height envelope",
+                  "passed": true,
+                  "detail": "Proposed head stays below the source frame envelope; interior clearance and mounting remain unchecked."
+                },
+                {
+                  "id": "edge_source-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "source-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_sample-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "sample-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_tip-rack",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "tip-rack requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_tip-waste",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "tip-waste requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "edge_controller",
+                  "label": "Deck edge clearance",
+                  "passed": true,
+                  "detail": "controller requires at least 10 mm to each deck edge."
+                },
+                {
+                  "id": "clearance_source-rack_sample-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_tip-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_source-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "source-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_tip-rack",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_sample-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-rack_tip-waste",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-rack_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+                },
+                {
+                  "id": "clearance_tip-waste_controller",
+                  "label": "Component separation",
+                  "passed": true,
+                  "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+                }
+              ],
+              "usage": {
+                "model": "muse-spark-1.3-contributor",
+                "input_tokens": 1477,
+                "output_tokens": 1410
+              }
+            }
+          ],
+          "message": "Meta layout accepted using muse-spark-1.3-contributor after 1 attempt(s). All 21 geometry checks passed.",
+          "kind": "develop_layout"
+        }
+      ],
+      "error": null,
+      "engineering": {
+        "schema_version": "1",
+        "requirements": {
+          "procurement": null,
+          "budget": null,
+          "throughput": "20 tubes per run",
+          "assembly": null,
+          "priorities": null
+        },
+        "options": [
+          {
+            "platform_id": "jubilee",
+            "reason": "Buildable open source route with custom tool flexibility for 20-tube runs.",
+            "tradeoffs": [
+              "Requires sourcing, fabrication and assembly labor",
+              "Calibration and liquid handling unverified",
+              "Supports inspection concept",
+              "Parts/price need verification"
+            ]
+          },
+          {
+            "platform_id": "opentrons-ot2",
+            "reason": "Assembled route with official setup for pipette-based preparation.",
+            "tradeoffs": [
+              "Needs official quote for price/stock/delivery",
+              "Manual pipette not assumed compatible",
+              "1030 mm operating width fits 1200 mm bench",
+              "No custom arm/cooling integration"
+            ]
+          }
+        ],
+        "selected_platform_id": "jubilee",
+        "selection_source": "open-source buildable one"
+      },
+      "plan": {
+        "status": "incomplete",
+        "message": "Missing required parameters: target concentrations, final volume. Provide stock concentration (e.g. '10 mM'), target concentrations (e.g. '1 mM, 2 mM') and final volume (e.g. '1 mL').",
+        "stock": null,
+        "final_volume_ul": null,
+        "steps": [],
+        "assumptions": []
+      },
+      "proposal": {
+        "schema_version": "1",
+        "deck_width_mm": 300.0,
+        "deck_depth_mm": 300.0,
+        "placements": [
+          {
+            "component_id": "source-rack",
+            "x_mm": -70.0,
+            "z_mm": -65.0
+          },
+          {
+            "component_id": "sample-rack",
+            "x_mm": 70.0,
+            "z_mm": -65.0
+          },
+          {
+            "component_id": "tip-rack",
+            "x_mm": -70.0,
+            "z_mm": 35.0
+          },
+          {
+            "component_id": "tip-waste",
+            "x_mm": -70.0,
+            "z_mm": 110.0
+          },
+          {
+            "component_id": "controller",
+            "x_mm": 70.0,
+            "z_mm": 50.0
+          }
+        ],
+        "rationale": "Retains revision-3 300x300 insert, 100mm bed drop, and current 2-column layout. Two 95mm racks per row with x=+-70 avoids three-across crowding, keeps 10mm edge and >5mm gaps, waste rear-left and controller front-right.",
+        "assumptions": [
+          "Positions interpreted as volume centres relative to base centre.",
+          "Deck 300x300 retained from current state; no rescale of frame.",
+          "Fixed component footprint sizes retained as given.",
+          "Bed drop 100mm is illustrative travel pose only.",
+          "300mm workspace is conservative hypothesis, unvalidated.",
+          "No physical mounting or collision validation claimed."
+        ],
+        "bed_drop_mm": 100.0
+      },
+      "platform": null,
+      "foundation": {
+        "id": "jubilee-v2.2.2-c877bd2",
+        "component_id": "foundation-jubilee",
+        "schema_version": "1",
+        "source_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+        "static_mesh_url": "/assets/jubilee-c877bd2-static.glb",
+        "bed_mesh_url": "/assets/jubilee-c877bd2-bed.glb",
+        "source_to_app": "(X-274.855945675, Y-272.216535584, 425.743280356-Z)",
+        "bbox_mm": [
+          483.143869005,
+          564.358391585,
+          612.687507964
+        ],
+        "bed_drop_mm": 100.0,
+        "bed_drop_bounds_mm": [
+          0.0,
+          150.0
+        ],
+        "deck_origin_app_mm": [
+          -1.57118753,
+          272.86690226,
+          -6.13189038
+        ],
+        "workspace_size_mm": [
+          300.0,
+          300.0
+        ],
+        "workspace_scope": "Proposed conservative rectangle over the imported build-plate assembly bounding box; actual surface, mounting interfaces, physical travel and connections are unchecked.",
+        "license": "CC-BY-4.0",
+        "source_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/frame/cads/STEP/jubilee.STEP",
+        "preview_scope": "Simplified tessellation; upstream STEP is the geometric authority."
+      }
+    }
+  ]
+}

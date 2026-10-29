@@ -190,17 +190,19 @@ async def _run_job(job_id: str) -> None:
         job["stage"] = "simulation"
 
         def _sim() -> dict[str, bytes]:
-            if snapshot.get("design", {}).get("foundation"):
+            if (snapshot.get("design", {}).get("foundation")
+                    or snapshot.get("design", {}).get("platform")):
                 return {
                     "simulation/result.json": json.dumps({
                         "project_id": snapshot["id"], "revision": snapshot["revision"],
-                        "status": "not_run", "scope": "unsupported_imported_foundation",
-                        "reason": "The imported platform's contacts, drives and adapters have "
+                        "status": "not_run", "scope": "unsupported_selected_platform",
+                        "reason": "The selected platform's contacts, drives and adapters have "
                                   "not been mapped or validated in MuJoCo.",
                     }, indent=2).encode(),
-                    "simulation/README.md": b"# Simulation scope\n\nThis imported-CAD revision "
+                    "simulation/README.md": b"# Simulation scope\n\n"
+                    b"This selected-platform revision "
                     b"has not been simulated. The legacy XYZ physics model does not validate "
-                    b"the Jubilee platform, bed travel, custom mount, or added modules.\n",
+                    b"the selected platform, instrument travel, custom mount, or added modules.\n",
                 }
             from app.simulation_jobs import simulation_files_for_project
 

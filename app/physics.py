@@ -424,8 +424,8 @@ def _validate_details(part: dict) -> int:
 
 
 def _validate(project: dict, scenario: str) -> dict:
-    if project.get("design", {}).get("foundation"):
-        raise ValueError("MuJoCo contacts and drives are not mapped to the imported Jubilee "
+    if project.get("design", {}).get("foundation") or project.get("design", {}).get("platform"):
+        raise ValueError("MuJoCo contacts and drives are not mapped to the selected "
                          "platform. This revision has CAD and an illustrative preview only.")
     if scenario not in ("nominal", "blocked_path"):
         raise ValueError("Unsupported physics scenario.")

@@ -31,10 +31,11 @@ export default function DesignSources({ project, showBindings, onHighlight }: {
     {showBindings && <div className="source-bindings">
       {bound.map((item) => <div key={`${item.component_id}:${item.primitive_id ?? ''}`}>
         <button type="button" onClick={() => onHighlight(item.component_id)}>{project.design.components.find((part) => part.id === item.component_id)?.label ?? item.component_id}</button>
-        <span>{item.basis === 'imported_open_hardware_cad' ? 'Original open hardware CAD' : 'Manufacturer dimensions'}</span><p>{item.detail}</p>
+        <span>{item.basis === 'imported_open_hardware_cad' ? 'Original open hardware CAD' : item.basis === 'manufacturer_envelope_proxy' ? 'Schematic manufacturer reference' : item.basis === 'documented_layout_reference' ? 'Documented slot layout' : 'Manufacturer dimensions'}</span><p>{item.detail}</p>
       </div>)}
       <p className="source-scope">{project.design.foundation
         ? 'The platform is original Jubilee CAD. The insert, pipette adapter, labware fixtures and inspection arm are custom concepts; interfaces and physical operation remain unverified.'
+        : project.design.platform ? 'The selected OT-2 is shown schematically. Only its outer envelope and official deck-slot grid are sourced; internal shapes and labware compatibility are unverified.'
         : 'The frame, labware fixtures, pipette mechanism and inspection arm remain custom concepts. No source platform is imported in this revision.'}</p>
     </div>}
     <details className="source-library"><summary>Browse references and technical scope</summary>

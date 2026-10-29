@@ -25,7 +25,7 @@ def resolve_reference(reference_id: str) -> dict:
 
 
 def component_geometry_specs(project: dict) -> dict:
-    if project.get("design", {}).get("foundation"):
+    if project.get("design", {}).get("foundation") or project.get("design", {}).get("platform"):
         return {}
     motor_id = project.get("selections", {}).get("motors", "pololu-1209")
     if motor_id not in ("pololu-1209", "pololu-1208"):
@@ -58,7 +58,17 @@ def project_source_basis(project: dict) -> dict:
     bindings = []
     for part in parts:
         pid = part["id"]
-        if pid == "foundation-jubilee":
+        if project.get("design", {}).get("platform"):
+            bindings.append({"component_id": pid,
+                "basis": "manufacturer_envelope_proxy" if pid.startswith("ot2-envelope-")
+                         else "documented_layout_reference" if part.get("slot_id") or pid == "base"
+                         else "custom_concept",
+                "reference_id": "opentrons-ot2" if pid.startswith("ot2-envelope-")
+                                or part.get("slot_id") or pid == "base" else None,
+                "detail": "Schematic platform/layout proxy: outer bounds and software slot grid "
+                          "are sourced; internal shapes, deck height and labware fit "
+                          "are unverified."})
+        elif pid == "foundation-jubilee":
             bindings.append({"component_id": pid, "basis": "imported_open_hardware_cad",
                              "reference_id": "jubilee-hardware",
                              "detail": "Pinned original STEP; fixed frame and explicit bed pose."})
@@ -108,6 +118,8 @@ def project_source_basis(project: dict) -> dict:
         "checked_on": _DATA["checked_on"],
         "library_sha256": _DATA["sha256"],
         "architecture": (
+            "Selected assembled OT-2 platform; schematic reference layout, not vendor machine CAD"
+            if project.get("design", {}).get("platform") else
             "Imported Jubilee platform CAD with a custom liquid-preparation insert"
             if project.get("design", {}).get("foundation") else
             "MuseAutoLab legacy custom XYZ workstation; no imported base in this revision"
@@ -117,6 +129,8 @@ def project_source_basis(project: dict) -> dict:
         "bindings": bindings,
         "references": reference_library()["references"],
         "open_hardware_status": (
+            "Manufacturer outer envelope and pinned software deck grid; no machine CAD imported"
+            if project.get("design", {}).get("platform") else
             "Pinned original Jubilee STEP imported; custom interfaces and travel unverified"
             if project.get("design", {}).get("foundation") else
             "No source CAD imported in this revision; development in chat selects the pinned base"

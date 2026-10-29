@@ -1,4 +1,4 @@
-> Historical implementation record: the screenshots and panel instructions below describe the previous custom-frame UI. New projects use original Jubilee CAD and all requests in chat. See the [current flow](../README.md) and [source asset](jubilee-cad-asset.md). Compiler 3 preserves source identity/pose; compiler 1/2 inputs reopen as a draft requiring a new design.
+> Historical implementation record: screenshots and panel instructions below describe the previous custom-frame UI. Current chat compares reviewed platforms and waits for selection: original Jubilee CAD or a schematic OT-2 layout. See the [current flow](../README.md) and [source asset](jubilee-cad-asset.md). Compiler 4 preserves engineering choices and either adapter; compiler 3 retains existing Jubilee geometry. Compiler 1/2 inputs reopen as a draft requiring a new design.
 
 # Save, reopen and expand a workstation
 

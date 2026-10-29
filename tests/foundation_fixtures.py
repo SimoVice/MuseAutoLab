@@ -1,10 +1,11 @@
 """Explicit offline proposals; these fixtures are not Meta or hardware evidence."""
 
 from app.domain import apply_update, new_project
+from app.engineering import EngineeringUpdate, apply_engineering_update
 
 
 def liquid_project():
-    return apply_update(
+    project = apply_update(
         new_project(),
         {
             "workflow_kind": "liquid_preparation",
@@ -14,6 +15,8 @@ def liquid_project():
             "final_volume": "1 mL",
         },
     )
+    return apply_engineering_update(project, EngineeringUpdate(
+        platform_choice="jubilee", choice_source="Use Jubilee"), "Use Jubilee")
 
 
 def source_proposal(drop=100):

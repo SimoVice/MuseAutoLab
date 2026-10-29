@@ -123,7 +123,7 @@ def develop_layout(page) -> dict:
     from playwright.sync_api import expect
 
     with page.expect_response(lambda response: response.url.endswith("/messages")) as result:
-        send_chat(page, "Develop the workstation from the real CAD base.", "Checking")
+        send_chat(page, "Use Jubilee and develop the workstation.", "Checking")
     expect(page.locator(".viewer-canvas canvas")).to_have_count(1, timeout=STEP_TIMEOUT_MS)
     return result.value.json()
 

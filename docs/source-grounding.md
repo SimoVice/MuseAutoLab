@@ -20,11 +20,27 @@ manufacturer dimensions are the same reviewed data used in the real application.
 | [Pololu 1208](https://www.pololu.com/product/1208/specs) | Published alternative body dimensions, 35 × 35 × 28 mm |
 | [Raspberry Pi Camera Module 3](https://www.raspberrypi.com/products/camera-module-3/) | Standard-lens 25 × 24 × 11.5 mm overall camera envelope |
 | [Opentrons Temperature Module](https://docs.opentrons.com/temperature-module/product-specs/) | Existing 194 × 90 × 84 mm commercial-module envelope; thermal block/sample behavior is separate |
+| [Opentrons OT-2](https://opentrons.com/products/ot-2-robot) | Assembled-platform alternative: published 630 × 570 × 660 mm enclosure, official deck-slot software data; schematic proxies, no manufacturer machine CAD |
 
 Reviewed on 2026-10-28. These are published nominal dimensions, not measurements
 of purchased hardware. The library is a dated snapshot, not a live supplier
 search. Existing price observations retain their separate 2026-10-27 date;
 new camera/arm hardware remains unpriced.
+
+The OT-2 entry was reviewed on 2026-10-29. Its software deck grid is pinned at
+`95a8a37922cfd5f46ad26c983bcc1659fa13b6e1` under Apache-2.0, with license and raw
+hash in `app/data/ot2/`. The [installation specifications](https://docs.opentrons.com/ot-2/system-description/specs/)
+require 200 mm ventilation clearance around the instrument; width checking uses
+1030 mm including both sides. Other access/installation needs remain unchecked.
+Compatible instrument pipettes, labware, exact capacity and calibration must be
+confirmed. Prices, stock and delivery need an official configuration/quote.
+
+Ordinary chat first collects needs and compares curated alternatives. Only an
+explicit platform choice enables its design adapter. Meta supplies contextual
+reasons/tradeoffs and bounded proposals; the application provides allowlisted
+source facts and performs checks. Purchase/assembly guidance follows the chosen
+route and links official BOM/configuration/setup material. This is a bounded
+catalogue, not a live search or general robotics design guarantee.
 
 ## Actual geometry versus references
 
@@ -35,7 +51,7 @@ unverified. The inspection camera uses the manufacturer's overall envelope; its
 board/lens drawing is schematic. Its custom neck is a separate component.
 Purchased-body dimensions are not scaled to fit a requested layout.
 
-New designs import the actual [Jubilee STEP asset](jubilee-cad-asset.md), with its
+The open-hardware route imports the actual [Jubilee STEP asset](jubilee-cad-asset.md), with its
 original hash, revision, attribution and license. The frame and fixed native parts
 remain unchanged. Only the original build-plate subassembly's proposed vertical
 pose changes. Custom inserts, pipette adapters, racks, waste and articulated arm
@@ -43,6 +59,12 @@ remain concept geometry. Source geometry is not a tested liquid handler; travel,
 connections, mounting and source/custom collisions are unverified. Science Jubilee
 software is an integration reference and is not installed. The viewer uses
 approximate source-derived meshes; the original STEP is the CAD authority.
+
+The assembled OT-2 route instead has a manufacturer envelope proxy and documented
+slot assignments. Internal geometry, rack bodies and pipette mount remain custom
+schematics, labeled separately in the source bindings. Its BOM is a quote checklist,
+not the Jubilee motor/frame list. No custom inspection/cooling adapter or physical
+simulation is implemented for OT-2; failed requests preserve the previous project.
 
 ## Runtime advice and evidence
 

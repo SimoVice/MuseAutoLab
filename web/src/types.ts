@@ -175,12 +175,18 @@ export type Project = {
     cooling: DesignCooling;
     foundation?: { id: string; bed_drop_mm: number; bbox_mm: [number, number, number] };
     assembly_bounds?: { min_mm: [number, number, number]; max_mm: [number, number, number] };
+    platform?: { id: string; label: string; geometry_scope: string };
   };
   plan?: PreparationPlan | null;
   engineering_design?: EngineeringDesign | null;
   inspection_extension?: InspectionExtension | null;
   design_basis?: SourceBasis;
   rebuild_notice?: string;
+  engineering?: { schema_version: string; selected_platform_id: string | null;
+    selection_source: string | null; requirements: Record<string, string | null>;
+    options: { platform_id: string; reason: string; tradeoffs: string[] }[] };
+  engineering_guidance?: { status: string; platform_id?: string; message: string;
+    steps: { title: string; url: string; detail: string }[] };
 };
 
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string; references?: DesignReference[] };
@@ -246,6 +252,7 @@ export type LayoutProposal = {
   deck_width_mm: number;
   deck_depth_mm: number;
   bed_drop_mm?: number;
+  slot_assignments?: { component_id: string; slot_id: string }[];
   placements: LayoutPlacement[];
   rationale: string;
   assumptions: string[];

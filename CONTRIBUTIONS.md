@@ -2,6 +2,40 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-29: Needs, platform choice and route-specific engineering
+
+Ordinary chat now tracks grounded procurement, budget, throughput, assembly and priority
+requirements. Runtime Meta proposes reviewed alternatives with contextual reasons/tradeoffs,
+waits for a clear choice, then runs the selected adapter. No automatic Jubilee adoption or
+new permanent future-module fields. Purchase/build guidance links the chosen platform's
+official BOM/configuration/setup material; unresolved interfaces and prices remain explicit.
+
+Added an assembled OT-2 alternative using published enclosure dimensions and pinned Apache-2.0
+software deck data. Meta assigns labware proxies to slots; the viewer and exports use those
+same assignments. This is a schematic, not manufacturer machine CAD or robot control.
+Width checking includes documented ventilation. Commercial BOM is a quote checklist, with
+no inherited Jubilee motor/frame list. Unsupported cooling/inspection requests roll back.
+
+Fixed per-container volume context such as `1 mL per tube`, preserving strict rejection of
+rates and batch totals. Quantity-only requests preserve accepted geometry. OT-2 revisions
+receive the accepted slots, and failed platform switches preserve the previous selection
+and model. Compiler 4 saves engineering choices and both proposal types; compiler-3 Jubilee
+models retain geometry. Both selected platforms explicitly have no physics adapter.
+
+OpenCode Go Muse Spark Contributor low implemented scoped quantity and engineering-state
+tasks using authorized product inputs. GPT-6.1 Terra xhigh implemented/reviewed commercial
+geometry. Codex integrated and reviewed the runtime, UI, sources, exports and persistence.
+No new dependency was added. Verification: 386 regular Python tests, four current offline
+browser flows, Ruff/build, and real commercial STEP export/reopen. The unchanged heavy
+Jubilee source/export suite retains its previous eight-test result; it was not rerun.
+
+The final synthetic live check made four successful Contributor chat calls and two accepted
+layout calls, reporting 35,971 input / 5,015 output tokens. It compared options without CAD,
+selected each architecture and preserved geometry for the exact three-target per-tube prompt.
+Earlier source-validation and response-format failures remain recorded in the local evidence;
+these are bounded integration observations, not a reliability benchmark, billing report or
+hardware validation. See the [shareable record](docs/examples/engineering-choice-live.json).
+
 ## 2026-10-28: Original source CAD and one conversational workspace
 
 Integrated original, pinned Jubilee STEP under its CC BY 4.0 attribution, with

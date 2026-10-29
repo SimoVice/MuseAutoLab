@@ -56,6 +56,10 @@ class FoundationLayoutProposal(LayoutProposal):
 
 
 def proposal_schema(project: dict | None = None) -> dict:
+    if project and project.get("design", {}).get("platform", {}).get("id") == "opentrons-ot2":
+        from app.commercial_design import commercial_proposal_schema
+
+        return commercial_proposal_schema()
     sourced = bool(project and project.get("design", {}).get("foundation"))
     return (FoundationLayoutProposal if sourced else LayoutProposal).model_json_schema()
 
@@ -66,6 +70,10 @@ def _check(check_id: str, label: str, passed: bool, detail: str) -> dict:
 
 def check_candidate(project: dict, raw: object) -> list[dict]:
     """Return actionable checks without raising for an invalid proposal."""
+    if project.get("design", {}).get("platform", {}).get("id") == "opentrons-ot2":
+        from app.commercial_design import check_commercial_candidate
+
+        return check_commercial_candidate(project, raw)
     checks = []
     workflow = project.get("workflow") or {}
     supported = (
@@ -159,6 +167,10 @@ def check_candidate(project: dict, raw: object) -> list[dict]:
 
 def apply_candidate(project: dict, raw: object, provenance: dict) -> dict:
     """Compile an accepted proposal into the shared project geometry."""
+    if project.get("design", {}).get("platform", {}).get("id") == "opentrons-ot2":
+        from app.commercial_design import compile_commercial_layout
+
+        return compile_commercial_layout(project, raw, provenance)
     checks = check_candidate(project, raw)
     failures = [check["detail"] for check in checks if not check["passed"]]
     if failures:

@@ -225,6 +225,7 @@ export default function App() {
   const supportedLiquid = Boolean(workflow && workflow.kind === 'liquid_preparation' && workflow.design_available);
   const hasEngineeringDesign = Boolean(project?.engineering_design);
   const hasFoundation = Boolean(project?.design.foundation);
+  const hasPlatform = Boolean(project?.design.platform);
   const recordedBrief = briefEntries(project?.brief);
   const hasBrief = recordedBrief.length > 0;
   const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || (project?.status === 'confirmed' && project?.plan?.status === 'ready'));
@@ -446,6 +447,7 @@ export default function App() {
   const showPhotoCheck = Boolean(project?.inspection_extension) || actionRuns.some((run) => run.kind === 'show_photo_check');
   const requestedSources = actionRuns.some((run) => run.kind === 'show_sources' && run.status === 'ready');
   const requestedPhoto = actionRuns.some((run) => run.kind === 'show_photo_check' && run.status === 'ready');
+  const requestedBuildPlan = actionRuns.some((run) => run.kind === 'show_build_plan' && run.status === 'ready');
 
   return (
     <div className="app-shell">
@@ -509,7 +511,7 @@ export default function App() {
           ) : (
             <>
               <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
-                <div className="viewer-topline"><span><Icon name="cube" size={16} /> {hasFoundation ? 'Jubilee CAD · custom layout' : 'Interactive 3D concept'}</span><span><span className="viewer-badge">Meta-proposed layout</span></span></div>
+                <div className="viewer-topline"><span><Icon name="cube" size={16} /> {hasFoundation ? 'Jubilee CAD · custom layout' : hasPlatform ? 'OT-2 · schematic setup' : 'Interactive 3D concept'}</span><span><span className="viewer-badge">Meta-proposed layout</span></span></div>
                 <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
                   {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
@@ -528,6 +530,14 @@ export default function App() {
 
               <details className="project-details" ref={details}>
                 <summary>Project details</summary>
+                {project?.engineering_guidance && <details className="photo-check" open={requestedBuildPlan || undefined}>
+                  <summary>Purchase and assembly plan</summary>
+                  <p className="planning-note">{project.engineering_guidance.message}</p>
+                  <ol>{project.engineering_guidance.steps.map((step) => <li key={step.title}>
+                    <a href={step.url} target="_blank" rel="noopener noreferrer">{step.title} ↗</a>
+                    <p className="planning-note">{step.detail}</p>
+                  </li>)}</ol>
+                </details>}
                 {hasBrief && (
                   <div className="planning-panel" aria-label="Project brief">
                     <div className="planning-heading">
@@ -578,16 +588,23 @@ export default function App() {
                   </details>
                 )}
                 {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
-                {project && !hasFoundation && showPreview && (
+                {project && !hasFoundation && !hasPlatform && showPreview && (
                   <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
                 )}
               </details>
             </>
           )}
-          {!hasEngineeringDesign && requestedSources && project && (
+          {!hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
             <details className="project-details" ref={details}>
-              <summary>Project sources</summary>
+              <summary>Project details</summary>
               <DesignSources project={project} showBindings={false} onHighlight={handleVisionSelect} />
+              {requestedBuildPlan && project.engineering_guidance && <>
+                <p>{project.engineering_guidance.message}</p>
+                <ol>{project.engineering_guidance.steps.map((step) => <li key={step.title}>
+                  <a href={step.url} target="_blank" rel="noopener noreferrer">{step.title} ↗</a>
+                  <p>{step.detail}</p>
+                </li>)}</ol>
+              </>}
             </details>
           )}
         </section>
@@ -634,8 +651,8 @@ export default function App() {
                     </div>
                     <p className="plan-message">{plan.message}</p>
                     <div className="plan-meta">
-                      <span><strong>Stock:</strong> {plan.stock ?? 'Not specified'}</span>
-                      <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Not specified'}</span>
+                      <span><strong>Stock:</strong> {plan.stock ?? project.summary.stock_concentration ?? 'Not specified'}</span>
+                      <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : project.summary.final_volume ?? 'Not specified'}</span>
                     </div>
                     {plan.steps.length > 0 ? (
                       <div className="plan-table-wrap">
