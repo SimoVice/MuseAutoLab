@@ -1,0 +1,40 @@
+.scene-controls {
+  position: absolute;
+  left: 16px;
+  bottom: 42px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid #d6e5e3;
+  border-radius: 7px;
+  background: #f8fbfaf0;
+  color: #496e70;
+  font-size: 11px;
+}
+.scene-controls span { padding: 0 5px; }
+.scene-controls button {
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #315f61;
+  font-size: 16px;
+  cursor: pointer;
+}
+.scene-controls button:hover { background: #e1efed; }
+.scene-controls button:focus-visible { outline: 2px solid #267d7a; outline-offset: 1px; }
+.scene-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f8fbfaed;
+  color: #315f61;
+  font-size: 12px;
+  pointer-events: none;
+}

@@ -168,7 +168,8 @@ def test_analyze_success_returns_validated_raw_and_usage():
 
     raw, usage = asyncio.run(run())
     assert raw["summary"] == "Two tubes visible."
-    assert usage == {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12}
+    assert usage == {"model": settings.model, "prompt_tokens": 5,
+                     "completion_tokens": 7, "total_tokens": 12}
 
 
 def test_analyze_invalid_model_json_raises_sanitized():

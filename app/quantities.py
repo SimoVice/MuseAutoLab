@@ -1,8 +1,15 @@
 """Canonical quantity normalization for chat inputs.
 
 Converts equivalent notations (lowercase liter, micro signs, whitespace,
-decimal comma, mol/L aliases, per-phrasing) into canonical texts that the
+decimal comma, mol/L aliases, per-phrasing and bounded English speech) into texts that the
 dilution planner accepts. No positivity or domain checks here.
+
+Spoken numbers support integers 0..999 (without internal "and") and decimals
+whose fractional part is spoken as individual zero..nine digits. Standard tens
+hyphens are accepted. Fractions, approximate values, ranges, thousands and rates
+are not inferred. Spelled units are limited to gram/milligram/microgram and
+liter/milliliter/microliter/nanoliter (US/UK singular/plural); the existing
+supported unit combinations still apply.
 """
 
 from __future__ import annotations
@@ -55,6 +62,88 @@ _NUMBER_AT_START = re.compile(_NUMBER_START)
 _AND_SPLIT = re.compile(r"(?:,\s*|\s+)(?:and|e)\s+", re.IGNORECASE)
 _PER_SLASH = re.compile(r"\s+per\s+", re.IGNORECASE)
 _SLASH_SPACES = re.compile(r"\s*/\s*")
+
+_SMALL_WORDS = dict(zip((
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+    "seventeen", "eighteen", "nineteen",
+), range(20)))
+_TENS_WORDS = dict(zip((
+    "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+), range(20, 100, 10)))
+_NUMBER_WORDS = (*_SMALL_WORDS, *_TENS_WORDS, "hundred", "point")
+_NUMBER_WORD_PATTERN = "(?:" + "|".join(_NUMBER_WORDS) + ")"
+_SPOKEN_NUMBER_AT_START = re.compile(
+    rf"^({_NUMBER_WORD_PATTERN}(?:(?:\s+|-){_NUMBER_WORD_PATTERN})*)(?=\s|$)", re.I
+)
+_UNIT_WORDS = {
+    "gram": "g", "milligram": "mg", "microgram": "ug",
+    "liter": "L", "litre": "L", "milliliter": "mL", "millilitre": "mL",
+    "microliter": "uL", "microlitre": "uL", "nanoliter": "nL", "nanolitre": "nL",
+}
+_UNIT_WORD_PATTERN = re.compile(r"\b(" + "|".join(_UNIT_WORDS) + r")(s?)\b", re.I)
+_SPOKEN_QUANTITY = re.compile(r"\b(?:" + "|".join(_NUMBER_WORDS) + r")\b", re.I)
+
+
+def has_spoken_quantity(text: str) -> bool:
+    """Identify supported speech tokens so source checks cannot skip their grammar."""
+    return bool(_SPOKEN_QUANTITY.search(text) or _UNIT_WORD_PATTERN.search(text))
+
+
+def _small_integer(words: list[str]) -> int:
+    if len(words) == 1 and words[0] in _SMALL_WORDS:
+        return _SMALL_WORDS[words[0]]
+    if words and words[0] in _TENS_WORDS:
+        if len(words) == 1:
+            return _TENS_WORDS[words[0]]
+        if len(words) == 2 and 1 <= _SMALL_WORDS.get(words[1], -1) <= 9:
+            return _TENS_WORDS[words[0]] + _SMALL_WORDS[words[1]]
+    raise ValueError("Use an unambiguous English number or numeric digits.")
+
+
+def _english_integer(words: list[str]) -> int:
+    if (len(words) >= 2 and 1 <= _SMALL_WORDS.get(words[0], -1) <= 9
+            and words[1] == "hundred"):
+        remainder = _small_integer(words[2:]) if words[2:] else 0
+        if words[2:] and remainder == 0:
+            raise ValueError("Use an unambiguous English number or numeric digits.")
+        return _SMALL_WORDS[words[0]] * 100 + remainder
+    return _small_integer(words)
+
+
+def _normalize_spoken_prefix(text: str) -> str:
+    match = _SPOKEN_NUMBER_AT_START.match(text)
+    if not match:
+        return text
+    phrase = match[1].lower()
+    if len(phrase) > MAX_NUMERIC_CHARS:
+        raise ValueError("Spoken numeric text is too long.")
+    phrase = re.sub(
+        r"\b(" + "|".join(_TENS_WORDS) + r")-(one|two|three|four|five|six|seven|eight|nine)\b",
+        r"\1 \2", phrase,
+    )
+    if "-" in phrase:
+        raise ValueError("Use an unambiguous English number or numeric digits.")
+    words = phrase.split()
+    if "point" in words:
+        if words.count("point") != 1:
+            raise ValueError("Use one decimal point followed by individual spoken digits.")
+        index = words.index("point")
+        integer, fractional = words[:index], words[index + 1:]
+        if not integer or not fractional or any(
+            not 0 <= _SMALL_WORDS.get(word, -1) <= 9 for word in fractional
+        ):
+            raise ValueError("Use one decimal point followed by individual spoken digits.")
+        number = str(_english_integer(integer)) + "." + "".join(
+            str(_SMALL_WORDS[word]) for word in fractional
+        )
+    else:
+        number = str(_english_integer(words))
+    return number + text[match.end():]
+
+
+def _normalize_spoken_units(text: str) -> str:
+    return _UNIT_WORD_PATTERN.sub(lambda match: _UNIT_WORDS[match[1].lower()], text)
 # Trailing per-container quantity context for volumes. The app plans one
 # independent tube per target, so an explicit trailing phrase such as
 # "per tube" describes the same single-container volume.
@@ -150,9 +239,10 @@ def _normalize_single(text: str, label: str, aliases: dict, supported: str, allo
     stripped = text.strip()
     if stripped == "":
         raise ValueError(f"{label} must be a number followed by a supported unit ({supported}).")
-    working = _replace_micro(stripped)
+    working = _normalize_spoken_prefix(_replace_micro(stripped))
     if allow_per:
         working = _PER_SLASH.sub("/", working)
+    working = _normalize_spoken_units(working)
     match = _NUMBER_AT_START.match(working)
     if not match:
         raise ValueError(
@@ -210,7 +300,7 @@ def _split_targets_commas(piece: str) -> list[str]:
 
 def _parse_target_entry(entry: str) -> tuple[str, str | None]:
     """Return (canonical_number, canonical_unit or None for bare numbers)."""
-    s = _replace_micro(entry.strip())
+    s = _normalize_spoken_prefix(_replace_micro(entry.strip()))
     s = _PER_SLASH.sub("/", s)
     if _BARE_NUMBER.match(s):
         return (_number_text(_parse_decimal(s, "Target")), None)
@@ -231,6 +321,8 @@ def normalize_targets(text: str) -> str:
         raise ValueError(f"{label} must contain at least one value such as '1 mM'.")
     working = _replace_micro(stripped)
     working = _PER_SLASH.sub("/", working)
+    if re.search(r"\bhundred\s+and\b", working, re.I):
+        raise ValueError("Targets are ambiguous. Use numeric digits or repeat each value's unit.")
     if re.search(r"\d,\d+,\d", working):
         raise ValueError(
             "Targets are ambiguous. Use dot decimals (1.5 mM), "

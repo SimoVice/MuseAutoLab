@@ -20,6 +20,7 @@ from uuid import uuid4
 from xml.sax.saxutils import escape as _xml_escape
 
 from app import vision
+from app.model_client import active_model, using_model
 
 MAX_RETAINED_PER_PROJECT = 3
 MAX_ACTIVE_MODEL_CALLS = 2
@@ -35,7 +36,7 @@ VALID_STATES = ("observed", "needs_review", "confirmed", "rejected")
 _log = logging.getLogger(__name__)
 
 _jobs: dict[str, dict] = {}
-_cache: dict[tuple[str, int, str], str] = {}
+_cache: dict[tuple[str, int, str, str], str] = {}
 _jobs_lock = asyncio.Lock()
 _model_semaphore = asyncio.Semaphore(MAX_ACTIVE_MODEL_CALLS)
 _background_tasks: set[asyncio.Task] = set()
@@ -80,6 +81,7 @@ def _public_job(job: dict) -> dict:
         "id": job["id"],
         "project_id": job["project_id"],
         "project_revision": job["project_revision"],
+        "model": job["model"],
         "status": job["status"],
         "stage": job["stage"],
         "error": job["error"],
@@ -247,7 +249,7 @@ def _prune_project(project_id: str) -> None:
             continue
         del _jobs[jid]
         remaining -= 1
-        key = (job["project_id"], job["project_revision"], job["image_sha256"])
+        key = (job["project_id"], job["project_revision"], job["image_sha256"], job["model"])
         if _cache.get(key) == jid:
             _cache.pop(key, None)
 
@@ -262,17 +264,17 @@ async def _run_job(job_id: str) -> None:
     canonical = job["canonical"]
     try:
         async with _model_semaphore:
-            outcome = await asyncio.wait_for(vision.analyze_image(canonical), timeout=JOB_TIMEOUT_S)
+            with using_model(job["model"]):
+                outcome = await asyncio.wait_for(
+                    vision.analyze_image(canonical), timeout=JOB_TIMEOUT_S
+                )
         raw, usage = outcome
         raw = deepcopy(raw)
-        usage = {k: int(v) for k, v in dict(usage).items()}
+        model_name = usage.get("model", job["model"])
+        usage = {k: v for k, v in dict(usage).items()
+                 if isinstance(v, int) and not isinstance(v, bool) and v >= 0}
+        usage["model"] = model_name
         raw = vision.RawInspection.model_validate(raw).model_dump()
-        try:
-            model_name = vision.ModelSettings.load().model
-        except Exception:
-            from app.model_client import DEFAULT_MODEL
-
-            model_name = DEFAULT_MODEL
         result = _build_result(raw, canonical, model_name, usage, job["project_id"], job_id)
         async with _jobs_lock:
             target = _jobs.get(job_id)
@@ -282,7 +284,8 @@ async def _run_job(job_id: str) -> None:
             target["stage"] = "done"
             target["status"] = "ready"
             target["error"] = None
-            _cache[(target["project_id"], target["project_revision"], target["image_sha256"])] = (
+            _cache[(target["project_id"], target["project_revision"],
+                    target["image_sha256"], target["model"])] = (
                 job_id
             )
     except Exception as exc:  # noqa: BLE001
@@ -325,6 +328,7 @@ async def start_inspection(project: dict, project_revision: int, image_data_url:
             code = 422
         raise InspectionError(code, str(exc) or "Invalid image.") from None
     image_hash = str(canonical.sha256)
+    model = active_model()
     async with _jobs_lock:
         for job in _jobs.values():
             if job["project_id"] != project.get("id"):
@@ -333,12 +337,13 @@ async def start_inspection(project: dict, project_revision: int, image_data_url:
                 if (
                     job["project_revision"] == project_revision
                     and job["image_sha256"] == image_hash
+                    and job["model"] == model
                 ):
                     return _public_job(job)
                 raise InspectionError(
                     409, "Another inspection is already running for this project."
                 )
-        key = (project.get("id"), project_revision, image_hash)
+        key = (project.get("id"), project_revision, image_hash, model)
         cached_id = _cache.get(key)
         if cached_id is not None:
             cached = _jobs.get(cached_id)
@@ -350,6 +355,7 @@ async def start_inspection(project: dict, project_revision: int, image_data_url:
                 job["project_id"] == project.get("id")
                 and job["project_revision"] == project_revision
                 and job["image_sha256"] == image_hash
+                and job["model"] == model
                 and job["status"] == "ready"
             ):
                 _cache[key] = job["id"]
@@ -361,6 +367,7 @@ async def start_inspection(project: dict, project_revision: int, image_data_url:
             "project_id": project.get("id"),
             "project_revision": project_revision,
             "image_sha256": image_hash,
+            "model": model,
             "canonical": canonical,
             "status": "queued",
             "stage": "queued",

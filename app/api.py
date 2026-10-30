@@ -3,21 +3,42 @@
 import asyncio
 import json
 import math
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.chat_actions import execute_chat_actions, extension_only_patch
 from app.design_agent import develop_design
 from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.engineering import EngineeringUpdate, apply_engineering_update, state_for
+from app.illustration import (
+    MAX_REFERENCE_DATA_URL,
+    MAX_REQUEST_BYTES,
+    IllustrationError,
+    generate_illustration,
+    prepare_reference,
+)
 from app.inspection import clear_extension, develop_inspection
-from app.model_client import ChatAction, ModelClientError, generate_turn
+from app.model_catalog import (
+    AGENT_MODELS,
+    IMAGE_MODEL,
+    availability,
+    discover_catalog,
+    model_options,
+)
+from app.model_client import (
+    ChatAction,
+    ModelClientError,
+    configured_model,
+    generate_turn,
+    using_model,
+)
 from app.project_exports import (
     ExportError,
     export_archive,
@@ -34,6 +55,7 @@ from app.simulation_jobs import (
     simulation_status,
     start_simulation,
 )
+from app.transcription import MAX_AUDIO_BYTES, TranscriptionError, transcribe_audio
 from app.vision import Box
 from app.vision_jobs import (
     InspectionError,
@@ -105,6 +127,13 @@ class ProjectSession:
     project: dict
     history: list[dict[str, str]] = field(default_factory=list)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    model: str = field(default_factory=configured_model)
+
+    @asynccontextmanager
+    async def model_lock(self):
+        async with self.lock:
+            with using_model(self.model):
+                yield
 
 
 # Deliberately process-local for this first milestone; restart starts a fresh session.
@@ -152,6 +181,141 @@ async def create_project() -> dict:
     return {"project": deepcopy(project)}
 
 
+@app.get("/api/models")
+async def get_models(project_id: str | None = None) -> dict:
+    return await model_options(session_for(project_id).model if project_id else None)
+
+
+class ModelSelectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    model: str = Field(min_length=1, max_length=100, strict=True)
+
+
+@app.post("/api/projects/{project_id}/model")
+async def select_project_model(project_id: str, request: ModelSelectionRequest) -> dict:
+    session = session_for(project_id)
+    if request.model not in AGENT_MODELS:
+        raise HTTPException(status_code=422, detail="Choose a supported Spark or Wonder model.")
+    status = availability(await discover_catalog(), request.model)
+    if not status["available"]:
+        raise HTTPException(status_code=409, detail=status["unavailable_reason"])
+    async with session.model_lock():
+        session.model = request.model
+        return {"project": deepcopy(session.project), "active_model": session.model}
+
+
+async def _transcribe_connected(request: Request, content: bytes) -> dict:
+    """Cancel the upstream request when the browser abandons this recording."""
+    task = asyncio.create_task(transcribe_audio(content))
+    try:
+        while not task.done():
+            if await request.is_disconnected():
+                raise HTTPException(status_code=499, detail="Dictation was cancelled.")
+            await asyncio.wait({task}, timeout=0.1)
+        return await task
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+
+@app.post("/api/transcribe")
+async def transcribe_recording(request: Request) -> dict:
+    if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "audio/wav":
+        raise HTTPException(status_code=415, detail="Send a recorded PCM WAV clip as audio/wav.")
+    content = bytearray()
+    try:
+        async with asyncio.timeout(15):
+            async for chunk in request.stream():
+                if len(content) + len(chunk) > MAX_AUDIO_BYTES:
+                    raise HTTPException(
+                        status_code=413, detail="Record at most 60 seconds of audio."
+                    )
+                content.extend(chunk)
+    except TimeoutError:
+        raise HTTPException(
+            status_code=408, detail="Audio upload timed out. Record a shorter clip."
+        )
+    try:
+        return await _transcribe_connected(request, bytes(content))
+    except TranscriptionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from None
+
+
+class IllustrationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    project_revision: int = Field(ge=1, strict=True)
+    reference_image_data_url: str = Field(
+        min_length=1, max_length=MAX_REFERENCE_DATA_URL, strict=True
+    )
+
+
+def _check_illustration_project(project: dict, revision: int) -> None:
+    if project["revision"] != revision:
+        raise HTTPException(
+            status_code=409, detail="The project changed. Capture its current view."
+        )
+    if not project.get("engineering_design"):
+        raise HTTPException(
+            status_code=409, detail="Develop a machine before creating an illustration."
+        )
+
+
+async def _illustrate_connected(request: Request, project: dict, reference) -> dict:
+    task = asyncio.create_task(generate_illustration(project, reference))
+    try:
+        while not task.done():
+            if await request.is_disconnected():
+                raise HTTPException(status_code=499, detail="Illustration was cancelled.")
+            await asyncio.wait({task}, timeout=0.1)
+        return await task
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+
+@app.post("/api/projects/{project_id}/illustration")
+async def illustrate_project(project_id: str, request: Request) -> dict:
+    session = session_for(project_id)
+    media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if media_type != "application/json":
+        raise HTTPException(status_code=415, detail="Send the project view as a JSON request.")
+    content = bytearray()
+    try:
+        async with asyncio.timeout(15):
+            async for chunk in request.stream():
+                if len(content) + len(chunk) > MAX_REQUEST_BYTES:
+                    raise HTTPException(status_code=413, detail="The reference image is too large.")
+                content.extend(chunk)
+        data = IllustrationRequest.model_validate_json(content)
+    except TimeoutError:
+        raise HTTPException(
+            status_code=408, detail="The reference image upload timed out."
+        ) from None
+    except ValidationError:
+        raise HTTPException(
+            status_code=422, detail="Send the current revision and a PNG or JPEG view."
+        ) from None
+    async with session.model_lock():
+        _check_illustration_project(session.project, data.project_revision)
+        project = deepcopy(session.project)
+    try:
+        reference = await asyncio.to_thread(prepare_reference, data.reference_image_data_url)
+        status = availability(await discover_catalog(), IMAGE_MODEL)
+        if not status["available"]:
+            raise HTTPException(status_code=503, detail=status["unavailable_reason"])
+        async with session.model_lock():
+            _check_illustration_project(session.project, data.project_revision)
+        # Edits remain usable during generation; a changed revision rejects the result.
+        result = await _illustrate_connected(request, project, reference)
+    except IllustrationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from None
+    async with session.model_lock():
+        _check_illustration_project(session.project, data.project_revision)
+    return result
+
+
 @app.get("/api/references")
 async def get_reference_library() -> dict:
     return reference_library()
@@ -160,7 +324,7 @@ async def get_reference_library() -> dict:
 @app.get("/api/projects/{project_id}/sources")
 async def get_project_sources(project_id: str, revision: int) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         if revision != session.project["revision"]:
             raise HTTPException(status_code=409,
                                 detail="Download sources for the current revision.")
@@ -174,7 +338,7 @@ async def get_project_sources(project_id: str, revision: int) -> Response:
 @app.get("/api/projects/{project_id}/snapshot")
 async def save_project(project_id: str, revision: int) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         if revision != session.project["revision"]:
             raise HTTPException(status_code=409, detail="Save the current project revision.")
         try:
@@ -209,7 +373,7 @@ async def open_project(request: Request) -> dict:
 async def send_message(project_id: str, request: MessageRequest) -> dict:
     session = session_for(project_id)
     # Serialize each project's turns: a slow model call cannot overwrite a newer revision.
-    async with session.lock:
+    async with session.model_lock():
         current = session.project
         try:
             turn, usage = await generate_turn(
@@ -250,7 +414,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             return JSONResponse(status_code=502, content={
                 "detail": str(exc),
                 "failure_kind": getattr(exc, "failure_kind", "model_request"),
-                "usage": getattr(exc, "usage", {}),
+                "usage": {"model": session.model, **getattr(exc, "usage", {})},
             })
         except ValueError as exc:
             raise HTTPException(
@@ -328,7 +492,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
 @app.post("/api/projects/{project_id}/configuration")
 async def update_configuration(project_id: str, request: ConfigurationRequest) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = session.project
         try:
             updated = configure_project(current, **request.model_dump(exclude_none=True))
@@ -344,7 +508,7 @@ async def update_configuration(project_id: str, request: ConfigurationRequest) -
 @app.get("/api/projects/{project_id}/brief")
 async def get_brief(project_id: str, revision: int) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     current_revision = current.get("revision")
     if revision != current_revision:
@@ -373,7 +537,7 @@ async def get_brief(project_id: str, revision: int) -> Response:
 @app.post("/api/projects/{project_id}/confirm")
 async def confirm(project_id: str) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         try:
             updated = confirm_project(session.project)
         except ValueError as exc:
@@ -408,7 +572,7 @@ class DesignRequest(BaseModel):
 async def develop_layout(project_id: str, request: DesignRequest) -> dict:
     session = session_for(project_id)
     # Serialize design runs like chat turns; a slow model call cannot overwrite a newer revision.
-    async with session.lock:
+    async with session.model_lock():
         current = session.project
         if request.project_revision != current.get("revision"):
             raise HTTPException(
@@ -465,7 +629,7 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
 @app.post("/api/projects/{project_id}/inspection-extension")
 async def add_inspection_extension(project_id: str, request: DesignRequest) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = session.project
         if request.project_revision != current["revision"]:
             raise HTTPException(status_code=409,
@@ -494,7 +658,7 @@ class RevisionRequest(BaseModel):
 @app.post("/api/projects/{project_id}/inspection-extension/remove")
 async def remove_inspection_extension(project_id: str, request: RevisionRequest) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = session.project
         if request.project_revision != current["revision"]:
             raise HTTPException(status_code=409,
@@ -574,7 +738,7 @@ class InspectionReviewRequest(BaseModel):
 @app.post("/api/projects/{project_id}/exports", status_code=202)
 async def create_export(project_id: str) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         job = await start_export(current)
@@ -586,7 +750,7 @@ async def create_export(project_id: str) -> dict:
 @app.get("/api/projects/{project_id}/exports/{job_id}")
 async def get_export(project_id: str, job_id: str) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         return await export_status(current, job_id)
@@ -597,7 +761,7 @@ async def get_export(project_id: str, job_id: str) -> dict:
 @app.get("/api/projects/{project_id}/exports/{job_id}/download")
 async def download_export(project_id: str, job_id: str) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         payload = await export_archive(current, job_id)
@@ -615,7 +779,7 @@ async def download_export(project_id: str, job_id: str) -> Response:
 @app.post("/api/projects/{project_id}/simulations", status_code=202)
 async def create_simulation(project_id: str, request: SimulationRequest) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         return await start_simulation(current, scenario=request.scenario)
@@ -626,7 +790,7 @@ async def create_simulation(project_id: str, request: SimulationRequest) -> dict
 @app.get("/api/projects/{project_id}/simulations/{job_id}")
 async def get_simulation(project_id: str, job_id: str) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         return await simulation_status(current, job_id)
@@ -637,7 +801,7 @@ async def get_simulation(project_id: str, job_id: str) -> dict:
 @app.get("/api/projects/{project_id}/simulations/{job_id}/result")
 async def get_simulation_result(project_id: str, job_id: str) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         return await simulation_result(current, job_id)
@@ -648,7 +812,7 @@ async def get_simulation_result(project_id: str, job_id: str) -> dict:
 @app.get("/api/projects/{project_id}/simulations/{job_id}/files/{name:path}")
 async def download_simulation_file(project_id: str, job_id: str, name: str) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         payload = await simulation_file(current, job_id, name)
@@ -665,7 +829,7 @@ async def download_simulation_file(project_id: str, job_id: str, name: str) -> R
 @app.post("/api/projects/{project_id}/inspections", status_code=202)
 async def create_inspection(project_id: str, request: InspectionCreateRequest) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
         try:
             return await start_inspection(
@@ -680,7 +844,7 @@ async def create_inspection(project_id: str, request: InspectionCreateRequest) -
 @app.get("/api/projects/{project_id}/inspections/{job_id}")
 async def get_inspection(project_id: str, job_id: str) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         return await inspection_status(current, job_id)
@@ -691,7 +855,7 @@ async def get_inspection(project_id: str, job_id: str) -> dict:
 @app.get("/api/projects/{project_id}/inspections/{job_id}/image")
 async def get_inspection_image(project_id: str, job_id: str) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         payload, _, _ = await inspection_image(current, job_id)
@@ -709,7 +873,7 @@ async def review_inspection_job(
     project_id: str, job_id: str, request: InspectionReviewRequest
 ) -> dict:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         return await review_inspection(current, job_id, request.model_dump(exclude_unset=True))
@@ -722,7 +886,7 @@ async def download_inspection_archive(
     project_id: str, job_id: str, observation_version: int | None = None
 ) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         payload, filename = await inspection_archive(current, job_id, observation_version)
@@ -738,7 +902,7 @@ async def download_inspection_archive(
 @app.get("/api/projects/{project_id}/exports/{job_id}/files/{name:path}")
 async def download_export_file(project_id: str, job_id: str, name: str) -> Response:
     session = session_for(project_id)
-    async with session.lock:
+    async with session.model_lock():
         current = deepcopy(session.project)
     try:
         payload = await export_file(current, job_id, name)

@@ -5,6 +5,8 @@ import logging
 import math
 import os
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal
@@ -15,13 +17,61 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from app.design_sources import reference_context, resolve_reference
 from app.engineering import EngineeringUpdate, state_for
-from app.quantities import normalize_concentration, normalize_targets, normalize_volume
+from app.quantities import (
+    has_spoken_quantity,
+    normalize_concentration,
+    normalize_targets,
+    normalize_volume,
+)
 from app.workflows import describe_workflow
 
 ROOT = Path(__file__).resolve().parent.parent
 LOGGER = logging.getLogger("museautolab.model")
 DEFAULT_MODEL = "muse-spark-1.3-contributor"
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
+_selected_model: ContextVar[str | None] = ContextVar("museautolab_selected_model", default=None)
+
+
+def configured_model() -> str:
+    """Read the deployment default without requiring or returning credentials."""
+    local = dotenv_values(ROOT / ".env")
+    return str(os.environ.get("META_MODEL", local.get("META_MODEL")) or DEFAULT_MODEL).strip()
+
+
+def active_model() -> str:
+    return _selected_model.get() or configured_model()
+
+
+def recorded_model(body: dict | None, requested: str) -> str:
+    reported = body.get("model") if isinstance(body, dict) else None
+    if isinstance(reported, str) and re.fullmatch(r"[\w./-]{1,128}", reported):
+        return reported
+    return requested
+
+
+@contextmanager
+def using_model(model: str):
+    """Scope a session choice to one async task and its child inference tasks."""
+    token = _selected_model.set(model)
+    try:
+        yield
+    finally:
+        _selected_model.reset(token)
+
+
+TURN_DELTA_INSTRUCTIONS = """Return only changes from the latest user message, not stored facts.
+All response arrays have variable length. maxItems is an upper bound, never a target count.
+An empty array [] is valid. Never pad arrays with duplicate records, placeholder characters,
+unknown values or invented source text.
+For a question with no new requirements, such as 'Which platform is currently selected?',
+answer from recorded state and return this engineering object exactly:
+{"requirements":[],"options":[],"platform_choice":null,"choice_source":null}.
+Also return actions=[] and null for unchanged extracted values and their sources.
+For 'Budget is 5000 EUR.', one valid engineering delta is:
+{"requirements":[{"field":"budget","value":"5000 EUR","source":"5000 EUR"}],
+"options":[],"platform_choice":null,"choice_source":null}.
+These examples illustrate empty versus evidenced updates; always use the actual latest message.
+"""
 
 SYSTEM_INSTRUCTIONS = """You are MuseAutoLab's general laboratory automation assistant.
 Act like a practical engineer interviewing the user, not a fixed machine configurator.
@@ -96,6 +146,9 @@ For a liquid preparation task with an accepted selected-platform design, once st
 final volume and equipment are supplied, invite review and confirmation. If no platform is
 selected, discuss the needs and platform options first. If stock is missing after targets and
 volume, ask specifically for the stock concentration; never invent it from your suggestions.
+English spoken quantities such as 'five milligrams per milliliter' and 'two milliliters per
+tube' are accepted by deterministic normalization. Keep their exact literal source spans;
+do not require the user to retype supported speech as digits or invent unsupported quantities.
 The supported demonstrator uses one independent tube per target; do not block completion
 by asking for replicates, batch size or targets that the user has already specified.
 Use direct wording and skip generic praise such as 'great fit' or 'perfect'.
@@ -409,7 +462,8 @@ class ExtractedTurn(BaseModel):
                     raise ValueError(
                         "Cooling target must match a literal temperature in its source"
                     )
-            elif not re.search(r"(?<![\w.,+\-])" + re.escape(value) + r"(?![\w/])", source):
+            elif (has_spoken_quantity(value) or has_spoken_quantity(source)
+                  or not re.search(r"(?<![\w.,+\-])" + re.escape(value) + r"(?![\w/])", source)):
                 normalizer = {
                     "stock_concentration": normalize_concentration,
                     "target_concentrations": normalize_targets,
@@ -462,7 +516,7 @@ class ModelSettings:
         settings = cls(
             api_key=get_value("MODEL_API_KEY"),
             base_url=get_value("META_API_BASE_URL", DEFAULT_BASE_URL).rstrip("/"),
-            model=get_value("META_MODEL", DEFAULT_MODEL),
+            model=active_model(),
         )
         if not settings.api_key:
             raise ModelClientError("Set MODEL_API_KEY in the local .env file before using chat.")
@@ -485,6 +539,9 @@ def _strict_schema() -> dict:
     def require_all(node):
         if isinstance(node, dict):
             node.pop("default", None)
+            if node.get("type") == "array":
+                # Explicitly retain the empty branch; maxItems never requests padding.
+                node.setdefault("minItems", 0)
             if "properties" in node:
                 node["required"] = sorted(node["properties"])
                 node["additionalProperties"] = False
@@ -494,6 +551,11 @@ def _strict_schema() -> dict:
             for item in node:
                 require_all(item)
     require_all(schema)
+    schema["$defs"]["EngineeringUpdate"]["properties"]["requirements"]["description"] = (
+        "Only new requirements explicitly evidenced in the latest user message. Return [] "
+        "when no new requirement is stated, including ordinary questions. Never pad to maxItems. "
+        "Each field may appear at most once and every source must quote that latest message."
+    )
     return schema
 
 
@@ -531,7 +593,7 @@ async def generate_turn(
     *,
     client: httpx.AsyncClient | None = None,
     settings: ModelSettings | None = None,
-) -> tuple[ExtractedTurn, dict[str, int]]:
+) -> tuple[ExtractedTurn, dict[str, int | str]]:
     """Call Meta once and validate its structured result before any project storage.
 
     Only the current project state and a small history window are sent. The API key stays on the
@@ -586,6 +648,7 @@ async def generate_turn(
             "content": "Current recorded project state: " + json.dumps(state, ensure_ascii=False),
         },
         *history[-8:],
+        {"role": "developer", "content": TURN_DELTA_INSTRUCTIONS},
         {"role": "user", "content": user_message},
     ]
     payload = {
@@ -675,14 +738,15 @@ async def generate_turn(
             "Meta returned an incomplete or invalid response. The project was not changed."
         )
         error.failure_kind = failure_kind
-        error.usage = _safe_usage(body) if isinstance(body, dict) else {}
+        error.usage = {"model": recorded_model(body, settings.model),
+                       **(_safe_usage(body) if isinstance(body, dict) else {})}
         LOGGER.warning(
             "Meta model=%s failure_kind=%s token_usage=%s",
             settings.model, failure_kind, error.usage,
         )
         raise error from None
 
-    usage = _safe_usage(body)
+    usage = {"model": recorded_model(body, settings.model), **_safe_usage(body)}
     # Only counts/model ID are logged; prompts, responses and authentication are omitted.
     LOGGER.info("Meta model=%s token_usage=%s", settings.model, usage)
     return result, usage

@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from app.model_client import ModelClientError, ModelSettings
+from app.model_client import ModelClientError, ModelSettings, recorded_model
 
 LOGGER = logging.getLogger("museautolab.vision")
 
@@ -310,6 +310,6 @@ async def analyze_image(
     except (ValueError, TypeError, KeyError, IndexError, AttributeError, ValidationError):
         raise VisionError("Vision model returned an invalid response.", status_code=502) from None
 
-    usage = _safe_usage(body)
+    usage = {"model": recorded_model(body, settings.model), **_safe_usage(body)}
     LOGGER.info("Vision model=%s token_usage=%s", settings.model, usage)
     return raw.model_dump(), usage

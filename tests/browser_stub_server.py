@@ -20,6 +20,17 @@ if str(ROOT) not in sys.path:
 
 import app.api  # noqa: E402
 import app.design_agent  # noqa: E402
+import app.model_catalog  # noqa: E402
+
+
+async def _offline_catalog(**kwargs):
+    """Static agent catalog: browser fixtures never discover a live provider account."""
+    return {"ids": list(app.model_catalog.AGENT_MODELS), "reason": None, "verified": True}
+
+
+# Applied on import because the specialized offline servers inherit this module.
+app.model_catalog.discover_catalog = _offline_catalog
+app.api.discover_catalog = _offline_catalog
 
 
 class _FakeTurn:

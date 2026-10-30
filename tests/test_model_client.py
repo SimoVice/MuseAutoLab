@@ -66,12 +66,13 @@ def test_request_uses_meta_schema_budget_and_preserves_zero_cost_usage():
     assert payload["model"] == "muse-spark-1.3-contributor"
     assert payload["reasoning_effort"] == "minimal"
     assert payload["max_completion_tokens"] == 2400
-    assert len(payload["messages"]) == 11  # Two instructions, eight history entries, current input.
+    assert len(payload["messages"]) == 12  # Three instructions, eight history entries, user input.
     schema = payload["response_format"]["json_schema"]
     assert schema["strict"] is True
     assert set(schema["schema"]["required"]) == set(schema["schema"]["properties"])
     assert result.patch() == {"workspace_width_mm": 400.0}
-    assert usage == {"prompt_tokens": 27, "completion_tokens": 35, "total_tokens": 62}
+    assert usage == {"model": TEST_SETTINGS.model, "prompt_tokens": 27,
+                     "completion_tokens": 35, "total_tokens": 62}
 
 
 @pytest.mark.parametrize(
@@ -280,7 +281,8 @@ def test_incomplete_response_reports_kind_and_usage_without_raw_output():
     with pytest.raises(ModelClientError) as caught:
         run_turn(lambda request: httpx.Response(200, json=body))
     assert caught.value.failure_kind == "token_limit"
-    assert caught.value.usage == {"prompt_tokens": 42, "completion_tokens": 2400}
+    assert caught.value.usage == {"model": TEST_SETTINGS.model,
+                                  "prompt_tokens": 42, "completion_tokens": 2400}
     assert not hasattr(caught.value, "response")
 
 

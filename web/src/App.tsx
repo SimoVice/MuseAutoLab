@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
+import ModelSelector from './ModelSelector';
+import type { ImageCapability, VoiceCapability } from './ModelSelector';
+import IllustrationPanel from './IllustrationPanel';
+import VoiceDictation from './VoiceDictation';
 import AgentActivity, { finishAgentReveal } from './AgentActivity';
 import ComponentCatalog from './ComponentCatalog';
 import ProjectFiles from './ProjectFiles';
@@ -18,6 +22,7 @@ type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assist
 type ActionRun = { kind: string; status: 'accepted' | 'rejected' | 'failed' | 'ready'; message?: string; model?: string };
 type ChatResponse = ProjectResponse & { action_runs?: ActionRun[] };
 type AgentPhase = 'pending' | 'complete' | null;
+type WorkspaceRecovery = { project: Project; messages: ConversationEntry[]; input: string; notice: string | null; snapshot: string | null };
 
 function restoredMessages(data: OpenedProject): ConversationEntry[] {
   return [{ id: 0, role: 'assistant', text: WELCOME }, ...(data.conversation ?? []).map((entry, index) => ({
@@ -106,10 +111,18 @@ export default function App() {
   const [messages, setMessages] = useState<ConversationEntry[]>([{ id: 0, role: 'assistant', text: WELCOME }]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const inputRef = useRef(input);
+  inputRef.current = input;
   const [busy, setBusy] = useState(false);
+  const [modelBusy, setModelBusy] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceEpoch, setVoiceEpoch] = useState(0);
+  const [imageCapability, setImageCapability] = useState<ImageCapability | null>(null);
+  const [voiceCapability, setVoiceCapability] = useState<VoiceCapability | null>(null);
   const [storageBusy, setStorageBusy] = useState(false);
   const [inspectionTime, setInspectionTime] = useState(0);
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState<WorkspaceRecovery | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
@@ -124,6 +137,9 @@ export default function App() {
   const field = useRef<HTMLTextAreaElement>(null);
   const viewer = useRef<HTMLDivElement>(null);
   const details = useRef<HTMLDetailsElement>(null);
+  const sceneCapture = useRef<(() => Promise<string>) | null>(null);
+  const preparationDetails = useRef<HTMLDetailsElement>(null);
+  const filesSection = useRef<HTMLDivElement>(null);
   const seenRevision = useRef<string | null>(null);
   const newProjectRequested = useRef(true);
   const skipRestore = useRef(false);
@@ -228,7 +244,7 @@ export default function App() {
   const hasPlatform = Boolean(project?.design.platform);
   const recordedBrief = briefEntries(project?.brief);
   const hasBrief = recordedBrief.length > 0;
-  const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || (project?.status === 'confirmed' && project?.plan?.status === 'ready'));
+  const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || project?.plan?.status === 'ready');
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
   const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && hasEngineeringDesign;
@@ -260,7 +276,15 @@ export default function App() {
   const handleInspection = useCallback((time: number) => {
     setInspectionTime(time); setPlaying(false); setPhysicsActive(false); setPhysicsView(null);
   }, []);
-  const uiBusy = busy || storageBusy;
+  const uiBusy = busy || storageBusy || modelBusy;
+  const appendTranscript = useCallback((text: string) => {
+    const current = inputRef.current;
+    const combined = current.trim() ? `${current}\n${text}` : text;
+    if (combined.length > 4000) return false;
+    setInput(combined);
+    field.current?.focus({ preventScroll: true });
+    return true;
+  }, []);
 
   async function saveProject() {
     if (!project || uiBusy) return;
@@ -284,6 +308,7 @@ export default function App() {
   async function openProject(file: File) {
     if (uiBusy || initializing) return;
     chatAbort.current?.abort();
+    setVoiceEpoch((value) => value + 1);
     setStorageBusy(true);
     setError(null);
     try {
@@ -298,6 +323,7 @@ export default function App() {
       setAgentPhase(null);
       setActionRuns([]);
       setProject(data.project);
+      setRecovery(null);
       setMessages(restoredMessages(data));
       setSelectedId(null);
       setInput('');
@@ -310,34 +336,69 @@ export default function App() {
     finally { setStorageBusy(false); if (projectFile.current) projectFile.current.value = ''; }
   }
 
-  function handleNewProject() {
+  async function handleNewProject() {
     if (uiBusy || initializing) return;
-    chatAbort.current?.abort();
+    setVoiceEpoch((value) => value + 1);
+    setStorageBusy(true); setError(null);
+    try {
+      const replacement = await request('/api/projects');
+      let snapshot: string | null = null;
+      try { snapshot = localStorage.getItem(LOCAL_PROJECT); } catch { /* In-memory undo remains available. */ }
+      const canRecover = project && (messages.length > 1 || input.trim() || hasBrief || hasEngineeringDesign);
+      if (canRecover) {
+        setRecovery({ project, messages, input, notice: storageNotice, snapshot });
+      }
+      chatAbort.current?.abort();
+      sessionRef.current += 1;
+      setAgentPhase(null); setActionRuns([]);
+      setStorageNotice(canRecover || recovery ? 'New project ready. Your previous workspace can be restored with Undo.' : null);
+      newProjectRequested.current = true;
+      seenRevision.current = null;
+      setProject(replacement.project);
+      setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME }]);
+      setSelectedId(null); setInput(''); setPlaying(false);
+      setPhysicsView(null); setPhysicsActive(false); setInspectionTime(0);
+      setResetKey((value) => value + 1);
+    } catch (reason) {
+      setError(`New project could not be created. Your workspace and draft are kept. Try New project again. ${reason instanceof Error ? reason.message : ''}`);
+    } finally { setStorageBusy(false); }
+  }
+
+  function undoNewProject() {
+    if (!recovery || uiBusy) return;
     sessionRef.current += 1;
-    setAgentPhase(null);
-    setActionRuns([]);
-    skipRestore.current = true;
-    try { localStorage.removeItem(LOCAL_PROJECT); } catch { /* Continue with a new session. */ }
-    setStorageNotice(null);
-    newProjectRequested.current = true;
-    seenRevision.current = null;
-    setProject(null);
-    setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME }]);
-    setSelectedId(null);
-    setInput('');
-    setError(null);
-    setPlaying(false);
-    setPhysicsView(null);
-    setPhysicsActive(false);
-    setInspectionTime(0);
-    setResetKey((value) => value + 1);
-    setConnectionAttempt((value) => value + 1);
+    setVoiceEpoch((value) => value + 1);
+    setProject(recovery.project); setMessages(recovery.messages); setInput(recovery.input);
+    setStorageNotice(recovery.notice ?? 'Previous workspace restored.');
+    setRecovery(null); setSelectedId(null); setPlaying(false); setActionRuns([]);
+    try { if (recovery.snapshot) localStorage.setItem(LOCAL_PROJECT, recovery.snapshot); } catch { /* Explicit project saving remains available. */ }
+    field.current?.focus({ preventScroll: true });
+  }
+
+  const captureIllustration = useCallback(async () => {
+    if (!sceneCapture.current) throw new Error('The model view is not ready yet. Wait for it to load, then try again.');
+    return sceneCapture.current();
+  }, []);
+
+  function reviewPreparationPlan() {
+    if (preparationDetails.current) preparationDetails.current.open = true;
+    preparationDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    preparationDetails.current?.focus({ preventScroll: true });
+  }
+
+  function showProjectFiles() {
+    if (details.current) details.current.open = true;
+    requestAnimationFrame(() => {
+      filesSection.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      filesSection.current?.focus({ preventScroll: true });
+    });
   }
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const message = input.trim();
-    if (!project || !message || uiBusy) return;
+    if (!project || !message || uiBusy || voiceBusy) return;
+    if (message.length > 4000) { setError('The message exceeds 4,000 characters. Shorten it before sending; your draft is kept.'); return; }
     const session = sessionRef.current;
     const base = projectRef.current;
     chatAbort.current?.abort();
@@ -458,14 +519,15 @@ export default function App() {
         </a>
         <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{headerLabel}</strong></div>
         <div className="topbar-end">
-          <input ref={projectFile} type="file" accept=".json,application/json" className="sr-only" aria-label="Open saved project" onChange={(event) => { const file = event.target.files?.[0]; if (file) void openProject(file); }} />
+          <input ref={projectFile} tabIndex={-1} type="file" accept=".json,application/json" className="sr-only" aria-label="Open saved project" onChange={(event) => { const file = event.target.files?.[0]; if (file) void openProject(file); }} />
           <button type="button" className="new-project-button" onClick={() => projectFile.current?.click()} disabled={uiBusy || initializing}>Open project</button>
           <button type="button" className="new-project-button" onClick={() => void saveProject()} disabled={!project || uiBusy || initializing}>Save project</button>
-          <button type="button" className="new-project-button" onClick={handleNewProject} disabled={uiBusy || initializing}>New project</button>
+          <button type="button" className="new-project-button" onClick={() => void handleNewProject()} disabled={uiBusy || initializing}>New project</button>
+          {recovery && <button type="button" className="new-project-button" onClick={undoNewProject} disabled={uiBusy || initializing}>Undo new project</button>}
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
         </div>
       </header>
-      <main className="workspace">
+      <main className={`workspace${!hasBrief && !hasEngineeringDesign ? ' workspace-start' : ''}`}>
         <section className={`design-panel${isConfirmed && hasEngineeringDesign ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
@@ -474,7 +536,7 @@ export default function App() {
               <p className="design-intro">Automation designed around your lab.</p>
               {storageNotice && <p className="storage-notice" role="status">{storageNotice}</p>}
             </div>
-            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong></div>
+            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{!isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
           </div>
 
           {!hasEngineeringDesign ? (
@@ -513,7 +575,7 @@ export default function App() {
               <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
                 <div className="viewer-topline"><span><Icon name="cube" size={16} /> {hasFoundation ? 'Jubilee CAD · custom layout' : hasPlatform ? 'OT-2 · schematic setup' : 'Interactive 3D concept'}</span><span><span className="viewer-badge">Meta-proposed layout</span></span></div>
                 <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-                  {project ? <Scene project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  {project ? <Scene captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
                   <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
                 </div>
@@ -587,7 +649,8 @@ export default function App() {
                     <CameraPanel project={project} onSelect={handleVisionSelect} />
                   </details>
                 )}
-                {project && isConfirmed && <ProjectFiles project={project} onSelect={setSelectedId} />}
+                {project && hasEngineeringDesign && <IllustrationPanel key={`${project.id}:${project.revision}`} projectId={project.id} revision={project.revision} capability={imageCapability} disabled={uiBusy} capture={captureIllustration} />}
+                {project && isConfirmed && <div ref={filesSection} tabIndex={-1} aria-label="Project files" className="project-files-section"><ProjectFiles project={project} onSelect={setSelectedId} /></div>}
                 {project && !hasFoundation && !hasPlatform && showPreview && (
                   <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
                 )}
@@ -611,6 +674,7 @@ export default function App() {
 
         <aside className="conversation-panel" aria-labelledby="conversation-title">
           <div className="chat-heading"><div className="assistant-emblem"><Icon name="spark" size={19} /></div><div><h2 id="conversation-title">Design assistant</h2><p>Let’s make your workflow easier.</p></div><span className="chat-status">{project?.status === 'confirmed' ? 'Confirmed' : 'Draft'}</span></div>
+          <div className="assistant-controls">{project && <ModelSelector key={project.id} projectId={project.id} busy={uiBusy || voiceBusy} onBusyChange={setModelBusy} onVoiceCapability={setVoiceCapability} onImageCapability={setImageCapability} />}</div>
           <div className="conversation-scroll" ref={conversation}>
             <div className="chat-date">Your design conversation</div>
             {messages.map((message) => <div key={message.id} className={`message-row ${message.role}`}>
@@ -620,13 +684,13 @@ export default function App() {
             {agentPhase && <AgentActivity phase={agentPhase} fillRef={revealRef} />}
             <div ref={lastMessage} />
             {showLiquidParams && (
-              <details className="prep-plan">
+              <details className="prep-plan" ref={preparationDetails} tabIndex={-1} aria-label="Preparation plan">
                 <summary>Preparation plan</summary>
                 <div className="summary-card">
                   <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
                   <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
                   {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
-                  <p className="summary-note">The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
+                  <p className="summary-note">{project?.status !== 'confirmed' && (!hasEngineeringDesign ? 'Choose a platform and request a design in chat before confirming. ' : plan?.status !== 'ready' ? 'Complete the missing preparation details in chat before confirming. ' : 'Ready to confirm these parameters. ')}The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
                 </div>
                 {project && plan == null && (
                   <div className="plan-card" aria-live="polite">
@@ -701,8 +765,10 @@ export default function App() {
             <form className="composer" onSubmit={(event) => void send(event)}>
               <label className="sr-only" htmlFor="message">Describe your workflow or request a change</label>
               <textarea id="message" ref={field} rows={2} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={keyDown} placeholder="Describe the task you want to automate…" disabled={!project || uiBusy} />
-              <div className="composer-bottom"><span>Enter to send <span className="hide-small">· Shift + Enter for a new line</span></span><button type="submit" aria-label="Send message" disabled={!project || uiBusy || !input.trim()}><Icon name="send" size={18} /></button></div>
+              <div className="composer-bottom"><span>Enter to send <span className="hide-small">· Shift + Enter for a new line</span></span><button type="submit" aria-label="Send message" disabled={!project || uiBusy || voiceBusy || !input.trim() || input.trim().length > 4000}><Icon name="send" size={18} /></button></div>
             </form>
+            {input.length > 3600 && <p className="draft-length" role="status">{input.length.toLocaleString()} / 4,000 characters{input.length > 4000 ? ' — shorten before sending.' : ''}</p>}
+            {project && <VoiceDictation key={`${project.id}:${voiceEpoch}`} capability={voiceCapability} disabled={uiBusy} onBusyChange={setVoiceBusy} onTranscript={appendTranscript} />}
             <p className="composer-caption">Designed with Meta AI <span>·</span> Review all suggested parameters</p>
           </div>
         </aside>

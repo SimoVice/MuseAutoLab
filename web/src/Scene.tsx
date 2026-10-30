@@ -2,12 +2,13 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import type { ErrorInfo, ReactNode } from 'react';
-import { Vector3 } from 'three';
+import type { ErrorInfo, ReactNode, RefObject } from 'react';
+import { Spherical, Vector3 } from 'three';
 import type { Group, OrthographicCamera } from 'three';
 import type { Component, InspectionExtension, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
 import FoundationMesh from './FoundationMesh';
+import './scene-controls.css';
 import {
   DIP_DOWN_TIME,
   DWELL_TIME,
@@ -21,10 +22,10 @@ const SCALE = 100;
 const OPERATION_VISIT_ORDER = ['tip-rack', 'source-rack', 'sample-rack', 'tip-waste'] as const;
 const WORKING_AREA_IDS = ['base', 'carriage', 'pipette', 'source-rack', 'sample-rack', 'tip-rack', 'tip-waste', 'controller'];
 
-class SceneBoundary extends ReactComponent<{ children: ReactNode }, { failed: boolean }> {
+class SceneBoundary extends ReactComponent<{ children: ReactNode; onError: () => void }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(_error: Error, _info: ErrorInfo) { /* The accessible component list remains available. */ }
+  componentDidCatch(_error: Error, _info: ErrorInfo) { this.props.onError(); }
   render() {
     if (this.state.failed) return <div className="scene-fallback">3D view unavailable. Use the component list below to inspect the design.</div>;
     return this.props.children;
@@ -41,6 +42,65 @@ function FitCamera({ width, height, depth, enabled }: { width: number; height: n
     camera.zoom = Math.min(size.width / (horizontalSpan * 1.1), size.height / (verticalSpan * 1.05));
     camera.updateProjectionMatrix();
   }, [camera, size.width, size.height, width, height, depth, enabled]);
+  return null;
+}
+
+type CameraAction = 'left' | 'right' | 'up' | 'down' | 'in' | 'out';
+
+function SceneTools({ captureRef, actionRef, sourceReady, sourceRequired }: {
+  captureRef?: RefObject<(() => Promise<string>) | null>;
+  actionRef: RefObject<((action: CameraAction) => void) | null>;
+  sourceReady: RefObject<boolean>;
+  sourceRequired: boolean;
+}) {
+  const { gl, scene, camera, invalidate } = useThree();
+  const controls = useThree((state) => state.controls) as { target: Vector3; update: () => void } | null;
+  useEffect(() => {
+    if (!controls) return;
+    actionRef.current = (action) => {
+      if (action === 'in' || action === 'out') {
+        const orthographic = camera as OrthographicCamera;
+        orthographic.zoom = Math.max(15, Math.min(400, orthographic.zoom * (action === 'in' ? 1.2 : 1 / 1.2)));
+        orthographic.updateProjectionMatrix();
+      } else {
+        const spherical = new Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+        if (action === 'left') spherical.theta -= Math.PI / 18;
+        if (action === 'right') spherical.theta += Math.PI / 18;
+        if (action === 'up') spherical.phi -= Math.PI / 18;
+        if (action === 'down') spherical.phi += Math.PI / 18;
+        spherical.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.04, spherical.phi));
+        camera.position.copy(controls.target).add(new Vector3().setFromSpherical(spherical));
+      }
+      controls.update();
+      invalidate();
+    };
+    return () => { actionRef.current = null; };
+  }, [actionRef, camera, controls, invalidate]);
+  useEffect(() => {
+    if (!captureRef) return;
+    captureRef.current = async () => {
+      if (sourceRequired && !sourceReady.current) throw new Error('The source model is still loading.');
+      if (gl.getContext().isContextLost()) throw new Error('The 3D view is unavailable.');
+      // Render immediately before reading the buffer, without retaining it between frames.
+      gl.render(scene, camera);
+      const source = gl.domElement;
+      if (!source.width || !source.height) throw new Error('The 3D view is not ready.');
+      const scale = Math.min(1, 2048 / Math.max(source.width, source.height));
+      const output = document.createElement('canvas');
+      output.width = Math.max(1, Math.round(source.width * scale));
+      output.height = Math.max(1, Math.round(source.height * scale));
+      const context = output.getContext('2d');
+      if (!context) throw new Error('The 3D view could not be captured.');
+      context.drawImage(source, 0, 0, output.width, output.height);
+      return output.toDataURL('image/png');
+    };
+    return () => { captureRef.current = null; };
+  }, [captureRef, gl, scene, camera, sourceReady, sourceRequired]);
+  return null;
+}
+
+function SourceState({ ready, onChange }: { ready: boolean; onChange: (ready: boolean) => void }) {
+  useEffect(() => { onChange(ready); }, [ready, onChange]);
   return null;
 }
 
@@ -368,15 +428,23 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect }: {
   );
 }
 
-export default function Scene({ project, selectedId, onSelect, operation, physics, inspectionTime = 0 }: {
+export default function Scene({ project, selectedId, onSelect, operation, physics, inspectionTime = 0, captureRef }: {
   project: Project;
   selectedId: string | null;
   onSelect: (id: string) => void;
   operation?: OperationSpec;
   physics?: PhysicsView | null;
   inspectionTime?: number;
+  captureRef?: RefObject<(() => Promise<string>) | null>;
 }) {
   const { components: designComponents, footprint } = project.design;
+  const sourceReady = useRef(false);
+  const [sourceLoading, setSourceLoading] = useState(Boolean(project.design.foundation));
+  const actionRef = useRef<((action: CameraAction) => void) | null>(null);
+  const updateSourceReady = useMemo(() => (ready: boolean) => {
+    sourceReady.current = ready;
+    setSourceLoading(!ready);
+  }, []);
   const extension = project.inspection_extension;
   const physicsActive = Boolean(physics && physics.result.project_id === project.id && physics.result.revision === project.revision && physics.result.frames.length > 0 && designComponents.some((part) => part.id === 'carriage') && designComponents.some((part) => part.id === 'pipette'));
   const components = useMemo(() => {
@@ -512,7 +580,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
 
   return (
     <>
-    <SceneBoundary key={viewKey}>
+    <SceneBoundary key={viewKey} onError={() => { sourceReady.current = false; setSourceLoading(false); }}>
       <Canvas
         orthographic
         camera={{ position: project.design.foundation ? [5, 10, -15] : [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
@@ -533,8 +601,9 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
             selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
-        {project.design.foundation && (!isolated || isolated.ids.includes('foundation-jubilee')) && <Suspense fallback={null}>
-          <group position={[-bounds.center[0] / SCALE, -bounds.center[1] / SCALE, -bounds.center[2] / SCALE]}>
+        {project.design.foundation && <Suspense fallback={<SourceState ready={false} onChange={updateSourceReady} />}>
+          <SourceState ready onChange={updateSourceReady} />
+          <group visible={!isolated || isolated.ids.includes('foundation-jubilee')} position={[-bounds.center[0] / SCALE, -bounds.center[1] / SCALE, -bounds.center[2] / SCALE]}>
             <FoundationMesh bedDropMm={project.design.foundation.bed_drop_mm}
               selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
           </group>
@@ -580,8 +649,15 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         </mesh>
         <gridHelper args={[18, 36, '#cfdddd', '#dbe7e7']} position={[0, -0.025, 0]} />
         <OrbitControls makeDefault target={target} minZoom={15} maxZoom={400} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
+        <SceneTools captureRef={captureRef} actionRef={actionRef} sourceReady={sourceReady} sourceRequired={Boolean(project.design.foundation)} />
       </Canvas>
     </SceneBoundary>
+    {project.design.foundation && sourceLoading && <div className="scene-loading" role="status">Loading source model…</div>}
+    <div className="scene-controls" role="group" aria-label="3D view controls">
+      <span>View</span>
+      {([['left', 'Rotate left', '←'], ['right', 'Rotate right', '→'], ['up', 'Rotate up', '↑'], ['down', 'Rotate down', '↓'], ['in', 'Zoom in', '+'], ['out', 'Zoom out', '−']] as const).map(([action, label, symbol]) =>
+        <button key={action} type="button" aria-label={label} title={label} onClick={() => actionRef.current?.(action)}>{symbol}</button>)}
+    </div>
     {selectedPart && <select className="scene-reset" style={{ right: 125, width: 155, maxWidth: 'calc(100% - 145px)' }}
       aria-label="Inspect component view" value={isolated?.mode ?? ''}
       onChange={(event) => { if (event.target.value) inspectSelection(event.target.value as Isolation['mode']); }}>
