@@ -494,6 +494,17 @@ STEPS
             "Rack proxies mark the chosen software slots; exact labware fit is unverified.")
         page = page.replace("Physics uses conservative component envelopes.",
                             "OT-2 physical simulation is not implemented.")
+    if project.get("labware_rack"):
+        page = page.replace(
+            "The custom sample insert follows the target count without changing its "
+            "outside dimensions.",
+            "The custom sample rack uses its declared tube envelopes, count and columns. "
+            "Its capacity is independent of the number of preparation targets; unused holes "
+            "remain free. The other labware fixtures and imported source frame are unchanged.")
+        page = page.replace(
+            "Tube and tip consumables remain separate assumed proxies.",
+            "Occupied sample positions show declared body envelopes and closed-cap outlines; "
+            "tip and source consumables remain separate assumed proxies.")
     if guide is not None:
         page = page.replace("</main>", procurement_html(guide) + "</main>")
     return page.encode("utf-8")
@@ -658,6 +669,35 @@ def build_readme(project: dict) -> bytes:
             "Jubilee are documented alternative foundations, not this machine's imported CAD.",
             "Jubilee is the imported source platform. The insert, pipette, racks, arm and mounts "
             "are custom concepts; Science Jubilee controls are not installed.")
+    if project.get("labware_rack"):
+        rack = project["labware_rack"]
+        text = text.replace(
+            "- Rack holes and clamp details are concept assumptions, not verified labware fits.\n"
+            "  The sample insert pattern follows the number of targets; "
+            "validate before fabrication.\n",
+            "- The sample rack is parametrically compiled from declared tube dimensions and "
+            "assumed FDM tolerances.\n"
+            "  Its capacity and hole pattern follow the rack count/columns, independently of "
+            "preparation target count.\n"
+            "  Physical fit, strength and deck retention remain unverified; the original "
+            "source rack and imported frame are unchanged.\n")
+        text += (
+            "\n## Parametric tube rack\n\n"
+            f"One custom rim-supported rack, {rack['derived']['count']} positions in "
+            f"{rack['derived']['rows']} rows and {rack['derived']['columns']} columns. "
+            "Tube measurements are user-declared, not manufacturer specifications or "
+            "recorded physical fit results.\n\n"
+            "Rack-only files: cad/tube-rack.step and cad/tube-rack.stl. Rotate the rack "
+            "top-plate-down in the slicer; the engineering export is upright. "
+            "Print cad/tube-rack-fit-coupon.stl before the complete rack using the same "
+            "material and settings. The flat coupon shares the bore and plate thickness; "
+            "cad/tube-rack-fit-coupon.step is also included.\n\n"
+            "Follow the rack input, print, first-article and placement steps in "
+            "assembly-guide.html. Material, printing and rework are unpriced. One rack "
+            "requires no assembly fasteners; deck location and retention remain open. "
+            "The custom-rack operating animation is unavailable until tool access, "
+            "pipette approach and calibration are implemented and verified.\n"
+        )
     return text.encode("utf-8")
 
 

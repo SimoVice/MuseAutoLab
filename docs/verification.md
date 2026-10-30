@@ -1,6 +1,75 @@
 # Delivery verification — 2026-10-30
 
-The current digital demo passed the software and package checks below. Three varied
+## Latest module: dimension-driven tube rack
+
+The current increment connects declared tube dimensions in chat to the Jubilee
+sample rack, canonical viewer geometry, a scoped part list, immediate instructions,
+portable state, and individual rack/fit-coupon CAD files. The
+[curated verification record](examples/parametric-rack-verification.json) retains
+the exact frozen dataset, working-tree fingerprints, failures, usage and limits.
+
+The **first frozen real-Meta round failed all six supported cases**: the dimensional
+source validator rejected correct values quoted in ordinary multi-fact phrases.
+The impossible-rim case also returned an extraction error; the unsupported-capacity
+case preserved the project. None produced an accepted incorrect rack. The source
+parser was repaired to bind each number to its physical field without allowing
+swapped dimensions, ambiguous values or volumes to stand in for measurements.
+
+A second round made fresh real Contributor requests against the **same inputs**:
+**6/6 supported cases and 2/2 negative cases passed**. It covered English/Italian,
+millimetres/centimetres, 6/7/8/12 positions, a partial final row, explicit footprint
+and clearance, and one predeclared missing-dimension clarification. Accepted
+results preserved the other components and preparation requirements and passed
+guide/geometry/Save/Open consistency checks. This is regression evidence after a
+known failure, not an independent generalization benchmark. A separate new-request
+set and human technical-use comparison remain future work.
+
+Both rounds used nine actual calls: **18 calls, 295,199 reported tokens** total.
+All usage fields were retained; monetary charges and remaining credits were not
+checked. No inference was made for browser screenshots or the final package.
+
+The evaluation harness defaults to a dry run. For reproduction from the repository
+root, run `.venv/Scripts/python.exe scripts/evaluate_labware.py --dataset docs/examples/labware-evaluation-cases.json`
+with the pinned environment. Adding `--live --max-calls 12 --output <new-output-directory>`
+makes actual requests using separately configured Meta access. Outputs are never
+overwritten. Each round freezes source and input hashes; recorded responses may
+also be replayed without new inference. Live model responses are not deterministic.
+
+Final regular suite: **704 passed in 70.45 seconds**. Ruff, production build and
+three browser flows (rack, scene focus, resources) passed. The rack flow checks
+missing measurements, a 6-to-12-position edit, exact rollback, occupied/free
+positions, stale guide rejection, save/reopen, mobile layout and the unavailable
+operating preview. These are agent checks, not external-user research. Earlier
+source-CAD tests retain their original dates; one new complete package was checked
+for this module instead of rerunning all eight historical heavy source tests.
+
+The real S2 case was confirmed as revision 12. Its **80,422,680-byte** archive has
+29 manifest-listed files plus the manifest. Every file hash, guide, BOM and rack
+specification matched the accepted revision. The full STEP reopened as valid with
+**860 solids**, preserving the original 809 source solids and 120 mm bed pose.
+The rack and coupon each reopened as one valid solid; all 12 rack bores and the
+coupon bore passed actual geometric probes, including bearing material checks.
+Complete generation/download/verification took 339.92 seconds; that is not a
+measurement of generation time alone. No second CAD generation was required.
+
+The example uses **synthetic dimensions**, not measurements of a commercial tube.
+The rack measures 81.5 × 43 × 56.7 mm (width × height × depth), with 13.1 mm bores
+and 18.8 mm spacing. Three preparation targets occupy twelve available positions.
+Download the [confirmed project](examples/parametric-tube-rack-project.json),
+[rack STEP](examples/tube-rack/tube-rack.step),
+[rack STL](examples/tube-rack/tube-rack.stl),
+[coupon STEP](examples/tube-rack/tube-rack-fit-coupon.step) or
+[coupon STL](examples/tube-rack/tube-rack-fit-coupon.stl).
+[Artifact hashes](examples/tube-rack/manifest.json) and the
+[input/build guidance](procurement-and-instructions.md#parametric-tube-rack) accompany them.
+Actual fit, print performance, stability, cleaning, deck retention and pipetting
+remain unverified. Custom fabrication is unpriced.
+
+![Actual accepted project and rack dimensions](images/parametric-rack-workspace.png)
+
+## Earlier core journey
+
+The earlier core digital demo passed the software and package checks below. Three varied
 fresh Meta journeys have now completed. The third completed through the actual browser
 on October 30 after explicit equipment clarification, followed by a real impossible-width
 rejection that preserved the confirmed project. The earlier incomplete attempt remains

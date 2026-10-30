@@ -12,6 +12,7 @@ revision-specific files. No laboratory performance or time saving has been measu
 | --- | --- | --- |
 | Watch the core demo | [Three-minute MP4](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4), recorded core product journey with English captions | No account or API key; latest pricing/instruction features are described below |
 | Read without installing | This guide, architecture below, source documentation and dated JSON examples | No account or API key |
+| Inspect the new tube rack | [Confirmed project](examples/parametric-tube-rack-project.json), [rack STEP](examples/tube-rack/tube-rack.step), [rack STL](examples/tube-rack/tube-rack.stl) and [fit coupon](examples/tube-rack/tube-rack-fit-coupon.stl) | CAD downloads need no account, setup or inference; the interactive viewer needs the local app |
 | Reopen a recorded project | Real 3D, accepted layout, cold bay, inspection sweep and local exports from the example below | Locked setup and local servers; no Meta key or new inference |
 | Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](../README.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
 | Use the product with Meta | Natural conversation, platform choice, design and revisions | [Local configuration](../README.md#local-meta-configuration), your own account access/allowance, then [two local servers](../README.md#run-locally) |
@@ -20,6 +21,29 @@ The interactive product runs locally. Offline fixtures test software behavior;
 they are not fresh model responses. A saved project rebuilds
 locally without inference but does not restore export jobs or authenticate imported
 historical model metadata.
+
+## Inspect the parametric rack
+
+The new [confirmed rack project](examples/parametric-tube-rack-project.json) is
+revision 12, compiler 5. It extends the earlier Jubilee project using a real Meta
+response to **synthetic** dimensional inputs. Open it through **Open project** in
+the running application, then choose **Show rack in model** in the rack card.
+There are twelve holes in three rows and four columns, with three preparation
+targets and nine free positions. The guide uses the same dimensions and revision.
+No new inference is needed to inspect, save/reopen or export this result.
+
+The [small CAD artifacts and hashes](examples/tube-rack/manifest.json) are available
+directly so a reviewer can inspect the useful output before installing the entire
+application. Follow the [measurement and first-article guidance](procurement-and-instructions.md#parametric-tube-rack).
+These inputs do not establish fit to a commercial 1.5–2 mL tube. Printed fit,
+material suitability, deck retention and pipetting are unverified; the custom
+rack has no operating-animation adapter.
+
+![Real recorded rack and its dimension card](images/parametric-rack-workspace.png)
+
+The [verification record](examples/parametric-rack-verification.json) preserves
+the failed first live round and successful corrected regression. This is bounded
+digital integration evidence, not independent model benchmarking or human time saved.
 
 ## Open the recorded example without a key
 

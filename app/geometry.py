@@ -188,6 +188,12 @@ def add_geometry(project: dict) -> dict:
             inspection = {part["id"]: part for part in compiled["components"]}
         except (ValueError, TypeError, KeyError):
             pass
+    rack_geometry = None
+    labware = result.get("labware_rack")
+    if isinstance(labware, dict) and labware.get("kind") == "rim_supported_tube_rack":
+        from app.labware_geometry import compile_labware_rack
+
+        rack_geometry = compile_labware_rack(labware.get("spec"))
     reference_specs = component_geometry_specs(result)
     for comp in result["design"]["components"]:
         if comp.get("kind") == "upstream-cad":
@@ -198,9 +204,19 @@ def add_geometry(project: dict) -> dict:
         else:
             comp.pop("reference_geometry", None)
         if comp["id"] == "sample-rack":
-            comp["rack_slot_count"] = max(1, min(6, len(result.get("plan", {}).get("steps", []))))
+            comp["rack_slot_count"] = (
+                labware["spec"]["count"] if rack_geometry else
+                max(1, min(6, len(result.get("plan", {}).get("steps", []))))
+            )
         canonical = inspection.get(comp["id"])
-        if canonical and comp.get("kind") == canonical["kind"]:
+        if rack_geometry and comp["id"] == labware.get("target_component_id"):
+            if comp["kind"] != "rack" or any(
+                abs(float(a) - b) > 1e-7
+                for a, b in zip(comp["size"], rack_geometry["size_mm"])
+            ):
+                raise ValueError("Labware rack component does not match its compiled dimensions.")
+            comp["geometry"] = deepcopy(rack_geometry["geometry"])
+        elif canonical and comp.get("kind") == canonical["kind"]:
             comp["geometry"] = deepcopy(canonical["geometry"])
             if "reference_geometry" in canonical:
                 comp["reference_geometry"] = deepcopy(canonical["reference_geometry"])

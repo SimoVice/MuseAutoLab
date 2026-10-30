@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-10-30",
+  "implementation_base": "bb567a169fca73453fe59095a4e0467a5e934f6b",
+  "scope": "Digital module integration with synthetic declared dimensions; no independent benchmark, physical fit, printed hardware or laboratory result.",
+  "dataset": "labware-evaluation-cases.json",
+  "dataset_sha256": "92b32cd4a7f612ccdfdba9504833a9ce01badda756e7a861fa0aa5de042a63ea",
+  "source_hash_method": "Byte hashes of app/web source and owned assets, excluding generated dependencies; each run verifies unchanged working-tree hashes.",
+  "model": "muse-spark-1.3-contributor",
+  "rounds": [
+    {
+      "round": 1,
+      "purpose": "Initial frozen synthetic requests",
+      "source_hash_before": "5ac1f83a701a5d0e387df98a79f01e613dac3d8816b317b101252903c4e7330a",
+      "source_hash_after": "5ac1f83a701a5d0e387df98a79f01e613dac3d8816b317b101252903c4e7330a",
+      "provider_calls": 9,
+      "token_usage": {
+        "prompt_tokens": 138361,
+        "completion_tokens": 9028,
+        "total_tokens": 147389,
+        "calls_with_incomplete_usage": 0
+      },
+      "elapsed_seconds": 96.688,
+      "cases": [
+        {
+          "id": "S1_english_six_positions",
+          "result": "failed",
+          "error": "Product turn did not accept a develop_labware action",
+          "http_statuses": [
+            502
+          ],
+          "product_turn_seconds": [
+            14.063
+          ]
+        },
+        {
+          "id": "S2_italian_twelve_positions",
+          "result": "failed",
+          "error": "Product turn did not accept a develop_labware action",
+          "http_statuses": [
+            502
+          ],
+          "product_turn_seconds": [
+            7.812
+          ]
+        },
+        {
+          "id": "S3_missing_measurements_then_supplied",
+          "result": "failed",
+          "error": "Product turn did not accept a develop_labware action",
+          "http_statuses": [
+            200,
+            502
+          ],
+          "product_turn_seconds": [
+            11.016,
+            10.531
+          ]
+        },
+        {
+          "id": "S4_narrow_requested_footprint",
+          "result": "failed",
+          "error": "Product turn did not accept a develop_labware action",
+          "http_statuses": [
+            502
+          ],
+          "product_turn_seconds": [
+            11.234
+          ]
+        },
+        {
+          "id": "S5_centimetre_inputs",
+          "result": "failed",
+          "error": "Product turn did not accept a develop_labware action",
+          "http_statuses": [
+            502
+          ],
+          "product_turn_seconds": [
+            8.593
+          ]
+        },
+        {
+          "id": "S6_partial_last_row_and_clearance",
+          "result": "failed",
+          "error": "Product turn did not accept a develop_labware action",
+          "http_statuses": [
+            502
+          ],
+          "product_turn_seconds": [
+            7.828
+          ]
+        },
+        {
+          "id": "N1_impossible_rim_support",
+          "result": "failed",
+          "error": "A provider/server failure is not a successful negative: HTTP 502",
+          "http_statuses": [
+            502
+          ],
+          "product_turn_seconds": [
+            13.25
+          ]
+        },
+        {
+          "id": "N2_unsupported_capacity",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            9.14
+          ]
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "purpose": "Fresh real responses to the same requests after a parser correction; regression evidence",
+      "source_hash_before": "dab5f6d195678c69ba46a8fc4c0e20e239f9cee1372ee83e2fc4e04d77517a4f",
+      "source_hash_after": "dab5f6d195678c69ba46a8fc4c0e20e239f9cee1372ee83e2fc4e04d77517a4f",
+      "provider_calls": 9,
+      "token_usage": {
+        "prompt_tokens": 139110,
+        "completion_tokens": 8700,
+        "total_tokens": 147810,
+        "calls_with_incomplete_usage": 0
+      },
+      "elapsed_seconds": 81.141,
+      "cases": [
+        {
+          "id": "S1_english_six_positions",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            6.36
+          ]
+        },
+        {
+          "id": "S2_italian_twelve_positions",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            9.562
+          ]
+        },
+        {
+          "id": "S3_missing_measurements_then_supplied",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200,
+            200
+          ],
+          "product_turn_seconds": [
+            9.359,
+            7.719
+          ]
+        },
+        {
+          "id": "S4_narrow_requested_footprint",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            7.718
+          ]
+        },
+        {
+          "id": "S5_centimetre_inputs",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            8.969
+          ]
+        },
+        {
+          "id": "S6_partial_last_row_and_clearance",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            6.75
+          ]
+        },
+        {
+          "id": "N1_impossible_rim_support",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            7.032
+          ]
+        },
+        {
+          "id": "N2_unsupported_capacity",
+          "result": "passed",
+          "error": null,
+          "http_statuses": [
+            200
+          ],
+          "product_turn_seconds": [
+            13.703
+          ]
+        }
+      ]
+    }
+  ],
+  "correction": "Bind each explicit number/unit to its physical field, accepting correctly labelled multiple facts in one quote. Preserve rejection of swapped values, ambiguous alternatives, volume-derived geometry and inferred rack constraints.",
+  "live_usage_total": {
+    "physical_provider_calls": 18,
+    "prompt_tokens": 277471,
+    "completion_tokens": 17728,
+    "total_tokens": 295199,
+    "calls_with_incomplete_usage": 0,
+    "billing_and_remaining_credit": "Not verified"
+  },
+  "verification": {
+    "regular_tests_passed": 704,
+    "regular_tests_elapsed_seconds": 70.45,
+    "excluded": "Eight historical heavy source-export tests were not rerun; this module received actual rack/coupon CAD tests plus the complete real-source package below.",
+    "ruff": "passed",
+    "production_build": "passed",
+    "browser_flows": [
+      "parametric rack",
+      "scene focus regression",
+      "pricing and instructions regression"
+    ],
+    "human_usability_study": "not performed",
+    "fresh_independent_request_set": "pending"
+  },
+  "package": {
+    "status": "passed",
+    "project_revision": 12,
+    "archive_bytes": 80422680,
+    "archive_sha256": "c1f8f9011e0dd33dbee10723510d5417ce09580afa6bc16e8b63d9a7fa8e9ece",
+    "manifest_files": 29,
+    "verification_elapsed_seconds": 339.92,
+    "guide_matches_preview": true,
+    "bom_matches_revision": true,
+    "source_solids": 809,
+    "workstation_solids": 860,
+    "rack_solids": 1,
+    "rack_holes": 12,
+    "coupon_solids": 1,
+    "coupon_holes": 1,
+    "bed_drop_mm": 120,
+    "all_bores_and_bearing_gauges": "passed on reopened STEP",
+    "source_geometry": "Original source identity, labels, bounds and hierarchy retained",
+    "new_model_calls": 0,
+    "new_supplier_refreshes": 0,
+    "independent_regenerations": 0
+  },
+  "example": {
+    "project": "parametric-tube-rack-project.json",
+    "project_sha256": "3c0700722f3f175ac62428c9c2dcf35b650dc53edb01bc0000b76a7856ca027c",
+    "rack_artifacts": "tube-rack/manifest.json",
+    "capacity": 12,
+    "preparation_targets": 3,
+    "unoccupied_positions": 9,
+    "size_width_height_depth_mm": [
+      81.5,
+      43,
+      56.7
+    ],
+    "bore_diameter_mm": 13.1,
+    "pitch_mm": 18.8,
+    "dimensions": "Synthetic test inputs, not measurements of a commercial tube"
+  },
+  "limitations": [
+    "Repeated corrected cases are regression evidence; the initial 0/6 supported outcome remains recorded.",
+    "Tube family and nominal volume do not establish fit.",
+    "Printer accuracy, material, cleaning, loaded stability, deck retention, open caps and pipette access are unverified.",
+    "The adapter supports a bounded Jubilee sample rack, not arbitrary machine or OT-2 custom labware generation.",
+    "Operating animation is unavailable for the custom rack.",
+    "Custom fabrication is unpriced. No purchase, event login or submission occurred."
+  ]
+}

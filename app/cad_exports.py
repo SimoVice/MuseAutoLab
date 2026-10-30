@@ -93,6 +93,20 @@ def _components(project: dict) -> list[dict]:
             )
             continue
         geometry = comp.get("geometry") or geometry_for_component(comp)
+        rack = project.get("labware_rack")
+        is_parametric_rack = (
+            isinstance(rack, dict)
+            and rack.get("kind") == "rim_supported_tube_rack"
+            and rack.get("target_component_id") == comp["id"]
+        )
+        if is_parametric_rack:
+            from app.labware_geometry import compile_labware_rack
+
+            compiled = compile_labware_rack(rack.get("spec"))
+            if geometry != compiled["geometry"] or any(
+                abs(a - b) > 1e-7 for a, b in zip(size, compiled["size_mm"])
+            ):
+                raise ValueError("Rack geometry does not match its compiled specification.")
         if geometry.get("schema_version") != "1" or not geometry.get("primitives"):
             raise ValueError(f"Invalid geometry for {comp['id']}.")
         for primitive in geometry["primitives"]:
@@ -137,6 +151,7 @@ def _components(project: dict) -> list[dict]:
                 "position": pos,
                 "size": size,
                 "geometry": geometry,
+                **({"fabrication_shape": "rim_supported_tube_rack"} if is_parametric_rack else {}),
                 **(
                     {"reference_geometry": comp["reference_geometry"]}
                     if "reference_geometry" in comp
@@ -213,15 +228,39 @@ def _build_solid(comp):
     """Group the exact shared primitives, retaining component and primitive IDs."""
     from build123d import Compound
 
-    return Compound(
-        children=[_primitive_solid(comp, p) for p in comp["geometry"]["primitives"]],
-        label=comp["id"],
-    )
+    parts = [_primitive_solid(comp, p) for p in comp["geometry"]["primitives"]]
+    if comp.get("fabrication_shape") == "rim_supported_tube_rack":
+        solid = parts[0]
+        for part in parts[1:]:
+            solid = solid.fuse(part)
+        if not solid.is_valid or len(solid.solids()) != 1:
+            raise ValueError("Tube rack must form one valid fused solid.")
+        solid.label = comp["id"]
+        return solid
+    return Compound(children=parts, label=comp["id"])
+
+
+def _build_rack_fit_coupon(comp):
+    """Build a flat one-hole coupon using the rack's canonical top and bore."""
+    plate = next(p for p in comp["geometry"]["primitives"] if p["id"] == "perforated-top")
+    radius = plate["holes"][0]["radius_mm"]
+    thickness = plate["size"][1]
+    side = 2 * radius + 12.0  # 6 mm nominal material from bore to each edge.
+    primitive = {
+        "id": "fit-coupon", "kind": "plate", "position": [0, 0, 0],
+        "size": [side, thickness, side], "holes": [{"x_mm": 0, "z_mm": 0, "radius_mm": radius}],
+    }
+    coupon = _primitive_solid({"position": [0, thickness / 2, 0]}, primitive)
+    if not coupon.is_valid or len(coupon.solids()) != 1:
+        raise ValueError("Rack fit coupon must form one valid solid.")
+    coupon.label = "tube-rack-fit-coupon"
+    return coupon
 
 
 # Freeze the imported builder for self-contained exports throughout this process.
 _PRIMITIVE_BUILDER_SOURCE = inspect.getsource(_primitive_solid)
 _COMPONENT_BUILDER_SOURCE = inspect.getsource(_build_solid)
+_COUPON_BUILDER_SOURCE = inspect.getsource(_build_rack_fit_coupon)
 
 
 def _bbox_of(solid) -> dict:
@@ -252,6 +291,8 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         + _PRIMITIVE_BUILDER_SOURCE
         + "\n\n"
         + _COMPONENT_BUILDER_SOURCE
+        + "\n\n"
+        + _COUPON_BUILDER_SOURCE
         + "\n\n"
         + "def _standalone_solid(c):\n"
         + "    if c['kind'] != 'upstream-cad': return _build_solid(c)\n"
@@ -286,6 +327,15 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         + '    export_step(workstation, output / "workstation.step", unit=Unit.MM)\n'
         + '    export_step(deck, output / "deck.step", unit=Unit.MM)\n'
         + '    export_stl(deck, output / "deck.stl")\n'
+        + '    rack = next((c for c in COMPONENTS_MM if c.get("fabrication_shape") '
+        + '== "rim_supported_tube_rack"), None)\n'
+        + '    if rack:\n'
+        + '        rack_solid = _build_solid(rack)\n'
+        + '        export_step(rack_solid, output / "tube-rack.step", unit=Unit.MM)\n'
+        + '        export_stl(rack_solid, output / "tube-rack.stl")\n'
+        + '        coupon = _build_rack_fit_coupon(rack)\n'
+        + '        export_step(coupon, output / "tube-rack-fit-coupon.step", unit=Unit.MM)\n'
+        + '        export_stl(coupon, output / "tube-rack-fit-coupon.stl")\n'
     )
 
 
@@ -421,7 +471,8 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 "volume_scope": (
                     "Sum of imported solid volumes; overlaps may be counted more than once."
                     if imported
-                    else "Sum of primitive solid volumes; overlaps may be counted more than once."
+                    else ("One fused rack solid." if comp.get("fabrication_shape") else
+                          "Sum of primitive solid volumes; overlaps may be counted more than once.")
                 ),
                 "bbox_cad": bbox,
                 "solids": len(solid.solids()),
@@ -450,6 +501,27 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
         export_step(workstation, ws_path, unit=Unit.MM)
         export_step(deck_solid, deck_step_path, unit=Unit.MM)
         export_stl(deck_solid, deck_stl_path)
+        rack_comp = next((c for c in components if c.get("fabrication_shape")), None)
+        rack_files = {}
+        if rack_comp:
+            rack_solid = _build_solid(rack_comp)
+            rack_step_path = os.path.join(tmp, "tube-rack.step")
+            rack_stl_path = os.path.join(tmp, "tube-rack.stl")
+            export_step(rack_solid, rack_step_path, unit=Unit.MM)
+            export_stl(rack_solid, rack_stl_path)
+            coupon = _build_rack_fit_coupon(rack_comp)
+            coupon_step_path = os.path.join(tmp, "tube-rack-fit-coupon.step")
+            coupon_stl_path = os.path.join(tmp, "tube-rack-fit-coupon.stl")
+            export_step(coupon, coupon_step_path, unit=Unit.MM)
+            export_stl(coupon, coupon_stl_path)
+            with open(coupon_step_path, "rb") as fh:
+                rack_files["cad/tube-rack-fit-coupon.step"] = fh.read()
+            with open(coupon_stl_path, "rb") as fh:
+                rack_files["cad/tube-rack-fit-coupon.stl"] = fh.read()
+            with open(rack_step_path, "rb") as fh:
+                rack_files["cad/tube-rack.step"] = fh.read()
+            with open(rack_stl_path, "rb") as fh:
+                rack_files["cad/tube-rack.stl"] = fh.read()
         with open(ws_path, "rb") as fh:
             workstation_step = fh.read()
         with open(deck_step_path, "rb") as fh:
@@ -459,6 +531,11 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
     if not workstation_step or not deck_step or not deck_stl:
         raise ValueError("CAD export produced empty geometry.")
 
+    labware_source = None
+    if project.get("labware_rack"):
+        from app.labware_geometry import LABWARE_GEOMETRY_SOURCE_SHA256
+
+        labware_source = LABWARE_GEOMETRY_SOURCE_SHA256
     report = {
         "project_id": project_id,
         "revision": revision,
@@ -508,6 +585,7 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "generator": "app.cad_exports.build_cad_files",
             "source_sha256": _SOURCE_SHA256,
             "geometry_source_sha256": GEOMETRY_SOURCE_SHA256,
+            **({"labware_geometry_source_sha256": labware_source} if labware_source else {}),
             "build123d_version": _build123d_version(),
             "input": (
                 "Pinned source STEP and project.design.components primitives (mm, y is UP)"
@@ -518,6 +596,7 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
     }
     report_bytes = json.dumps(report, indent=2).encode("utf-8")
     files: dict[str, bytes] = {
+        **rack_files,
         "cad/workstation.step": workstation_step,
         "cad/deck.step": deck_step,
         "cad/deck.stl": deck_stl,

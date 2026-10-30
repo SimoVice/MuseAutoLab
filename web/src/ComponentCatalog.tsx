@@ -84,7 +84,7 @@ export default function ComponentCatalog({ sourcing, busy, onChoose, onHighlight
                 <div className="catalog-selected">
                   <div className="catalog-meta">
                     <span>{selected.supplier}</span>
-                    <span>{selected.checked_on === 'Not researched' ? 'Sourcing pending' : `Checked ${selected.checked_on}`}</span>
+                    <span>{!selected.checked_on || selected.checked_on === 'Not researched' ? 'Sourcing pending' : `Checked ${selected.checked_on}`}</span>
                     <span>{selected.availability}</span>
                   </div>
                   {selected.source_url ? (

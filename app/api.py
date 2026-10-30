@@ -25,6 +25,7 @@ from app.illustration import (
     prepare_reference,
 )
 from app.inspection import clear_extension, develop_inspection
+from app.labware import reapply_labware, update_labware_brief
 from app.model_catalog import (
     AGENT_MODELS,
     IMAGE_MODEL,
@@ -518,6 +519,15 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 updated, engineering, request.message,
                 bump=updated["revision"] == current["revision"]
             )
+            updated = update_labware_brief(updated, turn.labware, request.message)
+            if (turn.labware.patch() and current.get("labware_rack")
+                    and not any(action.kind in ("develop_labware", "remove_labware")
+                                for action in actions)):
+                index = next((i for i, action in enumerate(actions) if action.kind == "confirm"),
+                             len(actions))
+                actions.insert(index, ChatAction(
+                    kind="develop_labware", source=request.message[:1000]
+                ))
             new_choice = state_for(updated)["selected_platform_id"]
             preserve_layout = any(phrase in request.message.casefold() for phrase in (
                 "keep the machine layout unchanged", "keep the layout unchanged",
@@ -541,6 +551,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 updated, action_runs = await execute_chat_actions(updated, actions, request.message)
                 if any(run["status"] in ("failed", "rejected") for run in action_runs):
                     updated = deepcopy(current)
+            if updated.get("labware_rack"):
+                updated = reapply_labware(updated, require_accepted=False)
         except ModelClientError as exc:
             return JSONResponse(status_code=502, content={
                 "detail": str(exc),
@@ -736,6 +748,12 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
             )
         try:
             updated, run = await develop_design(deepcopy(current), request.instruction)
+            if run.get("status") == "accepted" and updated.get("labware_rack"):
+                updated = reapply_labware(updated)
+        except ValueError as exc:
+            return {"project": deepcopy(current), "design_run": {
+                "status": "rejected", "message": str(exc)
+            }, "assistant_message": str(exc)}
         except ModelClientError as exc:
             if hasattr(exc, "design_run"):
                 return JSONResponse(status_code=502, content={

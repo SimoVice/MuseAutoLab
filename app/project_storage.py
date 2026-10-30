@@ -14,6 +14,12 @@ from app.commercial_design import CommercialProposal, adopt_commercial
 from app.design_spec import FoundationLayoutProposal, LayoutProposal, apply_candidate
 from app.domain import apply_update, confirm_project, new_project
 from app.engineering import EngineeringState, state_for
+from app.labware import (
+    SavedLabwareBrief,
+    SavedLabwareRack,
+    rack_inputs,
+    restore_labware,
+)
 from app.upstream_cad import ASSET_ID
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
@@ -64,7 +70,7 @@ class HistoryEntry(StrictModel):
 class Snapshot(StrictModel):
     format: Literal["museautolab-project"]
     schema_version: Annotated[int, Field(ge=1, le=1)]
-    compiler_version: Literal["1", "2", "3", "4"]
+    compiler_version: Literal["1", "2", "3", "4", "5"]
     saved_at: Annotated[str, Field(min_length=10, max_length=50)]
     project_id: Annotated[str, Field(min_length=36, max_length=36)]
     revision: Annotated[int, Field(ge=0, le=1000000)]
@@ -76,6 +82,8 @@ class Snapshot(StrictModel):
     engineering: EngineeringState | None = None
     engineering_design: SavedDesign | None
     inspection_extension: dict[str, JsonValue] | None = None
+    labware_brief: SavedLabwareBrief | None = None
+    labware_rack: SavedLabwareRack | None = None
     history: Annotated[list[HistoryEntry], Field(max_length=8)]
 
 
@@ -118,7 +126,9 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
     payload = {
         "format": "museautolab-project",
         "schema_version": 1,
-        "compiler_version": "4",
+        "compiler_version": (
+            "5" if project.get("labware_brief") or project.get("labware_rack") else "4"
+        ),
         "saved_at": datetime.now(timezone.utc).isoformat(),
         "project_id": project.get("lineage_id", project["id"]),
         "revision": project["revision"],
@@ -136,6 +146,10 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         "engineering_design": deepcopy(project.get("engineering_design")),
         "platform_id": project.get("design", {}).get("platform", {}).get("id"),
         "engineering": state_for(project),
+        "labware_brief": deepcopy(project.get("labware_brief")),
+        "labware_rack": (
+            rack_inputs(project["labware_rack"]) if project.get("labware_rack") else None
+        ),
         "inspection_extension": (
             {
                 "proposal": deepcopy(extension["proposal"]),
@@ -146,6 +160,9 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         ),
         "history": deepcopy(history[-8:]),
     }
+    if payload["compiler_version"] == "4":
+        payload.pop("labware_brief")
+        payload.pop("labware_rack")
     # Validate our own format before returning a file that cannot be reopened.
     Snapshot.model_validate(payload)
     raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")
@@ -162,6 +179,8 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     except (ValidationError, ValueError) as exc:
         raise ValueError("Unsupported or invalid MuseAutoLab project file.") from exc
     inputs = saved.inputs
+    if saved.compiler_version != "5" and (saved.labware_brief or saved.labware_rack):
+        raise ValueError("Only compiler-5 project files support measured labware inputs.")
     if saved.compiler_version in ("1", "2") and (
         saved.foundation_id is not None or saved.foundation_bed_drop_mm is not None
     ):
@@ -180,7 +199,7 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     if isinstance(proposal, CommercialProposal) != bool(saved.platform_id):
         if proposal is not None:
             raise ValueError("The layout does not match the selected commercial platform.")
-    if saved.compiler_version in ("3", "4") and proposal is not None:
+    if saved.compiler_version in ("3", "4", "5") and proposal is not None:
         source_proposal = isinstance(proposal, FoundationLayoutProposal)
         if source_proposal != (saved.foundation_id == ASSET_ID):
             raise ValueError("The saved layout does not match its CAD foundation.")
@@ -242,6 +261,15 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         from app.inspection import restore_extension
 
         project = restore_extension(project, saved.inspection_extension)
+    if saved.labware_brief is not None or saved.labware_rack is not None:
+        # Rebuild only the measured custom rack. Older compiler-4 saves without it
+        # retain their exact accepted source geometry and need no migration review.
+        project["revision"] = saved.revision
+        project = restore_labware(
+            project,
+            saved.labware_brief.model_dump(exclude_none=True) if saved.labware_brief else None,
+            saved.labware_rack.model_dump(exclude_none=True) if saved.labware_rack else None,
+        )
     if saved.platform_id:
         from app.platform_profiles import commercial_sourcing
 

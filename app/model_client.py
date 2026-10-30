@@ -7,6 +7,7 @@ import os
 import re
 from contextlib import contextmanager
 from contextvars import ContextVar
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal
@@ -17,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from app.design_sources import reference_context, resolve_reference
 from app.engineering import EngineeringUpdate, state_for
+from app.labware import LabwareUpdate
 from app.quantities import (
     has_spoken_quantity,
     normalize_concentration,
@@ -266,6 +268,37 @@ arm and mounts remain concept geometry. A source review or imported CAD is not l
 validation. Do not set user requirements from a source or your own recommendation.
 Keep the assistant_message brief and constructive."""
 
+SYSTEM_INSTRUCTIONS += """
+The measured tube-rack adapter is now implemented for an accepted Jubilee insert only.
+Use develop_labware for an explicit request to generate or refine this rack NOW, and
+remove_labware for explicit removal. Rack geometry is a separate deterministic compiler;
+do not call develop_layout for a rack-only edit. It replaces only sample-rack, preserving
+the existing platform, insert pose, layout and inspection module. It is unsupported on OT-2.
+Record new tube/rack dimensions in labware, with paired source_FIELD exact literal spans
+from this latest message. Each dimension source must include its field label and mm/cm unit;
+count sources must explicitly name positions/holes/tubes/count, columns must name columns.
+Prefer the smallest exact labelled span for each field, e.g. '6 tubes' and '3 columns'
+instead of quoting the whole list. Each source must bind its own label to its own number.
+Body/rim sources describe diameters; an axial rim-to-tip length is not a rim diameter.
+A maximum closed-cap envelope or ingombro del tappo chiuso is also a cap-diameter input;
+it does not need to repeat the word diameter. Rack max width/depth/height are explicit
+maximum limits, not dimensions borrowed from the tube body, cap or under-rim height.
+All unspecified fields and their sources stay null; the stored labware_brief retains prior facts.
+Required inputs: maximum body diameter, minimum rim diameter, maximum CLOSED cap envelope
+diameter INCLUDING hinge, rim and all protrusions, below-rim height measured from underside
+of rim to tube tip, explicit count (1..24) and columns (1..8). Ask for missing dimensions.
+The user's 1.5–2 mL microcentrifuge preference does not establish any physical dimensions,
+count or compatibility. Never infer dimensions from volume, tube family or typical sizes.
+Optional measured constraints are pitch_mm, radial_clearance_mm, max_width_mm, max_depth_mm
+and max_height_mm; extract only explicit labelled values, never your own design assumptions.
+Default radial clearance 0.4 mm, FDM bore DIAMETER tolerance +/-0.3 mm, minimum rim bearing
+0.4 mm, top 4 mm, end walls 3 mm and bottom tip clearance 3 mm are design assumptions.
+Develop_labware with incomplete inputs gathers the missing fields and preserves geometry.
+Only after deterministic acceptance may the UI claim a rack exists. CAD/footprint checks
+are not physical fit, material strength, cleaning, open-cap or pipetting validation.
+Return labware with null values/sources when no new labware measurement is supplied.
+"""
+
 REQUIREMENT_KEYS = (
     "stock_concentration",
     "target_concentrations",
@@ -332,7 +365,7 @@ class ChatAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["develop_layout", "add_inspection", "remove_inspection", "confirm",
                   "show_files", "show_sources", "show_components", "show_photo_check",
-                  "show_build_plan"]
+                  "show_build_plan", "develop_labware", "remove_labware"]
     source: Annotated[str, Field(min_length=1, max_length=1000)]
 
 
@@ -347,6 +380,7 @@ class ExtractedTurn(BaseModel):
     )
     actions: Annotated[list[ChatAction], Field(max_length=2)] = Field(default_factory=list)
     engineering: EngineeringUpdate = Field(default_factory=EngineeringUpdate)
+    labware: LabwareUpdate = Field(default_factory=LabwareUpdate)
     stock_concentration: Annotated[str | None, Field(max_length=500)] = None
     target_concentrations: Annotated[str | None, Field(max_length=500)] = None
     final_volume: Annotated[str | None, Field(max_length=500)] = None
@@ -424,6 +458,7 @@ class ExtractedTurn(BaseModel):
 
     def verify_sources(self, user_message: str) -> None:
         """Verify each change against a literal span from the latest user message."""
+        self.labware.verify_sources(user_message)
         for action in self.actions:
             if action.source not in user_message:
                 raise ValueError("Action source must occur literally in this message")
@@ -673,6 +708,12 @@ async def generate_turn(
     from app.platform_profiles import platform_profiles
 
     state["reviewed_platforms"] = platform_profiles()
+    state["labware_brief"] = deepcopy(project.get("labware_brief"))
+    rack = project.get("labware_rack")
+    state["labware_rack"] = ({key: rack.get(key) for key in (
+        "kind", "target_component_id", "spec", "size_mm", "derived", "metrics", "checks",
+        "assumptions", "provenance",
+    )} if rack else None)
     accepted_layout = bool(project.get("engineering_design"))
     if not accepted_layout:
         state["reviewed_reference_library"]["geometry_bindings"] = []

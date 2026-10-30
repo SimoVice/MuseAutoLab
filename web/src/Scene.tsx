@@ -3,9 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode, RefObject } from 'react';
-import { Spherical, Vector3 } from 'three';
+import { DoubleSide, Spherical, Vector3 } from 'three';
 import type { Group, OrthographicCamera } from 'three';
-import type { Component, InspectionExtension, PhysicsFrame, PhysicsView, Project } from './types';
+import type { Component, InspectionExtension, LabwareRack, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
 import FoundationMesh from './FoundationMesh';
 import './scene-controls.css';
@@ -350,12 +350,13 @@ function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }
   );
 }
 
-function RackDetails({ components, center, stepCount, selectedId, onSelect }: {
+function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack }: {
   components: Component[];
   center: [number, number, number];
   stepCount: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  labwareRack?: LabwareRack | null;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const events = (id: string) => ({
@@ -418,11 +419,36 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect }: {
   };
 
   const sampleTubeCount = Math.max(1, Math.min(6, stepCount));
+  const customSampleTubes = () => {
+    const rack = details.sampleRack;
+    if (!rack || !labwareRack) return null;
+    const plate = labwareRack.geometry.primitives.find((primitive) => primitive.id === 'perforated-top');
+    if (!plate?.holes) return null;
+    const occupied = plate.holes.slice(0, Math.max(0, Math.min(stepCount, labwareRack.spec.count)));
+    const topY = (rack.position[1] + rack.size[1] / 2 - center[1]) / SCALE;
+    const height = labwareRack.spec.below_rim_height_mm / SCALE;
+    const bodyRadius = labwareRack.spec.body_diameter_max_mm / SCALE / 2;
+    const capRadius = labwareRack.spec.cap_diameter_max_mm / SCALE / 2;
+    return <group>{occupied.map((hole, index) => {
+      const x = (rack.position[0] + plate.position[0] + hole.x_mm - center[0]) / SCALE;
+      const z = (rack.position[2] + plate.position[2] + hole.z_mm - center[2]) / SCALE;
+      return <group key={`custom-tube-${index}`}>
+        <mesh name={`sample-tube-envelope-${index}`} position={[x, topY - height / 2, z]} {...events(rack.id)}>
+          <cylinderGeometry args={[bodyRadius, bodyRadius, height, 20]} />
+          <meshStandardMaterial color="#3a8a92" transparent opacity={0.6} roughness={0.5} />
+        </mesh>
+        <mesh name={`sample-closed-cap-envelope-${index}`} position={[x, topY + 0.006, z]} rotation={[-Math.PI / 2, 0, 0]} {...events(rack.id)}>
+          <ringGeometry args={[Math.max(0, capRadius - 0.003), capRadius, 28]} />
+          <meshStandardMaterial color="#2a737b" side={DoubleSide} transparent opacity={0.8} />
+        </mesh>
+      </group>;
+    })}</group>;
+  };
 
   return (
     <group>
       {tubeRow(details.sourceRack, 2, 0.06, 0.22, '#2f6f77', 'source-tube')}
-      {tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
+      {labwareRack ? customSampleTubes() : tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
       {tipRow(details.tipRack)}
     </group>
   );
@@ -503,7 +529,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     () => (physicsActive && physics ? samplePhysicsFrames(physics.result.frames, physics.time_s) : null),
     [physicsActive, physics],
   );
-  const showAnimation = Boolean(!physicsActive && operation && carriagePart && pipettePart);
+  const showAnimation = Boolean(!project.labware_rack && !physicsActive && operation && carriagePart && pipettePart);
 
   const normalizedStepCount = useMemo(() => {
     if (!operation) return 0;
@@ -511,7 +537,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   }, [operation]);
 
   const animationLayout = useMemo(() => {
-    if (!carriagePart || !pipettePart) return null;
+    if (project.labware_rack || !carriagePart || !pipettePart) return null;
     const toCentered = (position: [number, number, number]): Vec3 => [
       (position[0] - bounds.center[0]) / SCALE,
       (position[1] - bounds.center[1]) / SCALE,
@@ -571,7 +597,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     keyframes.push({ position: [...home] as Vec3, time });
     const duration = keyframes.length > 1 ? keyframes[keyframes.length - 1].time : 0;
     return { home, cruiseY, dipY, keyframes, duration };
-  }, [byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
+  }, [project.labware_rack, byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
 
   const staticParts = useMemo(() => {
     if (!showAnimation && !physicsActive) return components;
@@ -608,7 +634,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
               selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
           </group>
         </Suspense>}
-        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} />
+        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} />
         {!isolated && physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh
             key={obstacle.id}
@@ -653,6 +679,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
       </Canvas>
     </SceneBoundary>
     {project.design.foundation && sourceLoading && <div className="scene-loading" role="status">Loading source model…</div>}
+    {project.labware_rack && <div className="scene-rack-occupancy">{Math.min(normalizedStepCount, project.labware_rack.spec.count)} / {project.labware_rack.spec.count} positions occupied · tube envelopes</div>}
     <div className="scene-controls" role="group" aria-label="3D view controls">
       <span>View</span>
       {([['left', 'Rotate left', '←'], ['right', 'Rotate right', '→'], ['up', 'Rotate up', '↑'], ['down', 'Rotate down', '↓'], ['in', 'Zoom in', '+'], ['out', 'Zoom out', '−']] as const).map(([action, label, symbol]) =>

@@ -491,19 +491,171 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         )
 
     if parts:
+        rack = project.get("labware_rack")
+        rack_component = rack.get("target_component_id") if rack else None
+        has_parametric_rack = bool(rack and rack_component in index and route == "jubilee")
+        if has_parametric_rack:
+            spec, derived, measured_checks = rack["spec"], rack["derived"], rack["metrics"]
+            bore = derived["bore_diameter_mm"]
+            pitch = derived["pitch_mm"]
+            radial = spec.get("radial_clearance_mm", 0.4)
+            add(
+                "rack-inputs",
+                "Review the tube envelope and custom rack geometry",
+                [rack_component],
+                [
+                    "Use the actual tube intended for this dry fit. A 1.5–2 mL label is not a "
+                    "dimensional specification and no supplier SKU is inferred.",
+                    f"Declared maximum body diameter: {spec['body_diameter_max_mm']:g} mm; "
+                    f"minimum support rim diameter: {spec['rim_diameter_min_mm']:g} mm; "
+                    f"maximum closed cap envelope: {spec['cap_diameter_max_mm']:g} mm; "
+                    f"underside-of-rim to tip height: {spec['below_rim_height_mm']:g} mm.",
+                    "Check body diameter over every section that passes through the hole; "
+                    "measure the minimum underside bearing rim, and the maximum closed cap "
+                    "including rim and closed hinge protrusions. Open-cap motion is not modeled.",
+                    f"The rack has {derived['count']} positions in {derived['rows']} rows and "
+                    f"{derived['columns']} columns; envelope {_vector_text(rack['size_mm'])} mm "
+                    f"(width, height, depth), CAD bore {bore:g} mm and pitch {pitch:g} mm.",
+                    "The rack is one custom printed bridge with a perforated top and two end "
+                    "legs, no floor and no fasteners. The original Jubilee source geometry "
+                    "and separate source rack are unchanged.",
+                    f"The bore includes {radial:g} mm radial clearance plus a 0.3 mm diameter "
+                    "allowance for an assumed FDM bore deviation of ±0.3 mm. These process "
+                    "assumptions have not been measured on your printer.",
+                ],
+                [
+                    "The declared measurements match the intended tube and recorded input sources.",
+                    f"Calculated worst-case rim land is "
+                    f"{measured_checks['rim_land_min_assumed_mm']:g} mm, at least 0.4 mm; "
+                    "this is a geometric calculation, not a physical fit result.",
+                ],
+                status="ready",
+                prerequisites=["design-review"],
+            )
+            add(
+                "rack-print",
+                "Prepare the fit coupon and print the one-piece rack",
+                [rack_component],
+                [
+                    "Confirm this revision and generate its project files. Use the rack-only "
+                    "cad/tube-rack.step or cad/tube-rack.stl; they retain the upright "
+                    "engineering orientation.",
+                    "In the slicer rotate the rack so the broad top plate lies flat on the print "
+                    "bed, with both end legs pointing upward. Do not scale the part "
+                    "to correct fit.",
+                    f"Before a full rack, print cad/tube-rack-fit-coupon.stl with the same "
+                    f"{bore:g} mm bore and {derived['top_thickness_mm']:g} mm plate thickness, "
+                    "using the intended printer and settings. The supplied coupon is flat; "
+                    "place its broad face on the print bed. The STEP counterpart is "
+                    "cad/tube-rack-fit-coupon.step.",
+                    "PETG is a proposed material for a dry fit prototype only. Choose printer "
+                    "settings and material suitability separately; no sterilization, chemical "
+                    "resistance or laboratory temperature performance is established.",
+                    "Inspect the slicer preview for continuous walls and an unobstructed bore. "
+                    "After the coupon is accepted, print one complete rack, cool it before "
+                    "removal and remove loose strings without enlarging its support holes.",
+                ],
+                [
+                    "The slicer uses the correct revision, millimetres and "
+                    "top-plate-down orientation.",
+                    "One rack is required; material, printing and rework costs remain unpriced.",
+                ],
+                status="ready",
+                prerequisites=["rack-inputs"],
+            )
+            add(
+                "rack-fit",
+                "Measure the first article and dry fit the actual tubes",
+                [rack_component],
+                [
+                    "Record printer, material, settings, part revision and actual tube identity. "
+                    "Use a suitable dimensional gauge or caliper; record bore and body variation "
+                    "instead of relying on the rendered model.",
+                    f"Measure bores in perpendicular directions through the support zone. The "
+                    f"proposed bore band is {bore - 0.3:g}–{bore + 0.3:g} mm. For the largest "
+                    f"tube body, actual minimum radial clearance must be at least {radial:g} mm; "
+                    "use (smallest measured bore − largest body diameter) / 2.",
+                    "Use (smallest measured rim − largest measured bore) / 2 to verify at least "
+                    "0.4 mm radial bearing land. The rim must seat evenly and retain the tube "
+                    "without the body being forced through or the rim falling through.",
+                    f"Dry fit one empty, closed tube first; then all {derived['count']} positions. "
+                    f"The nominal tube-tip clearance above the bench is "
+                    f"{derived['tip_clearance_mm']:g} mm. Verify every tip stays clear, the rack "
+                    "stands flat, closed caps do not interfere, and tubes can be removed by hand.",
+                    "Reject or revise through chat if the coupon or first article misses the "
+                    "criteria. No successful print, fit or laboratory operation is recorded by "
+                    "generating this guide.",
+                ],
+                [
+                    "First-article records show bore band, minimum radial clearance "
+                    "and rim land met.",
+                    "All positions retain the intended empty tubes and leave tips "
+                    "clear of the bench.",
+                    "Open hinge motion, loaded-rack strength and liquid handling remain unchecked.",
+                ],
+                prerequisites=["rack-print"],
+                tasks=[
+                    (
+                        "Record coupon and first-article measurements before accepting "
+                        "the printed rack.",
+                        "Retain tube identity, dimensions, bore/rim clearance measurements and "
+                        "an all-position dry-fit record; any failure triggers a revised rack.",
+                    )
+                ],
+            )
+            add(
+                "rack-placement",
+                "Place the accepted rack and resolve its deck retention",
+                [rack_component],
+                [
+                    "After the physical dry fit, place the rack at the canonical sample-rack "
+                    "position below. The one-piece rack has no integrated deck fasteners.",
+                    "Define how the rack is located and retained on the custom insert, without "
+                    "altering the imported Jubilee frame. Check access and travel using the "
+                    "actual tool, loaded tubes and cables before powered operation.",
+                    "Tube centers and rack geometry are a placement proposal. The current system "
+                    "does not calibrate pipette approach, tip reach or liquid-handling accuracy.",
+                ],
+                [
+                    "A reviewed locating/retention method and measured tool clearances exist.",
+                    "Rack fabrication fit is tracked separately from machine commissioning.",
+                ],
+                prerequisites=["rack-fit", "frame"],
+                tasks=[
+                    (
+                        "Design and verify the insert-to-rack locating and retention interface.",
+                        "Record actual deck datum, retention details, tool access "
+                        "and clearance checks "
+                        "before moving the machine with the rack installed.",
+                    )
+                ],
+            )
         rack_ids = [
-            cid for cid in ("source-rack", "sample-rack", "tip-rack", "tip-waste") if cid in index
+            cid
+            for cid in ("source-rack", "sample-rack", "tip-rack", "tip-waste")
+            if cid in index and (not has_parametric_rack or cid != rack_component)
         ]
         rack_prerequisite = "ot2-calibration" if route == "opentrons-ot2" else "frame"
         add(
             "racks",
-            "Match the layout to actual labware",
+            "Match the remaining labware to the layout"
+            if has_parametric_rack
+            else "Match the layout to actual labware",
             rack_ids,
             [
                 "Compare the numbered layout and positions below with actual rack, tube, tip and "
                 "waste dimensions. Keep each component ID attached to its source/destination role.",
                 "On OT-2 use the assigned software slots with supported labware definitions; on a "
                 "custom insert specify locating features and removable access before fabrication.",
+                *(
+                    [
+                        "The custom sample rack has its own input, print, first-article "
+                        "and placement steps above; this step covers the remaining source, "
+                        "tip and waste fixtures."
+                    ]
+                    if has_parametric_rack
+                    else []
+                ),
             ],
             ["Actual labware, capacity, access and locating method match the accepted placements."],
             prerequisites=[rack_prerequisite],
@@ -638,6 +790,8 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         "platform": route,
         "status": "needs_design" if counts["needs_design"] else "review_ready",
         "coordinate_system": "mm; X right, Y up, Z depth; canonical component centers",
+        "labware_brief": deepcopy(project.get("labware_brief")),
+        "labware_rack": deepcopy(project.get("labware_rack")),
         "readiness_scope": "Review-ready document; not an assembly completion or "
         "physical validation record",
         "procurement_report_id": report["report_id"] if report else None,

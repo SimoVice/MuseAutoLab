@@ -4,7 +4,7 @@ Turn repetitive laboratory work into a sourced, editable automation proposal thr
 
 Meta models interpret the researcher's request, propose checked layouts and design an optional inspection extension. The application retains the original source CAD and performs deterministic arithmetic, geometry compilation and checks. Coding assistants used to build MuseAutoLab are separate from its runtime Meta inference.
 
-The current result is a **working digital prototype**: compare two reviewed platform routes, explicitly choose one, revise its supported geometry, save/reopen the project and generate coherent CAD/documents. The Jubilee route also supports a cold-bay concept and an explicitly requested inspection-arm/camera concept. Neither current platform has physics or hardware control; no laboratory performance or time saving has been measured.
+The current result is a **working digital prototype**: compare two reviewed platform routes, explicitly choose one, revise its supported geometry, save/reopen the project and generate coherent CAD/documents. The Jubilee route also supports a cold-bay concept, an explicitly requested inspection-arm/camera concept and a dimension-driven tube rack with separate STEP/STL and fit-coupon files. Neither current platform has physics or hardware control; no laboratory performance or time saving has been measured.
 
 **Start here:** [watch the three-minute demo](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4) · [reviewer/demo guide and architecture](docs/demo-guide.md) · [delivery verification](docs/verification.md) · [locked setup](#setup-on-windows-powershell) · [run locally](#run-locally) · [offline checks](#verify-the-product) · [latest live Meta journey](docs/examples/delivery-third-rehearsal.json) · [source attribution](THIRD_PARTY_NOTICES.md).
 
@@ -35,7 +35,42 @@ This is a working software prototype for digital proposals, not a tested laborat
 6. Choose concentrations and final volume when useful: **“Use target concentrations of 1, 0.5 and 0.1 mg/mL, with a final volume of 1 mL per tube. Keep the machine layout unchanged.”** Per-tube wording is accepted as context, not an unsupported unit. If stock is missing, supply it when asked. With 10 mg/mL stock, stock volumes are 100, 50 and 10 µL respectively, each made up to 1 mL. These are example inputs, not defaults. Independent direct dilutions are calculated; capacity, pipette range, mixing and dead volume remain unchecked.
 7. Open **Parts & pricing → Refresh US prices** for actual USD supplier listings, dated availability and partial-cost coverage. Ask **“How do I buy the pieces and assemble this?”** to open **Build instructions**: revision-specific steps, selected parts, official references and unresolved engineering tasks, with immediate HTML/Markdown/JSON downloads. Review the **Preparation plan**, confirm, then generate the full CAD package if needed. Photo inspection appears after an explicit request or accepted extension; only Analyze photo sends the selected image to Meta.
 
-The left side contains the brief or interactive model, with a compact partial cost/selection summary. Secondary details stay collapsed. All development, cooling and expansion requests use the same chat; there are no permanent arm/camera/cooling request fields. A rejected change preserves the previous project. Quantity-only edits preserve the accepted layout, source/bed pose and inspection proposal; the custom sample-rack hole pattern follows the number of preparation targets. Exports belong to the resulting revision. A new layout clears an earlier inspection extension so it can be designed against the new arrangement.
+The left side contains the brief or interactive model, with a compact partial cost/selection summary. Secondary details stay collapsed. All development, cooling and expansion requests use the same chat; there are no permanent arm/camera/cooling request fields. A rejected change preserves the previous project. Quantity-only edits preserve the accepted layout, source/bed pose and inspection proposal. The generic sample-rack pattern follows preparation targets; a requested parametric rack retains its explicit capacity and rejects a preparation plan that exceeds it. Exports belong to the resulting revision. A new layout clears an earlier inspection extension so it can be designed against the new arrangement.
+
+### A tube rack from declared dimensions
+
+On an accepted Jubilee layout, ask in ordinary chat for a sample tube rack. Supply
+the maximum body diameter through the hole, minimum supporting rim diameter,
+maximum closed cap envelope including its hinge, underside-of-rim to tip length,
+capacity and number of columns. Missing dimensions are requested; a nominal
+**1.5–2 mL** label never becomes a guessed tube shape. Millimetres and centimetres
+are supported. Capacity is bounded to 1–24 positions and 1–8 columns; footprint,
+rim support, closed-cap separation and current preparation capacity are checked.
+
+The result replaces only the sample rack, retaining the source machine and other
+components. The viewer shows occupied tube envelopes at the actual hole centres.
+Its card exposes dimensions and assumptions; the build guide supplies measurement,
+printing, first-article fit and workstation-placement steps. The CAD package includes
+one fused rack and a small matching fit coupon as separate STEP/STL files, alongside
+the full workstation. Rack/material/printing costs remain unpriced. Save/Open retains
+the dimensional sources and recompiles the module; older projects without a rack
+retain their previous geometry.
+
+These are digital checks against declared inputs and explicit FDM assumptions.
+Actual tube fit, loaded stability, printer accuracy, cleaning, deck retention,
+open-cap interference and pipette access remain unverified. Operating animation is
+disabled for the custom rack until a matching tool-access adapter exists. The
+current adapter does not generate custom OT-2 labware. See the
+[rack specification and build guidance](docs/procurement-and-instructions.md#parametric-tube-rack).
+
+**Inspect a real accepted example without a model call:** download the
+[confirmed 12-position project](docs/examples/parametric-tube-rack-project.json)
+and use **Open project** in the running app. Its dimensions are synthetic test
+inputs. The [rack STEP](docs/examples/tube-rack/tube-rack.step),
+[rack STL](docs/examples/tube-rack/tube-rack.stl) and
+[fit-coupon STL](docs/examples/tube-rack/tube-rack-fit-coupon.stl) are also available
+directly. [Verification](docs/verification.md#latest-module-dimension-driven-tube-rack)
+records the initial failed live round, parser correction and successful regression.
 
 Choose Spark Contributor, Spark Standard or Wonder above chat using the account-checked selector. **Muse Voice** transcribes a recording into an editable draft; review numbers and units, then explicitly send. With an accepted design, **Project details → Project illustration** generates an optional Muse Image presentation PNG from the actual 3D view, labelled as nontechnical artwork. These paths use real server-side Meta access and preserve the canonical project. See [model choice, dictation and illustrations](docs/multimodal-demo.md) for supported formats, cancellation, privacy, availability and limits.
 
@@ -212,6 +247,7 @@ npm.cmd --prefix web run build
 .\.venv\Scripts\python.exe tests/browser_multimodal.py
 .\.venv\Scripts\python.exe tests/browser_scene_accessibility.py
 .\.venv\Scripts\python.exe tests/browser_resources.py
+.\.venv\Scripts\python.exe tests/browser_labware.py
 ```
 
 The first Python command runs the regular regression suite; the second runs the source-CAD checks, including a full export/reopen and standalone regeneration. That integration test reads expanded source geometry twice and requires substantial time and memory (several GiB on the verified Windows host). Run it separately from quick UI iteration. Both check sets are required for source/export changes.

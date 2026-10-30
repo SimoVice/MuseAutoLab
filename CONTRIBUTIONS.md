@@ -2,6 +2,27 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-30: Dimension-driven tube rack
+
+Added a bounded tube-rack adapter within the existing Jubilee project. Meta extracts
+explicit dimensional facts from ordinary chat; a deterministic compiler checks rim
+support, assumed print tolerance, cap spacing, deck placement and preparation
+capacity. Missing dimensions require clarification. A changed rack preserves the
+source machine and other module geometry, with its inspection target height updated.
+
+The viewer, scoped part list, immediate build guide, portable project and CAD package
+share the accepted specification. STEP/STL outputs include the single fused rack
+and a matching one-hole fit coupon. Save/Open recompiles the declared module;
+compiler-4 projects without the module retain their accepted geometry. The UI shows
+actual hole locations and occupied positions, with custom-rack operating animation
+gated until its tool-access interface exists.
+
+GPT-6.1 Terra xhigh implemented geometry/CAD; GPT-6.1 Sol implemented conversation,
+state, instructions, UI and evaluation tooling. Codex coordinated scope, reviewed
+cross-output consistency and prepared the frozen synthetic evaluation. The
+[verification summary](docs/verification.md) records obtained results separately.
+No hardware, actual tube fit, print performance or external-user result is implied.
+
 ## 2026-10-30: US catalog retrieval and project-specific instructions
 
 Added bounded live adapters for fifteen reviewed supplier SKU/variants, including

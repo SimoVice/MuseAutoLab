@@ -9,12 +9,13 @@ from evolution_fixtures import inspection_proposal, layout_project
 from test_commercial_design import proposal as ot2_proposal
 from test_foundation_storage import source_project
 
-from app.assembly import assembly_steps, build_document_files
+from app.assembly import assembly_steps, build_document_files, build_readme
 from app.commercial_design import adopt_commercial, compile_commercial_layout
 from app.domain import apply_update, confirm_project
 from app.foundation_design import compile_source_layout
 from app.inspection import apply_extension, clear_extension
 from app.instructions import build_instruction_files, build_instruction_guide
+from app.labware import LabwareUpdate, develop_labware, update_labware_brief
 
 
 def report_for(project):
@@ -178,6 +179,95 @@ def test_html_and_markdown_escape_project_supplied_labels_and_links():
     assert b"javascript:" not in files["assembly-guide.html"]
     assert b"<img src=x" not in files["assembly-guide.html"]
     assert b"<script>" not in files["assembly-guide.md"]
+
+
+def rack_project():
+    """Synthetic tube measurements; not dimensions of a named commercial tube."""
+    values = {
+        "body_diameter_max_mm": (10.8, "body diameter maximum 10.8 mm"),
+        "rim_diameter_min_mm": (13.5, "rim diameter minimum 13.5 mm"),
+        "cap_diameter_max_mm": (14.0, "closed cap diameter maximum 14 mm"),
+        "below_rim_height_mm": (30.0, "below-rim height 30 mm"),
+        "count": (6, "6 positions"),
+        "columns": (3, "3 columns"),
+    }
+    message = "Develop a rim-supported rack with " + ", ".join(v[1] for v in values.values())
+    patch = {key: value for key, (value, _) in values.items()}
+    patch.update({f"source_{key}": source for key, (_, source) in values.items()})
+    project = update_labware_brief(source_project(), LabwareUpdate(**patch), message)
+    return develop_labware(project)[0]
+
+
+def test_parametric_rack_guide_uses_exact_geometry_and_has_actionable_print_fit_steps():
+    project = rack_project()
+    original = deepcopy(project)
+    guide = build_instruction_guide(project)
+    assert project == original
+    assert guide["labware_rack"] == project["labware_rack"]
+    rack = project["labware_rack"]
+    steps = {step["id"]: step for step in guide["steps"]}
+    assert {"rack-inputs", "rack-print", "rack-fit", "rack-placement"} <= steps.keys()
+    assert "sample-rack" not in steps["racks"]["component_ids"]
+    for sid in ("rack-inputs", "rack-print", "rack-fit", "rack-placement"):
+        assert steps[sid]["component_ids"] == ["sample-rack"]
+        assert steps[sid]["parts"][0]["size_mm"] == rack["size_mm"]
+    assert steps["rack-print"]["prerequisites"] == ["rack-inputs"]
+    assert steps["rack-fit"]["prerequisites"] == ["rack-print"]
+    assert steps["rack-placement"]["prerequisites"] == ["rack-fit", "frame"]
+    assert steps["rack-fit"]["engineering_tasks"] and steps["rack-placement"]["engineering_tasks"]
+    content = " ".join(action for step in guide["steps"] for action in step["instructions"])
+    for term in (
+        "CAD bore 11.9 mm",
+        "pitch 15.2 mm",
+        "PETG is a proposed",
+        "one complete rack",
+        "end legs pointing upward",
+        "cad/tube-rack-fit-coupon.stl",
+        "Do not scale",
+        "11.6–12.2 mm",
+        "0.4 mm",
+        "nominal tube-tip clearance",
+        "3 mm",
+        "Open-cap motion",
+        "no supplier SKU is inferred",
+        "separate source rack are unchanged",
+    ):
+        assert term in content
+    assert "frame" in steps and steps["frame"]["engineering_tasks"]
+    assert "motion-pipette" in steps and steps["motion-pipette"]["engineering_tasks"]
+    variants = steps["rack-inputs"]["parts"][0]["selected_variants"]
+    assert len(variants) == 1 and variants[0]["group_id"] == "labware-rack"
+    assert variants[0]["quantity"] == 1
+
+
+def test_rack_guide_exports_keep_revision_inputs_and_scope_without_inventing_validation():
+    project = rack_project()
+    files = build_instruction_files(project)
+    guide = json.loads(files["assembly.json"])
+    assert guide["project_revision"] == project["revision"]
+    assert guide["labware_brief"]["sources"] == project["labware_brief"]["sources"]
+    readme = build_readme(project).decode("utf8")
+    assert "independently of preparation target count" in readme
+    assert "sample insert pattern follows the number of targets" not in readme
+    assert "cad/tube-rack-fit-coupon.stl" in readme
+    html = files["assembly-guide.html"].decode("utf8")
+    assert "capacity is independent of the number of preparation targets" in html
+    assert "The custom sample insert follows the target count" not in html
+    for name in ("assembly-guide.html", "assembly-guide.md"):
+        text = files[name].decode("utf8")
+        assert "cad/tube-rack.stl" in text
+        assert "material, printing and rework costs remain unpriced" in text
+        assert "No successful print, fit or laboratory operation is recorded" in text
+    partial = source_project()
+    partial = update_labware_brief(
+        partial,
+        LabwareUpdate(count=6, source_count="6 positions"),
+        "A rack for 1.5–2 mL tubes, 6 positions.",
+    )
+    partial_guide = build_instruction_guide(partial)
+    assert partial_guide["labware_brief"]["spec"] == {"count": 6}
+    assert not partial_guide["labware_rack"]
+    assert "rack-print" not in {step["id"] for step in partial_guide["steps"]}
 
 
 def test_export_captures_report_and_refuses_replaced_or_removed_report(monkeypatch):

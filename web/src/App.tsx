@@ -7,6 +7,7 @@ import IllustrationPanel from './IllustrationPanel';
 import VoiceDictation from './VoiceDictation';
 import AgentActivity, { finishAgentReveal } from './AgentActivity';
 import ProjectResources from './ProjectResources';
+import LabwareRackPanel from './LabwareRackPanel';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
 import CameraPanel from './CameraPanel';
@@ -586,6 +587,7 @@ export default function App() {
                 <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
               </div>
 
+              {project && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
               {project && <ProjectResources key={`${project.id}:${project.revision}`} project={project} busy={uiBusy} onSelect={handleVisionSelect} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find((run) => run.kind === 'show_build_plan' && run.status === 'ready')} />}
 
               <details className="project-details" ref={details}>
@@ -625,7 +627,7 @@ export default function App() {
                     <input id="inspection-time" type="range" min={0} max={6} step={0.05} value={inspectionTime} disabled={uiBusy} onChange={(event) => { const value = Number(event.target.value); handleInspection(value); }} />
                   </div>
                 )}
-                {showPreview && (
+                {showPreview && !project?.labware_rack && (
                   <div className="preview-block">
                     <div className="preview-controls" role="group" aria-label="Preparation preview controls">
                       <button type="button" className="preview-button" onClick={handlePlay} disabled={playing} aria-pressed={playing}>Play preview</button>
@@ -635,6 +637,7 @@ export default function App() {
                     <p className="preview-note">Illustrative animation; motion and dispensing are not validated.</p>
                   </div>
                 )}
+                {showPreview && project?.labware_rack && <p className="preview-note">The operating preview is unavailable for this custom rack. Tool access, pipette approach and calibration need verification; tube envelopes mark the current preparation targets and unused holes remain free.</p>}
                 {showPhotoCheck && project && (
                   <details className="photo-check" open={requestedPhoto || undefined}>
                     <summary>Photo check</summary>
@@ -649,6 +652,7 @@ export default function App() {
               </details>
             </>
           )}
+          {!hasEngineeringDesign && project && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
           {!hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
             <details className="project-details" ref={details}>
               <summary>Project details</summary>

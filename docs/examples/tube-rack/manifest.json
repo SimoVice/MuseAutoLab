@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "created_on": "2026-10-30",
+  "scope": "Synthetic declared tube dimensions; actual Meta interpretation and digitally verified CAD. No measured labware, printed fit or laboratory validation.",
+  "project_file": "../parametric-tube-rack-project.json",
+  "project_revision": 12,
+  "count": 12,
+  "columns": 4,
+  "size_width_height_depth_mm": [
+    81.5,
+    43,
+    56.7
+  ],
+  "bore_diameter_mm": 13.1,
+  "pitch_mm": 18.8,
+  "source_package_sha256": "c1f8f9011e0dd33dbee10723510d5417ce09580afa6bc16e8b63d9a7fa8e9ece",
+  "instructions": "../../procurement-and-instructions.md#parametric-tube-rack",
+  "artifacts": [
+    {
+      "file": "tube-rack-fit-coupon.step",
+      "bytes": 20824,
+      "sha256": "0a0a6e207931df238b43292c54b000cd7b0f5e0ad39746ddcf260a9200de82b9"
+    },
+    {
+      "file": "tube-rack-fit-coupon.stl",
+      "bytes": 26084,
+      "sha256": "ca2410cbd097259ed1241b868e078900f71c443a79afdda050694a6ed59ab294"
+    },
+    {
+      "file": "tube-rack.step",
+      "bytes": 76952,
+      "sha256": "719dc18ff0bf7a9fcf7835c44c2e975739d6cf3e30dbfd8a18890b791da9c108"
+    },
+    {
+      "file": "tube-rack.stl",
+      "bytes": 306284,
+      "sha256": "92aa6f66cfaef47dff8a4fc66d5a4a11defb792445d1283acfb4cd8b1e5207d1"
+    }
+  ]
+}

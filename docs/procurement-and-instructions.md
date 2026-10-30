@@ -81,3 +81,55 @@ and concurrency, reject unexpected redirects and validate exact product identity
 USD currency, variants and pack quantities. Failed or ambiguous pages stay unknown;
 there is no unrestricted web crawling or model-generated supplier URL. See
 [verification](verification.md) for the actual software, supplier and browser checks.
+
+## Parametric tube rack
+
+The Jubilee sample rack can be replaced through ordinary chat by a rim-supported
+one-piece rack. Its top plate and two legs form a single connected solid; tubes hang
+from their rim above the deck. Only the sample rack changes. The inspection arm's
+geometry/proposal is retained; its derived target plane follows the new rack height.
+
+The required input dimensions are user declarations, not verified measurements:
+
+| Input | Measurement definition |
+| --- | --- |
+| Maximum body diameter | Widest tube section that must pass through the support hole |
+| Minimum support-rim diameter | Smallest diameter at the underside bearing surface; a closed cap diameter is not a substitute |
+| Maximum closed-cap envelope | Circular envelope including the rim, closed hinge and protrusions; open-cap motion is not covered |
+| Below-rim length | Distance from the underside of the support rim to the lowest tube tip |
+| Positions and columns | Explicit rack capacity and arrangement, separate from liquid volume or preparation target count |
+
+Optional explicit requests can constrain centre spacing, radial clearance and
+maximum rack width/depth/height. Inputs retain the literal message source. No
+vendor SKU, dimension, material performance or print price is inferred from a tube
+family or nominal liquid capacity. Invalid requests preserve the accepted project.
+
+Default calculation assumptions are 0.4 mm radial clearance, a **diametral** bore
+deviation of ±0.3 mm, at least 0.4 mm of rim bearing at the assumed maximum bore,
+4 mm top thickness, 3 mm end walls and 3 mm nominal clearance below the tip. The
+CAD bore equals maximum body diameter plus twice the requested radial clearance
+plus 0.3 mm. These are first-article design choices, not measured printer capability.
+
+For example, the **synthetic** values 11 mm body, 14 mm rim, 15 mm closed-cap envelope,
+40 mm below-rim length, six positions and three columns produce a 55.7 × 43 × 33.9 mm
+rack (width × height × depth), 12.1 mm bores and 15.8 mm spacing. These numbers do not
+describe any specific commercial 1.5–2 mL tube.
+
+The same accepted revision supplies `cad/tube-rack.step`, `cad/tube-rack.stl`,
+`cad/tube-rack-fit-coupon.step` and `cad/tube-rack-fit-coupon.stl`. The rack retains
+its upright engineering orientation; in the slicer put the broad top plate down
+with both legs pointing upward. The coupon is a flat plate with the identical bore
+and top thickness. Check the coupon with the actual tube and printer before the
+full part; do not scale the STL to correct a fit. The generated CAD source reproduces
+these artifacts from the same specification.
+
+The scoped parts list contains one custom printed rack, while the remaining generic
+fixtures are listed separately. PETG is only a proposed dry-fit prototype material;
+printer settings, material suitability, cleaning and the cost of fabrication/rework
+remain open. The guide's fit steps and acceptance checks are instructions for future
+work, not records that those checks have been performed.
+
+The rack rests on the insert in the digital model. Retention, loaded stability,
+source-machine attachment, tool travel and liquid handling are separate unresolved
+interfaces. Custom-rack operating animation is therefore unavailable. This module
+does not establish arbitrary fixture design or an OT-2 labware adapter.

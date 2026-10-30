@@ -3,3 +3,7 @@
 *.ps1 text eol=crlf
 *.bat text eol=crlf
 *.cmd text eol=crlf
+# Preserve generated CAD bytes against their artifact manifests.
+*.step -text -diff
+*.STEP -text -diff
+*.stl -text -diff

@@ -89,7 +89,7 @@ export type SourcingOption = {
   unit_price: number | null;
   price_kind: SourcingPriceKind;
   source_url: string | null;
-  checked_on: string;
+  checked_on: string | null;
   availability: string;
   pros: string[];
   cons: string[];
@@ -153,6 +153,8 @@ export type Project = {
   lineage_id?: string;
   restored_from?: { project_id: string; revision: number; saved_at: string };
   revision: number;
+  labware_brief?: LabwareBrief | null;
+  labware_rack?: LabwareRack | null;
   status: 'draft' | 'confirmed';
   brief: ProjectBrief;
   workflow: ProjectWorkflow;
@@ -187,6 +189,33 @@ export type Project = {
     options: { platform_id: string; reason: string; tradeoffs: string[] }[] };
   engineering_guidance?: { status: string; platform_id?: string; message: string;
     steps: { title: string; url: string; detail: string }[] };
+};
+
+export type RackSpec = {
+  body_diameter_max_mm: number; rim_diameter_min_mm: number; cap_diameter_max_mm: number;
+  below_rim_height_mm: number; count: number; columns: number;
+  pitch_mm?: number; radial_clearance_mm?: number; max_width_mm?: number; max_depth_mm?: number; max_height_mm?: number;
+};
+export type RackFieldSource = { literal: string; value: number; recorded_at_revision: number };
+export type LabwareBrief = {
+  schema_version: number; kind: 'rim_supported_tube_rack'; target_component_id: string;
+  spec: Partial<RackSpec>; sources: Record<string, RackFieldSource>; missing_fields: string[];
+  status: 'needs_dimensions' | 'ready';
+};
+export type LabwareRack = {
+  schema_version: number; kind: 'rim_supported_tube_rack'; target_component_id: string;
+  spec: RackSpec; assumptions: { radial_clearance_mm: number; bore_diametral_tolerance_plus_minus_mm: number;
+    minimum_rim_bearing_mm: number; top_thickness_mm: number; end_wall_mm: number;
+    bottom_clearance_mm: number; process: string; tube_envelope: string; unverified: string[] };
+  size_mm: [number, number, number]; geometry: ComponentGeometry;
+  derived: { rows: number; columns: number; count: number; pitch_mm: number; bore_diameter_mm: number;
+    bore_max_assumed_mm: number; rim_land_min_assumed_mm: number; tip_clearance_mm: number;
+    top_thickness_mm: number; end_wall_mm: number; closed_cap_envelope_size_mm?: [number, number] };
+  metrics: { body_radial_clearance_min_assumed_mm: number; rim_land_min_assumed_mm: number;
+    closed_cap_gap_mm: number; hole_web_min_assumed_mm: number };
+  checks: DesignCheck[];
+  provenance: { basis: string; sources: Record<string, RackFieldSource>; compiler: string;
+    source_project_revision: number; previous_size_mm?: [number, number, number] };
 };
 
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string; references?: DesignReference[] };

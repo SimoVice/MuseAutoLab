@@ -7,6 +7,7 @@ from app.domain import confirm_project
 from app.engineering import state_for
 from app.foundation_design import adopt_foundation, is_source_based
 from app.inspection import clear_extension, develop_inspection
+from app.labware import develop_labware, reapply_labware, remove_labware
 from app.model_client import ModelClientError
 from app.upstream_cad import foundation_metadata
 
@@ -26,7 +27,9 @@ def extension_only_patch(patch: dict, actions: list) -> dict:
     """Mentioning a new camera does not replace the workstation's original equipment."""
     kinds = {a.kind for a in actions}
     if (
-        kinds.intersection({"add_inspection", "remove_inspection"})
+        kinds.intersection({
+            "add_inspection", "remove_inspection", "develop_labware", "remove_labware"
+        })
         and "develop_layout" not in kinds
     ):
         return {
@@ -50,6 +53,10 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
         try:
             if kind == "develop_layout":
                 selected = state_for(result)["selected_platform_id"]
+                if result.get("labware_rack") and selected != "jubilee":
+                    raise ValueError(
+                        "Remove the custom Jubilee tube rack before changing platforms."
+                    )
                 if selected is None:
                     runs.append({"kind": kind, "status": "ready", "message":
                         "Before developing the machine, would you prefer an assembled platform "
@@ -85,6 +92,8 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                 else:
                     base = deepcopy(result) if is_source_based(result) else adopt_foundation(result)
                 result, run = await develop_design(base, instruction)
+                if run["status"] == "accepted" and result.get("labware_rack"):
+                    result = reapply_labware(result)
                 if commercial:
                     result["sourcing"] = commercial_sourcing()
                 runs.append({**run, "kind": kind})
@@ -107,6 +116,14 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                         "message": "Inspection module removed; the existing platform is preserved.",
                     }
                 )
+            elif kind == "develop_labware":
+                result, run = develop_labware(result)
+                runs.append(run)
+            elif kind == "remove_labware":
+                result = remove_labware(result)
+                runs.append({"kind": kind, "status": "accepted", "message":
+                    "Removed the custom tube rack; the original generic rack envelope is restored. "
+                    "Your recorded tube dimensions remain available for a later design."})
             elif kind == "confirm":
                 if not result.get("engineering_design"):
                     raise ValueError("Develop a machine in chat before confirming it.")

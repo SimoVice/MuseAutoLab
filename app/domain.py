@@ -558,6 +558,10 @@ def apply_update(project: dict, patch: dict) -> dict:
         result["revision"] = project["revision"] + 1
         result["status"] = "draft"
         result["workflow"] = describe_workflow(result)
+        if result.get("labware_rack"):
+            from app.labware import reapply_labware
+
+            return reapply_labware(result, require_accepted=False)
         return add_geometry(result)
 
     if width is not None and width < COMPACT_WIDTH_MM:
@@ -592,7 +596,12 @@ def confirm_project(project: dict) -> dict:
         raise ValueError("The requested workspace width is infeasible for the supported layouts.")
     if project["plan"]["status"] != "ready":
         raise ValueError(f"Dilution plan needs attention: {project['plan']['message']}")
-    result = deepcopy(project)
+    if project.get("labware_rack"):
+        from app.labware import reapply_labware
+
+        result = reapply_labware(project)
+    else:
+        result = deepcopy(project)
     if result["status"] != "confirmed":
         result["status"] = "confirmed"
         result["revision"] += 1

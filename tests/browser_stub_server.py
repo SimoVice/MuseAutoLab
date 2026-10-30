@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 import app.api  # noqa: E402
 import app.design_agent  # noqa: E402
 import app.model_catalog  # noqa: E402
+from app.labware import LabwareUpdate  # noqa: E402
 
 
 async def _offline_catalog(**kwargs):
@@ -41,6 +42,7 @@ class _FakeTurn:
         self._patch_data = dict(patch_data)
         self.recommendations = []
         self.actions = []
+        self.labware = LabwareUpdate()
 
     def patch(self) -> dict:
         return dict(self._patch_data)
