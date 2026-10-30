@@ -2,6 +2,28 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-30: Third fresh journey and three-minute recorded demo
+
+Completed the third varied fresh Meta journey through the actual browser, with ten
+core Contributor calls and one real impossible-width rejection that preserved the
+confirmed project. Published its own portable revision-9 project, curated evidence,
+reviewer entry point and adaptable submission text. The original rehearsal records
+remain unchanged, including failures and the first successful path's code/replay scope.
+
+Generated this same project's actual 25-file package once without inference, checked
+hashes/revision/lineage and reopened its STEP as valid with 863 solids and 19 components.
+Published a 180-second, 1080p30 captioned MP4 using actual captures, with explicit
+shortened waits and recording-order labels. Full decode, caption/trim bounds and visual
+review passed. The video has no narration or music; a narration script is supplied.
+
+GPT-6.1 Sol handled browser rehearsal, package verification and isolated Remotion 4.0.539
+video authoring. Codex coordinated, checked evidence coherence and readability, and
+curated the public documentation/media. Application code remains the tested revision
+`81ef2ebf1581536505cbe8f71ac4b6d704614980`; no application dependency or geometry change
+was needed. Authoring tools, raw recordings and private workspace records are excluded
+from the product repository. See [verification](docs/verification.md) and
+[video scope](docs/video/README.md). No hardware validation or event submission is claimed.
+
 ## 2026-10-30: Rehearsal hardening and reviewer package
 
 Added focused part, working-area and arm/camera views while keeping the source geometry

@@ -1,0 +1,87 @@
+1
+00:00:00,000 --> 00:00:12,000
+Repetitive laboratory work becomes an editable automation
+design.
+
+2
+00:00:12,000 --> 00:00:23,000
+Meta gathers equipment and constraints, then compares two
+sourced routes.
+
+3
+00:00:23,000 --> 00:00:35,000
+The researcher chooses before a machine is designed.
+
+4
+00:00:35,000 --> 00:00:45,000
+Original Jubilee CAD supplies the fixed source frame.
+
+5
+00:00:45,000 --> 00:00:58,000
+Meta proposes the insert, layout and bed pose. Code checks them.
+
+6
+00:00:58,000 --> 00:01:10,000
+100 to 120 mm digital bed drop. Source frame and component sizes
+stay fixed.
+
+7
+00:01:10,000 --> 00:01:18,000
+The accepted layout stays intact while the custom bay is added.
+
+8
+00:01:18,000 --> 00:01:24,000
+A requested temperature is not a measured cooling result.
+
+9
+00:01:24,000 --> 00:01:30,000
+A 450 mm width is rejected for the fixed Jubilee frame.
+
+10
+00:01:30,000 --> 00:01:39,000
+The accepted geometry is rebuilt locally from the portable
+project.
+
+11
+00:01:39,000 --> 00:01:51,000
+Meta proposes bounded extension dimensions for the existing
+workstation.
+
+12
+00:01:51,000 --> 00:02:00,000
+The sweep is kinematic: clearance and camera coverage remain
+unverified.
+
+13
+00:02:00,000 --> 00:02:07,000
+Deterministic direct dilutions: 200, 100 and 20 microlitres of
+stock.
+
+14
+00:02:07,000 --> 00:02:13,000
+Layout and inspection stay intact; rack holes follow target
+count.
+
+15
+00:02:13,000 --> 00:02:25,000
+The preparation plan is a calculation proposal, not a validated
+lab protocol.
+
+16
+00:02:25,000 --> 00:02:33,000
+The same project produces a revision-specific engineering
+package.
+
+17
+00:02:33,000 --> 00:02:41,000
+CAD, custom parts, attribution, parts information and assembly
+guidance.
+
+18
+00:02:41,000 --> 00:02:50,000
+Meta interprets and proposes. Deterministic code calculates and
+checks.
+
+19
+00:02:50,000 --> 00:03:00,000
+Next: physical integration and laboratory validation.

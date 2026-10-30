@@ -6,9 +6,11 @@ Meta models interpret the researcher's request, propose checked layouts and desi
 
 The current result is a **working digital prototype**: compare two reviewed platform routes, explicitly choose one, revise its supported geometry, save/reopen the project and generate coherent CAD/documents. The Jubilee route also supports a cold-bay concept and an explicitly requested inspection-arm/camera concept. Neither current platform has physics or hardware control; no laboratory performance or time saving has been measured.
 
-**Start here:** [reviewer/demo guide and architecture](docs/demo-guide.md) · [delivery verification](docs/verification.md) · [locked setup](#setup-on-windows-powershell) · [run locally](#run-locally) · [offline checks](#verify-the-product) · [real Meta rehearsals](docs/examples/delivery-rehearsal-summary.json) · [source attribution](THIRD_PARTY_NOTICES.md).
+**Start here:** [watch the three-minute demo](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4) · [reviewer/demo guide and architecture](docs/demo-guide.md) · [delivery verification](docs/verification.md) · [locked setup](#setup-on-windows-powershell) · [run locally](#run-locally) · [offline checks](#verify-the-product) · [latest live Meta journey](docs/examples/delivery-third-rehearsal.json) · [source attribution](THIRD_PARTY_NOTICES.md).
 
-The guide includes a [recorded real-Meta project you can reopen without a key](docs/demo-guide.md#open-the-recorded-example-without-a-key), plus offline checks and the live product path, which requires your own Meta API access. No hosted demo or final video is linked yet. Historical feature documents retain their original scope; use this README and the guide for the current flow.
+The [180-second video](docs/video/README.md) shows actual product captures with English captions and no narration. The guide includes its [recorded real-Meta project you can reopen without a key](docs/demo-guide.md#open-the-recorded-example-without-a-key), plus offline checks and the live product path, which requires your own Meta API access. The interactive product runs locally. Historical feature documents retain their original scope; use this README and the guide for the current flow.
+
+[![Watch the three-minute MuseAutoLab demo](docs/images/demo-video-poster.png)](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4)
 
 ## Current demonstrator
 

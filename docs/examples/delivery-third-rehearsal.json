@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-30",
+  "release_commit": "81ef2ebf1581536505cbe8f71ac4b6d704614980",
+  "scope": "One new fresh real-Meta conversation performed through the actual browser UI, with explicit available equipment, followed by one incompatible-width request. No physical hardware, laboratory performance, calibrated temperature, or hardware control was tested.",
+  "result": {
+    "fresh_path": "passed",
+    "third_fresh_complete_path_observed": true,
+    "prior_incomplete_third_path_retained": true,
+    "capture_used_recorded_model_replay": false,
+    "javascript_errors": 0,
+    "observed_fresh_complete_paths_total": 3,
+    "count_scope": "Three varied fresh paths completed across the recorded sessions, satisfying the literal three-path count after equipment clarification; this is not a reliability benchmark and does not erase earlier failures."
+  },
+  "relation_to_previous_evidence": {
+    "file": "delivery-rehearsal-summary.json",
+    "sha256": "f5a5537cabe4a7d909bdc73c1b3b78625c08927effcc33e897ab93f539bf6121",
+    "previous_physical_attempts": 57,
+    "previous_three_path_gate": "not_met_on_2026-10-29",
+    "new_observation": "Third varied fresh complete path succeeded after explicit available-equipment clarification. Earlier failures and the historical gate result remain unchanged. These limited observations are not a reliability percentage.",
+    "code_timing": "The first successful fresh path preceded final parser hardening and its recorded responses were replayed offline on final backend checks. The second and third successful fresh paths used the final backend live."
+  },
+  "synthetic_initial_needs": "My repetitive task is manual pipetting for aliquots and dilutions. I have a manual pipette and microcentrifuge tubes. Available bench width is 1250 mm. I can assemble open hardware and prioritize flexibility. Compare the reviewed assembled platform with an open-hardware buildable one and wait for my explicit choice before designing.",
+  "model": "muse-spark-1.3-contributor",
+  "wonder_calls": 0,
+  "new_live_usage": {
+    "allowed_physical_call_cap": 14,
+    "physical_attempts": 11,
+    "received_responses": 11,
+    "core_path_calls": 10,
+    "incompatible_width_calls": 1,
+    "reported_input_tokens": 71961,
+    "reported_output_tokens": 6405,
+    "reported_total_tokens": 78366,
+    "unreported_usage_attempts": 0,
+    "core_path_reported_tokens": {
+      "prompt_tokens": 61715,
+      "completion_tokens": 5969,
+      "total_tokens": 67684
+    }
+  },
+  "combined_historical_and_new_usage": {
+    "physical_attempts_including_old_interruption": 68,
+    "reported_input_tokens": 428780,
+    "reported_output_tokens": 52148,
+    "reported_total_tokens": 480928,
+    "unreported_usage_attempts": 1,
+    "limit": "One historical interrupted request still has unknown consumption. Reported combined tokens are a lower bound, not billing or remaining-credit information. Offline replays and zero-call capture setup failures are excluded.",
+    "received_provider_responses": 67
+  },
+  "accepted_final_state": {
+    "revision": 9,
+    "status": "confirmed",
+    "source_foundation_id": "jubilee-v2.2.2-c877bd2",
+    "bed_drop_mm": {
+      "initial": 100,
+      "final": 120,
+      "requested_change": 20
+    },
+    "cold_storage_target_c": 8.0,
+    "stock_concentration": "5 mg/mL",
+    "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+    "final_volume_per_tube": "2 mL",
+    "stock_volumes_ul": [
+      200.0,
+      100.0,
+      20.0
+    ],
+    "snapshot_sha256": "e57412d1b784d21385987dba00bdec9911cc8ef930de62433287b7452a1c4dc2"
+  },
+  "checks": [
+    "exact_bed_delta",
+    "source_identity_and_frame",
+    "preserved_part_sizes_and_arrangement",
+    "cooling_preserves_layout",
+    "inspection_preserves_workstation",
+    "direct_dilution",
+    "quantity_preserves_geometry",
+    "confirmed_final_state",
+    "450_mm_width_rejected_without_changing_confirmed_project"
+  ],
+  "negative_width_check": {
+    "requested_width_mm": 450,
+    "status": "rejected_as_expected",
+    "project_state_preserved": true,
+    "confirmation_preserved": true,
+    "remaining_width_requirement_mm": 1250.0,
+    "all_project_fields_equal_to_pre_request": true,
+    "conversation_note": "The rejected request is retained in conversation history; the complete confirmed project payload remains unchanged."
+  },
+  "timing": {
+    "message_latency_seconds": {
+      "needs": 13.031,
+      "choice": 11.922,
+      "revision": 8.156,
+      "cooling": 15.719,
+      "arm": 16.25,
+      "quantities": 7.359,
+      "incompatible_width": 5.016
+    },
+    "core_message_latency_sum_seconds": 72.437,
+    "negative_message_latency_seconds": 5.016,
+    "scope": "Browser-to-local-API chat-turn measurements include the actual Meta/check work. They exclude untimed save/reopen/confirmation UI overhead. No CAD export time is reported here."
+  },
+  "raw_recording": {
+    "retained_locally": true,
+    "width": 1440,
+    "height": 1000,
+    "duration_seconds": 108.8,
+    "size_bytes": 3989681,
+    "codec": "vp8",
+    "sha256": "923f6fd69a31a9165ec29579d8588f035cf53710573a7b94c15553524de1fd11",
+    "capture": "366 actual browser screenshots sampled at up to 4 fps, encoded with their measured intervals; model waits retained. This is actual live-session screen capture, not a recorded-response application replay. Edited video is a separate deliverable.",
+    "checkpoints": [
+      {
+        "name": "blank",
+        "video_time_seconds_approx": 1.375,
+        "revision": 0,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "needs-options",
+        "video_time_seconds_approx": 16.062,
+        "revision": 1,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "selected-design",
+        "video_time_seconds_approx": 30.515,
+        "revision": 3,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "bed",
+        "video_time_seconds_approx": 41.187,
+        "revision": 4,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "cooling",
+        "video_time_seconds_approx": 59.437,
+        "revision": 6,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "reopen",
+        "video_time_seconds_approx": 60.656,
+        "revision": 6,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "arm",
+        "video_time_seconds_approx": 79.421,
+        "revision": 7,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "sweep",
+        "video_time_seconds_approx": 89.64,
+        "revision": 7,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "quantities",
+        "video_time_seconds_approx": 98.812,
+        "revision": 8,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "confirmed",
+        "video_time_seconds_approx": 100.062,
+        "revision": 9,
+        "model": "muse-spark-1.3-contributor"
+      },
+      {
+        "name": "incompatible-width-rejected",
+        "video_time_seconds_approx": 106.812,
+        "revision": 9,
+        "model": "muse-spark-1.3-contributor"
+      }
+    ],
+    "stream_probe": "passed: 1440x1000 VP8, duration108.800s,3989681bytes",
+    "full_decode_check": "passed using existing local FFmpeg, with no recapture or model requests"
+  },
+  "capture_setup_failures": {
+    "count": 2,
+    "physical_model_calls": 0,
+    "details": [
+      "Native video required an unavailable FFmpeg revision; switched to an existing local encoder.",
+      "The initial ready-text selector was too strict; checked the enabled workflow composer instead."
+    ],
+    "encoding_note": "The minimal Playwright encoder lacked concat support; the saved real frames were successfully encoded with existing Remotion FFmpeg n7.1, with no recapture or new model requests."
+  },
+  "code_sha256": {
+    "app/engineering.py": "d0b56b42d57f981b1c735d5e03f7d2b65840fac8abd95917482f36e6ede919c6",
+    "app/model_client.py": "245ab69cec810990d8437c7961c71f127a5318c8e9330e1394bdab1fc0dbb139",
+    "app/design_agent.py": "cd31a5b14c846a0381b9fd95ab7f5b1b51e6becac18b6d3d77cadac21410d873",
+    "scripts/rehearse_live_api.py": "551e3e2200cfb3624b0e88d45d6529bb494cee1891d0ed7e9d02bc7a47610836"
+  },
+  "files_and_exports": "The final portable project was handed off for a separate same-lineage CAD/export capture. No old package was substituted and no heavy CAD export was run during this conversation capture.",
+  "public_portable_project": "demo-video-project.json"
+}

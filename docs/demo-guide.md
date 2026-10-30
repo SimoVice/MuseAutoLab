@@ -10,26 +10,27 @@ revision-specific files. No laboratory performance or time saving has been measu
 
 | Path | What you can inspect | Requirements |
 | --- | --- | --- |
+| Watch the demo | [Three-minute MP4](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4), actual product captures with English captions | No account or API key; [recording scope and captions](video/README.md) |
 | Read without installing | This guide, architecture below, source documentation and dated JSON examples | No account or API key |
 | Reopen a recorded project | Real 3D, accepted layout, cold bay, inspection sweep and local exports from the example below | Locked setup and local servers; no Meta key or new inference |
 | Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](../README.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
 | Use the product with Meta | Natural conversation, platform choice, design and revisions | [Local configuration](../README.md#local-meta-configuration), your own account access/allowance, then [two local servers](../README.md#run-locally) |
 
-No hosted product or final demo-video URL is published here. Offline fixtures test
-software behavior; they are not fresh model responses. A saved project rebuilds
+The interactive product runs locally. Offline fixtures test software behavior;
+they are not fresh model responses. A saved project rebuilds
 locally without inference but does not restore export jobs or authenticate imported
 historical model metadata.
 
 ## Open the recorded example without a key
 
-The [portable example](examples/demo-project.json) is a synthetic preparation project
-saved from a successful **real Contributor rehearsal on 2026-10-29**, compiler 4,
-revision 9. It contains the original Jubilee source identity, a 130 mm digital bed
-drop, a requested 4 °C cold-bay concept, an inspection-arm/camera proposal and a
+The [portable video project](examples/demo-video-project.json) is a synthetic preparation project
+saved from a successful **real Contributor browser rehearsal on 2026-10-30**, compiler 4,
+revision 9. It contains the original Jubilee source identity, a 120 mm digital bed
+drop, a requested 8 °C cold-bay concept, an inspection-arm/camera proposal and a
 confirmed three-target dilution plan. It is recorded model output, not a new response
 or a physical test. The temperature is requested, not measured.
 
-![Real app reopening the recorded synthetic Meta project at revision 9](images/demo-project.png)
+![Real app reopening the recorded synthetic video project at revision 9](images/demo-video-project.png)
 
 Real app view after reopening the recorded synthetic Meta result. This capture made
 no new inference; it shows the digital proposal, not assembled laboratory hardware.
@@ -37,7 +38,7 @@ no new inference; it shows the digital proposal, not assembled laboratory hardwa
 1. Follow the [locked setup](../README.md#setup-on-windows-powershell), then start the
    [two local servers](../README.md#run-locally). An API key and `.env` are unnecessary
    for this recorded-project review.
-2. In the app, choose **Open project** and select `docs/examples/demo-project.json`
+2. In the app, choose **Open project** and select `docs/examples/demo-video-project.json`
    from the checkout. Geometry is rebuilt locally; the new runtime ID differs from
    the historical saved project ID while revision/lineage remain available.
 3. Rotate the model, open **Project details**, select a component and use **Inspect
@@ -52,6 +53,12 @@ Conversation edits or fresh model proposals require separately configured Meta
 access and allowance. Opening the example does not authenticate the historical model
 metadata supplied in that file. Its scope remains a digital engineering proposal;
 neither cooling nor the inspection module is hardware-validated.
+
+This example uses 5 mg/mL stock, targets of 0.5/0.25/0.05 mg/mL and 2 mL final volume
+per tube, producing 200/100/20 µL stock amounts. The earlier
+[October 29 example](examples/demo-project.json) remains available with its original
+130 mm / 4 °C / 100-50-10 µL values. These are different recorded projects, both at
+revision 9; do not combine their evidence.
 
 ## What Meta does
 
@@ -137,8 +144,10 @@ and [third-party notices](../THIRD_PARTY_NOTICES.md) for source identity and rig
 
 | Record | Date and scope |
 | --- | --- |
+| [Third complete live browser journey](examples/delivery-third-rehearsal.json) and [video project](examples/demo-video-project.json) | 2026-10-30; real browser conversation, third fresh completion and a live 450 mm rejection preserving the confirmed state; distinct from the earlier example below |
 | [Delivery verification](verification.md) | 2026-10-30; regular/source tests, browser checks, clean reconstruction and actual final revision-9 package; remaining delivery work explicit |
-| [Complete-path Meta rehearsals](examples/delivery-rehearsal-summary.json) | 2026-10-29, curated October 30; two complete fresh journeys, a recovered journey and failed/incomplete attempts; proposed third-fresh gate remains open |
+| [Initial complete-path Meta rehearsals](examples/delivery-rehearsal-summary.json) | 2026-10-29, curated October 30; two complete fresh journeys, a recovered journey and failed/incomplete attempts; retained unchanged, with the third fresh completion recorded separately above |
+| [Three-minute video](video/README.md) | 2026-10-30; 180 s, 1080p30, full decode and 12-frame visual review passed; English captions, no narration, shortened waits identified |
 | [Current platform-choice example](examples/engineering-choice-live.json) | 2026-10-29; actual Contributor responses on synthetic needs, both routes and late quantities; retains earlier failures and reported usage |
 | [Source-CAD chat example](examples/chat-foundation-live.json) | 2026-10-28; actual Contributor source-layout, bed and inspection requests, with rejection evidence; predates the current needs/choice flow |
 | [Historical layout implementation](meta-design.md) and [project evolution](project-evolution.md) | 2026-10-28; older architecture/UI records, not instructions for today's interface |
@@ -146,5 +155,5 @@ and [third-party notices](../THIRD_PARTY_NOTICES.md) for source identity and rig
 
 These examples document particular integration runs, not a benchmark, current release
 certificate, physical experiment or reliability percentage. Run the relevant checks
-against the revision under review; final submission/video access remains a separate
-delivery step.
+against the revision under review. The video is available publicly; authenticated
+form requirements and actual event submission remain separate delivery steps.
