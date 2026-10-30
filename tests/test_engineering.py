@@ -94,6 +94,27 @@ def test_requirements_alone_never_select_platform():
     assert result["engineering"]["selected_platform_id"] is None
 
 
+def test_literal_procurement_alias_repairs_format_without_selecting():
+    literal = "buildable open-hardware route"
+    update = EngineeringUpdate(requirements=[
+        EngineeringRequirement(field="procurement", value=literal, source=literal)
+    ])
+    result = apply_engineering_update(project_with_options(), update, f"I prefer the {literal}.")
+    assert result["engineering"]["requirements"]["procurement"] == "open_hardware"
+    assert result["engineering"]["selected_platform_id"] is None
+    with pytest.raises(ValueError):
+        apply_engineering_update(project_with_options(), update, "Unrelated latest message")
+
+
+@pytest.mark.parametrize("literal", ["something buildable", "not open-hardware", "invented route"])
+def test_procurement_aliases_do_not_guess_arbitrary_or_negated_values(literal):
+    update = EngineeringUpdate(requirements=[
+        EngineeringRequirement(field="procurement", value=literal, source=literal)
+    ])
+    with pytest.raises(ValueError):
+        apply_engineering_update(project_with_options(), update, literal)
+
+
 def test_explicit_direct_choice_selects_jubilee():
     project = project_with_options()
     message = "Let's go with Jubilee for the build."

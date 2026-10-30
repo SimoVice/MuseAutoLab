@@ -282,3 +282,83 @@ def test_incomplete_response_reports_kind_and_usage_without_raw_output():
     assert caught.value.failure_kind == "token_limit"
     assert caught.value.usage == {"prompt_tokens": 42, "completion_tokens": 2400}
     assert not hasattr(caught.value, "response")
+
+
+@pytest.mark.parametrize(
+    "selected,reply_choice,expect_success,stored_source",
+    [
+        ("jubilee", "jubilee", True, "I choose Jubilee"),
+        ("jubilee", "opentrons-ot2", False, "I choose Jubilee"),
+        (None, "jubilee", False, "I choose Jubilee"),
+        ("jubilee", "jubilee", False, None),
+    ],
+)
+def test_only_exact_recorded_selection_echo_is_inert(
+    selected, reply_choice, expect_success, stored_source
+):
+    from app.engineering import EngineeringUpdate, apply_engineering_update
+
+    project = new_project()
+    prior_choice = "I choose Jubilee"
+    if selected:
+        project = apply_engineering_update(
+            project,
+            EngineeringUpdate(platform_choice=selected, choice_source=prior_choice),
+            prior_choice,
+        )
+        project["engineering"]["selection_source"] = stored_source
+    body = valid_response(
+        assistant_message="Proposing the requested inspection extension.",
+        actions=[{"kind": "add_inspection", "source": "add an inspection arm and camera"}],
+        engineering={"platform_choice": reply_choice, "choice_source": stored_source},
+    )
+
+    async def run():
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body))
+        ) as client:
+            return await generate_turn(
+                project,
+                "Now add an inspection arm and camera",
+                [],
+                client=client,
+                settings=TEST_SETTINGS,
+            )
+
+    if expect_success:
+        turn, usage = asyncio.run(run())
+        assert turn.engineering.platform_choice is None
+        assert turn.engineering.choice_source is None
+        assert turn.actions[0].kind == "add_inspection"
+        assert usage["total_tokens"] == 62
+    else:
+        with pytest.raises(ModelClientError):
+            asyncio.run(run())
+
+
+@pytest.mark.parametrize("literal_value,expect_success", [
+    ("making dilutions with a manual pipette", True),
+    ("making automated dilutions with a manual pipette", False),
+])
+def test_undersized_brief_source_repairs_only_exact_current_literal(literal_value, expect_success):
+    body = valid_response(brief_process=literal_value, source_brief_process="a manual pipette")
+    def handler(request):
+        return httpx.Response(200, json=body)
+    message = "My process is making dilutions with a manual pipette"
+    if expect_success:
+        turn, _ = run_turn(handler, message=message)
+        assert turn.brief_process == literal_value
+        assert turn.source_brief_process == literal_value
+    else:
+        with pytest.raises(ModelClientError):
+            run_turn(handler, message=message)
+
+
+def test_brief_source_repair_does_not_use_historical_only_value():
+    literal = "making dilutions with a manual pipette"
+    body = valid_response(brief_process=literal, source_brief_process="a manual pipette")
+    with pytest.raises(ModelClientError):
+        run_turn(
+            lambda request: httpx.Response(200, json=body),
+            message="I still use a manual pipette", history=[{"role": "user", "content": literal}],
+        )

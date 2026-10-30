@@ -130,6 +130,23 @@ def _money(value) -> str:
         return ""
 
 
+def _display_mm(value) -> str:
+    """Round document dimensions only; canonical geometry retains full precision."""
+    if value is None:
+        return "undecided"
+    try:
+        number = round(float(value), 1)
+        return f"{0 if number == 0 else number:.1f}".rstrip("0").rstrip(".")
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _display_vector(value, separator: str) -> str:
+    if isinstance(value, (list, tuple)):
+        return separator.join(_display_mm(item) for item in value)
+    return str(value)
+
+
 def assembly_steps(project: dict) -> list[dict]:
     """Return the proposed concept assembly sequence for the snapshot."""
     if project.get("design", {}).get("platform"):
@@ -149,7 +166,7 @@ def assembly_steps(project: dict) -> list[dict]:
     currency = str(sourcing.get("currency", "USD"))
     subtotal = sourcing.get("subtotal")
     subtotal_text = f"{float(subtotal):.2f} {currency}" if subtotal is not None else "unknown"
-    width_text = str(fp.get("width_mm")) if fp.get("width_mm") is not None else "undecided"
+    width_text = _display_mm(fp.get("width_mm"))
     variant = cooling["variant_id"] or "none selected"
     target = cooling["target_c"]
     target_text = (
@@ -433,11 +450,13 @@ def _svg_rects(components: list[dict], highlight: set[str]) -> str:
     xs = [c["position"][0] + sign * c["size"][0] / 2 for c in components for sign in (-1, 1)]
     zs = [c["position"][2] + sign * c["size"][2] / 2 for c in components for sign in (-1, 1)]
     min_x, max_x, min_z, max_z = min(xs) - 20, max(xs) + 20, min(zs) - 20, max(zs) + 20
-    scale = min(500 / (max_x - min_x), 420 / (max_z - min_z))
+    view_height = max(420, 60 + len(components) * 27)
+    scale = min(500 / (max_x - min_x), view_height / (max_z - min_z))
     offset_x = (500 - (max_x - min_x) * scale) / 2
-    offset_y = (420 - (max_z - min_z) * scale) / 2
+    offset_y = (view_height - (max_z - min_z) * scale) / 2
     parts = [
-        '<svg viewBox="0 0 760 420" role="img" aria-label="Numbered top view of deck envelopes">'
+        f'<svg viewBox="0 0 760 {view_height}" role="img" '
+        'aria-label="Numbered top view of deck envelopes">'
     ]
     markers = []
     for number, comp in enumerate(components, 1):
@@ -501,11 +520,20 @@ def _design_provenance_html(project: dict) -> str:
     rationale = html.escape(proposal["rationale"])
     checks = provenance.get("checks", [])
     passed = sum(check.get("passed") is True for check in checks)
+    if project.get("design", {}).get("platform"):
+        model_choices = "Meta proposed assignments of three labware proxies to deck slots. "
+    elif project.get("design", {}).get("foundation"):
+        model_choices = (
+            "Meta proposed custom-insert dimensions, component positions and a digital bed pose. "
+            "The original source frame remains fixed. "
+        )
+    else:
+        model_choices = "Meta proposed the operating-deck dimensions and five component positions. "
     return (
         '<div class="card"><h2>Meta layout decision</h2>'
         f"<p>Model: {model}. {passed}/{len(checks)} recorded geometry checks passed.</p>"
         f"<p>{rationale}</p>"
-        "<p>Meta proposed the operating-deck dimensions and five component positions. "
+        "<p>" + model_choices +
         "The application checked and compiled the proposal; these checks do not establish "
         "hardware feasibility. The full accepted proposal and provenance are in "
         "project.json under engineering_design.</p></div>"
@@ -533,11 +561,13 @@ def _source_basis_html(project: dict) -> str:
             '<p>' + html.escape(basis["architecture"]) + '. '
             'Manufacturer envelopes and proposed custom interfaces have distinct bindings. '
             'Imported CAD does not establish a validated adapter.</p>'
-            '<table><thead><tr><th>Part</th><th>Basis</th><th>Reference</th><th>Scope</th>'
-            '</tr></thead><tbody>' + bindings + '</tbody></table>'
+            '<div class="table-scroll" role="region" aria-label="Component source bindings" '
+            'tabindex="0"><table><thead><tr><th>Part</th><th>Basis</th><th>Reference</th><th>Scope</th>'
+            '</tr></thead><tbody>' + bindings + '</tbody></table></div>'
+            '<div class="table-scroll" role="region" aria-label="Primary sources" tabindex="0">'
             '<table><thead><tr><th>Primary reference</th><th>License / rights</th>'
             '<th>Use</th><th>Scope</th></tr></thead><tbody>' + "".join(rows) +
-            '</tbody></table><p>Revision-pinned source records and component bindings are '
+            '</tbody></table></div><p>Revision-pinned source records and component bindings are '
             'in project.json and cad/geometry-report.json under design_basis.</p></section>')
 
 
@@ -570,8 +600,8 @@ def build_guide_html(project: dict, steps: list[dict]) -> bytes:
             "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
                 html.escape(str(comp.get("id", ""))),
                 html.escape(str(comp.get("label", ""))),
-                html.escape(str(comp.get("position", ""))),
-                html.escape(str(comp.get("size", ""))),
+                html.escape(_display_vector(comp.get("position", ""), ", ")),
+                html.escape(_display_vector(comp.get("size", ""), " × ")),
             )
         )
     step_sections = []
@@ -600,28 +630,35 @@ def build_guide_html(project: dict, steps: list[dict]) -> bytes:
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assembly guide — PROJECT_ID rREV</title>
 <style>
-body{font-family:Segoe UI,Arial,sans-serif;background:#f4f8f7;color:#1d3330;
+*{box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;background:#f4f8f7;color:#1d3330;
 margin:0;line-height:1.65}
 header{background:#103f45;color:#fff;padding:40px max(24px,calc((100vw - 900px)/2))}
 h1{font-family:Georgia,serif;font-size:38px;font-weight:400;line-height:1.15;margin:0 0 12px}
 header p{margin:0;font-size:12px;color:#c1dcd6;overflow-wrap:anywhere}
 h2{font-size:21px;letter-spacing:-.02em}h3{font-size:20px;color:#115d60}
 h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em}
-main{max-width:900px;margin:0 auto;padding:24px}
-.card,.step{background:#fff;border:1px solid #d3e3df;border-radius:12px;padding:24px;margin:20px 0}
+main{max-width:948px;margin:0 auto;padding:20px 24px}
+.card,.step{background:#fff;border:1px solid #d3e3df;border-radius:12px;padding:20px;margin:16px 0;
+overflow-wrap:anywhere}
 .step{break-inside:avoid}.meta{font-size:12px;color:#5b7775}
 svg{display:block;max-width:740px;width:100%;height:auto;margin:20px auto;
 background:#f2f8f6;border:1px solid #d8e7e1;border-radius:8px}
 li+li{margin-top:6px}.checks{border-left:3px solid #71b4a6;padding-left:28px}
 table{border-collapse:collapse;width:100%;font-size:13px}
+.table-scroll{overflow-x:auto;margin:16px 0;overscroll-behavior-x:contain}
+.table-scroll table{min-width:600px}.table-scroll:focus-visible{outline:2px solid #0f766e}
 th,td{border:1px solid #bcd8d3;padding:6px;text-align:left}
 th{background:#d7e8e4}
+@media(max-width:600px){header{padding:26px 18px}h1{font-size:30px}
+main{padding:8px 12px}.card,.step{padding:16px;margin:12px 0}h2{font-size:19px}}
 @media print{body{background:white;font-size:10pt}
 header{color:#103f45;background:white;border-bottom:2px solid #0f766e;padding:12px}
 header p{color:#44635f}main{padding:0}.step{break-before:page;border:none}
-svg{max-width:640px}table{font-size:9pt}th,td{overflow-wrap:anywhere}}
+svg{max-width:640px}table{font-size:9pt}th,td{overflow-wrap:anywhere}
+.table-scroll{overflow:visible}.table-scroll table{min-width:0}}
 </style>
 </head>
 <body>
@@ -630,7 +667,10 @@ svg{max-width:640px}table{font-size:9pt}th,td{overflow-wrap:anywhere}}
 <main>
 <div class="card"><h2>Revision overview</h2>
 <p>Concept assembly sequence. Mounts, wiring and hardware performance remain to be engineered.</p>
-<p>Footprint FP &middot; cooling COOLING &middot; target TARGET<br>Sources checked CHECKED.</p>
+<p>Assembly envelope FP &middot; cooling COOLING &middot; target TARGET<br>
+Sources checked CHECKED.</p>
+<p class="meta">Dimensions below are rounded to 0.1 mm for readability, not a tolerance claim.
+The diagrams show component envelopes, not source-CAD renders or physical assembly evidence.</p>
 <div>OVERVIEW_SVG</div></div>
 <div class="card"><h2>Shared concept geometry</h2>
 <p>The interactive model and workstation STEP use the same component primitive geometry.
@@ -640,7 +680,9 @@ simplified position guide; mechanical fits, materials and fabrication remain unv
 <p>Physics uses conservative component envelopes. Fine openings and visual details do not
 establish insertion clearance, material mass or collision-safe hardware.</p></div>
 <div class="card"><h2>Components (mm, y up)</h2>
-<table><tr><th>id</th><th>label</th><th>position</th><th>size</th></tr>ROWS</table></div>
+<div class="table-scroll" role="region" aria-label="Component dimensions" tabindex="0">
+<table><tr><th>id</th><th>label</th><th>position (x, y, z)</th><th>size (x × y × z)</th></tr>
+ROWS</table></div></div>
 STEPS
 <div class="card"><h2>Open engineering items</h2>
 <ul><li>LIMITATIONS</li></ul></div>
@@ -652,7 +694,8 @@ STEPS
                         + "</main>")
     page = page.replace("LIMITATIONS", "</li><li>".join(html.escape(s) for s in limitations))
     page = page.replace(
-        "FP", html.escape(f"{fp.get('width_mm')} x {fp.get('depth_mm')} x {fp.get('height_mm')} mm")
+        "FP", html.escape(" × ".join(_display_mm(fp.get(axis)) for axis in
+                                     ("width_mm", "depth_mm", "height_mm")) + " mm")
     )
     cooling_text = f"{cooling['variant_id']}, manual transfer" if cooling["enabled"] else "disabled"
     page = page.replace("COOLING", html.escape(cooling_text))

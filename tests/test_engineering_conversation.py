@@ -238,3 +238,62 @@ def test_failed_platform_switch_preserves_choice_and_actual_design(monkeypatch):
     assert data["action_runs"][0]["status"] == "rejected"
     assert data["project"]["design"] == before["design"]
     assert state_for(data["project"]) == state_for(before)
+
+
+def test_recorded_choice_echo_does_not_trigger_layout_development(monkeypatch):
+    import json
+
+    import httpx
+    from foundation_fixtures import liquid_project
+
+    from app.design_spec import apply_candidate
+    from app.foundation_design import adopt_foundation
+    from app.model_client import ModelSettings, generate_turn
+
+    project = apply_candidate(adopt_foundation(liquid_project()), source_proposal(), {})
+    before = deepcopy(project)
+    stale = ExtractedTurn(
+        assistant_message="The selected source frame remains unchanged.",
+        engineering=EngineeringUpdate(
+            platform_choice="jubilee", choice_source=state_for(project)["selection_source"]
+        ),
+    )
+
+    async def extract(current, message, history):
+        def provider(request):
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {"finish_reason": "stop", "message": {"content": stale.model_dump_json()}}
+                    ],
+                    "usage": {},
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(provider)) as client:
+            return await generate_turn(
+                current,
+                message,
+                history,
+                client=client,
+                settings=ModelSettings("test", "https://example.invalid/v1", "offline"),
+            )
+
+    async def unexpected_development(*args):
+        pytest.fail("An inert echoed choice must not launch design development")
+
+    monkeypatch.setattr(api, "generate_turn", extract)
+    monkeypatch.setattr(api, "execute_chat_actions", unexpected_development)
+    api._sessions[project["id"]] = api.ProjectSession(project=project)
+    with TestClient(api.app) as client:
+        response = client.post(
+            f"/api/projects/{project['id']}/messages",
+            json={"message": "Explain the original frame attribution"},
+        )
+    assert response.status_code == 200, json.dumps(response.json())
+    data = response.json()
+    assert data["action_runs"] == []
+    assert data["project"]["revision"] == before["revision"]
+    assert data["project"]["engineering_design"] == before["engineering_design"]
+    assert state_for(data["project"]) == state_for(before)

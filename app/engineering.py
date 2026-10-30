@@ -48,8 +48,25 @@ class EngineeringOption(StrictModel):
 
 class EngineeringRequirement(StrictModel):
     field: RequirementField
-    value: Text1000
+    value: Annotated[Text1000, Field(description=(
+        "For procurement use only prebuilt or open_hardware. For every other field, "
+        "copy the user's literal text. Never put a descriptive procurement phrase here."
+    ))]
     source: Text1000
+
+    @model_validator(mode="after")
+    def _literal_procurement_alias(self) -> EngineeringRequirement:
+        # A closed alias vocabulary repairs a field-format error, never a platform choice.
+        # The literal source is still checked against the latest message before application.
+        aliases = {
+            "open hardware": "open_hardware", "open-hardware": "open_hardware",
+            "open-source": "open_hardware", "buildable open-hardware route": "open_hardware",
+            "buy assembled": "prebuilt", "pre-built": "prebuilt",
+            "assembled platform": "prebuilt",
+        }
+        if self.field == "procurement" and self.value.casefold() == self.source.casefold():
+            self.value = aliases.get(self.value.casefold(), self.value)
+        return self
 
 
 class EngineeringUpdate(StrictModel):

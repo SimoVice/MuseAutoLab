@@ -46,6 +46,9 @@ platform, one previously offered procurement route, a numbered option, or unambi
 confirmation of one proposed option. A question, hypothetical future example, negation,
 or yes after two alternatives is not a selection. Keep options=[] when not proposing.
 If platform_choice is null, choice_source must also be null, without an explanation there.
+When selected_platform_id is already recorded, keep platform_choice and choice_source null
+unless the latest message explicitly selects a platform again. Never repeat the stored
+selection_source or a selection from an earlier turn as a new choice.
 After the user's clear selection and recorded liquid/equipment context, return
 develop_layout so the selected architecture is actually developed. A recipe is optional
 at this stage. Explain what needs buying/fabricating and link only reviewed references.
@@ -638,7 +641,28 @@ async def generate_turn(
             raise TypeError("invalid message content")
         result = ExtractedTurn.model_validate_json(content)
         failure_kind = "source_validation"
+        for key in BRIEF_KEYS:
+            value = getattr(result, key)
+            source = getattr(result, f"source_{key}")
+            if (isinstance(value, str) and isinstance(source, str)
+                    and value in user_message and source in user_message
+                    and value.casefold() not in source.casefold()):
+                # Correct only an undersized citation of text already copied verbatim.
+                # No new brief value or semantic inference is introduced.
+                setattr(result, f"source_{key}", value)
         result.verify_sources(user_message)
+        recorded = state_for(project)
+        if (
+            result.engineering.platform_choice is not None
+            and result.engineering.platform_choice == recorded["selected_platform_id"]
+            and isinstance(result.engineering.choice_source, str)
+            and result.engineering.choice_source == recorded["selection_source"]
+            and result.engineering.choice_source not in user_message
+        ):
+            # A verbatim echo of the accepted choice cannot select or change anything.
+            # Drop this inert repetition; new/different choices still need current evidence.
+            result.engineering.platform_choice = None
+            result.engineering.choice_source = None
         result.engineering.verify_sources(user_message, project)
         effective_kind = result.workflow_kind or workflow["kind"]
         if effective_kind == "general" and any(

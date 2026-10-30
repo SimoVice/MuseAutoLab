@@ -2,6 +2,37 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-30: Rehearsal hardening and reviewer package
+
+Added focused part, working-area and arm/camera views while keeping the source geometry
+unchanged. Project generation now describes each platform's actual scope, reconnects to
+an existing job after a polling failure and opens the real standalone guide in a sandboxed
+viewer. The guide has responsive tables, readable dimension formatting and complete
+19-component SVG legends. Added a recorded real-Meta project, current screenshot,
+reviewer walkthrough, architecture and a dated verification report.
+
+Real Contributor rehearsals exposed source-format and layout-preservation failures.
+The parser now handles only exact inert choice echoes and bounded literal source/enum
+normalization. Layout requests receive authoritative current relative placements;
+deterministic preservation checks reject changes that violate supported explicit keep
+instructions. The existing single correction and atomic rollback remain in place.
+The live rehearsal runner defaults to dry-run, bounds physical calls and retains failed
+attempts, timings and reported usage. Offline replay is identified separately.
+
+GPT-6.1 Sol handled backend, guide/UI and verification coding. GPT-6.1 Terra handled
+scene focus and its geometry-aware review. Codex coordinated, reviewed and integrated
+the work, inspected actual artifacts and assembled the evidence. Runtime proposals
+used the Meta API, separately from those development assistants. No new dependency,
+hardware operation or private parent-record disclosure was introduced.
+
+Verification: 415 regular Python tests and 8 separate heavy source-CAD tests passed,
+with Ruff, production build, six offline browser flows and clean locked reconstruction.
+The actual revision-9 package contains 25 files; its STEP reopened as valid with 863
+solids and 19 components. Two complete fresh Meta journeys succeeded; the proposed
+three-journey gate remains open. The 57 physical attempts include an interrupted request
+with unknown usage. See [verification and limits](docs/verification.md) and the
+[curated Meta record](docs/examples/delivery-rehearsal-summary.json) for exact scope.
+
 ## 2026-10-29: Needs, platform choice and route-specific engineering
 
 Ordinary chat now tracks grounded procurement, budget, throughput, assembly and priority

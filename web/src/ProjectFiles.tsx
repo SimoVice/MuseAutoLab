@@ -23,12 +23,12 @@ function formatBytes(size: number): string {
   return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value)} ${units[unit]}`;
 }
 
-function stageLabel(job: ExportJob): string {
+function stageLabel(job: ExportJob, digitalPlatform: boolean): string {
   if (job.status === 'ready') return 'Ready';
   if (job.status === 'failed') return 'Failed';
   if (job.status === 'stale') return 'Out of date';
   const done = Math.max(0, Math.min(job.completed_stages, job.total_stages));
-  const stage = { queued: 'Queued', cad: 'Building CAD files', documents: 'Preparing documents', simulation: 'Running physics', archive: 'Packaging downloads' }[job.stage];
+  const stage = { queued: 'Queued', cad: 'Building CAD files', documents: 'Preparing documents', simulation: digitalPlatform ? 'Recording simulation scope' : 'Running physics', archive: 'Packaging downloads' }[job.stage];
   return stage ?? `Stage ${done}/${job.total_stages}`;
 }
 
@@ -45,6 +45,10 @@ export default function ProjectFiles({ project, onSelect }: Props) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
+  const [guide, setGuide] = useState<string | null>(null);
+  const [guideLoading, setGuideLoading] = useState(false);
+  const [guideError, setGuideError] = useState<string | null>(null);
+  const guideRequestRef = useRef<AbortController | null>(null);
   const pollRef = useRef<number | null>(null);
   const epochRef = useRef(0);
   const requestRef = useRef<AbortController | null>(null);
@@ -66,9 +70,14 @@ export default function ProjectFiles({ project, onSelect }: Props) {
     setError(null);
     setStarting(false);
     setStepIndex(0);
+    guideRequestRef.current?.abort();
+    setGuide(null);
+    setGuideLoading(false);
+    setGuideError(null);
     return () => {
       epochRef.current += 1;
       requestRef.current?.abort();
+      guideRequestRef.current?.abort();
       clearPoll();
     };
   }, [projectKey, clearPoll]);
@@ -133,7 +142,36 @@ export default function ProjectFiles({ project, onSelect }: Props) {
   function retry() {
     clearPoll();
     setError(null);
+    if (job && (job.status === 'queued' || job.status === 'running')) {
+      // A failed status request does not mean the expensive export stopped.
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
+      pollUntilDone(job.id, ++epochRef.current, controller.signal);
+      return;
+    }
     void start();
+  }
+
+  async function openGuide() {
+    guideRequestRef.current?.abort();
+    const controller = new AbortController();
+    guideRequestRef.current = controller;
+    const epoch = epochRef.current;
+    setGuideLoading(true);
+    setGuideError(null);
+    try {
+      const response = await fetch(fileHref('assembly-guide.html'), { signal: controller.signal });
+      if (!response.ok) throw new Error(await readError(response));
+      const document = await response.text();
+      if (epochRef.current === epoch && !controller.signal.aborted) setGuide(document);
+    } catch (reason: unknown) {
+      if (epochRef.current === epoch && !controller.signal.aborted) {
+        setGuideError(reason instanceof Error ? reason.message : 'Could not open the guide. Try the download.');
+      }
+    } finally {
+      if (epochRef.current === epoch && !controller.signal.aborted) setGuideLoading(false);
+    }
   }
 
   const steps: AssemblyStep[] = job?.assembly_steps ?? [];
@@ -147,6 +185,8 @@ export default function ProjectFiles({ project, onSelect }: Props) {
   }, [job?.status, currentStep, onSelect]);
 
   const pending = job !== null && (job.status === 'queued' || job.status === 'running');
+  const isCommercial = project.design.platform?.id === 'opentrons-ot2';
+  const digitalPlatform = Boolean(project.design.foundation || isCommercial);
   const files: ExportFileEntry[] = job?.files ?? [];
   const primaryNames = new Set(['assembly-guide.html', 'bill-of-materials.csv', 'cad/workstation.step', 'simulation/result.json', 'automation/preview.py']);
   function fileCards(entries: ExportFileEntry[]) {
@@ -169,13 +209,14 @@ export default function ProjectFiles({ project, onSelect }: Props) {
   }
 
   return (
-    <section className="files-card" aria-labelledby="files-title">
+    <section className={`files-card${guide ? ' files-card-guide-open' : ''}`} aria-labelledby="files-title">
       <div className="files-heading">
         <div>
           <h2 id="files-title">Project files</h2>
-          <p>CAD, assembly guide, physics report and preparation plan for revision {project.revision}.</p>
+          <p>{isCommercial ? 'Schematic CAD, setup guide and preparation plan' : 'CAD, assembly guide and preparation plan'} for revision {project.revision}.</p>
+          {digitalPlatform && <p className="files-note">Digital proposal only. Physics and hardware control are unavailable for this platform.</p>}
         </div>
-        {job && <span className={`files-status files-status-${job.status}`}>{stageLabel(job)}</span>}
+        {job && <span className={`files-status files-status-${job.status}`}>{stageLabel(job, digitalPlatform)}</span>}
       </div>
 
       {!job && (
@@ -191,14 +232,14 @@ export default function ProjectFiles({ project, onSelect }: Props) {
       {job && pending && (
         <div className="files-progress" role="status">
         <progress aria-label="Project generation progress" value={job.completed_stages} max={job.total_stages} />
-          {stageLabel(job)} — {Math.max(0, Math.min(job.completed_stages, job.total_stages))}/{job.total_stages} stages complete.
+          {stageLabel(job, digitalPlatform)} — {Math.max(0, Math.min(job.completed_stages, job.total_stages))}/{job.total_stages} stages complete.
         </div>
       )}
 
       {error && (
         <div className="files-error" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={retry}>Retry generation</button>
+          <button type="button" onClick={retry}>{pending ? 'Reconnect to generation' : 'Retry generation'}</button>
         </div>
       )}
 
@@ -216,6 +257,15 @@ export default function ProjectFiles({ project, onSelect }: Props) {
               Download project ZIP
             </a>
           )}
+          {files.some((file) => file.name === 'assembly-guide.html') && (
+            <div className="files-start">
+              <button type="button" className="preview-button" disabled={guideLoading} onClick={() => guide ? setGuide(null) : void openGuide()}>
+                {guideLoading ? 'Opening guide…' : guide ? 'Close guide' : 'Read project guide'}
+              </button>
+              {guideError && <p className="files-error" role="alert">{guideError}</p>}
+            </div>
+          )}
+          {guide && <iframe title={`Project guide — revision ${project.revision}`} srcDoc={guide} sandbox="" referrerPolicy="no-referrer" style={{ width: '100%', height: 'min(75vh, 800px)', minHeight: 420, border: '1px solid #d3e3df', borderRadius: 12, marginTop: 12 }} />}
           <ul className="files-list">
             {fileCards(files.filter((file) => primaryNames.has(file.name)))}
           </ul>

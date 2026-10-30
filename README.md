@@ -1,8 +1,14 @@
 # MuseAutoLab
 
-Design laboratory automation through an engineering conversation, choosing reviewed open hardware or an assembled platform.
+Turn repetitive laboratory work into a sourced, editable automation proposal through an engineering conversation.
 
 Meta models interpret the researcher's request, propose checked layouts and design an optional inspection extension. The application retains the original source CAD and performs deterministic arithmetic, geometry compilation and checks. Coding assistants used to build MuseAutoLab are separate from its runtime Meta inference.
+
+The current result is a **working digital prototype**: compare two reviewed platform routes, explicitly choose one, revise its supported geometry, save/reopen the project and generate coherent CAD/documents. The Jubilee route also supports a cold-bay concept and an explicitly requested inspection-arm/camera concept. Neither current platform has physics or hardware control; no laboratory performance or time saving has been measured.
+
+**Start here:** [reviewer/demo guide and architecture](docs/demo-guide.md) · [delivery verification](docs/verification.md) · [locked setup](#setup-on-windows-powershell) · [run locally](#run-locally) · [offline checks](#verify-the-product) · [real Meta rehearsals](docs/examples/delivery-rehearsal-summary.json) · [source attribution](THIRD_PARTY_NOTICES.md).
+
+The guide includes a [recorded real-Meta project you can reopen without a key](docs/demo-guide.md#open-the-recorded-example-without-a-key), plus offline checks and the live product path, which requires your own Meta API access. No hosted demo or final video is linked yet. Historical feature documents retain their original scope; use this README and the guide for the current flow.
 
 ## Current demonstrator
 
@@ -23,11 +29,11 @@ This is a working software prototype for digital proposals, not a tested laborat
 2. Discuss materials, equipment and constraints. For example: “I have a pipette and microcentrifuge tubes.” There is no need to choose concentrations yet.
 3. Ask **“Compare an assembled platform with an open-source buildable one. Explain the tradeoffs and ask for my choice before designing.”** Answer Meta's next useful questions, then choose a route. For example: **“I prefer the open-source buildable one. Proceed with its design.”** The progress indicator follows the actual Meta/check request; its short final fill completes before accepted 3D appears.
 4. Request a revision in chat, for example **“Lower the existing build plate by another 30 mm.”** for Jubilee, or **“Move only the sample rack to slot 8.”** for OT-2. Existing positions reach Meta as context. The compiler accepts or rejects a bounded proposal; it never silently rescales source parts.
-5. On Jubilee, when wanted, ask **“Now add an inspection arm and camera to this workstation.”** Future examples do not add it. A separate custom sidecar is proposed; its sweep is kinematic, with no coverage, mounting or collision validation. Custom inspection/cooling integration on OT-2 is unsupported and rejected while preserving the accepted project.
+5. On Jubilee, request any cold-bay/layout changes **before** expansion, inspect the full resulting footprint, then Save/Open the project and ask **“Now add an inspection arm and camera to this workstation.”** A new layout clears an earlier extension. Future examples do not add it. A separate custom sidecar is proposed; its sweep is kinematic, with no coverage, mounting or collision validation. Custom inspection/cooling integration on OT-2 is unsupported and rejected while preserving the accepted project.
 6. Choose concentrations and final volume when useful: **“Use target concentrations of 1, 0.5 and 0.1 mg/mL, with a final volume of 1 mL per tube. Keep the machine layout unchanged.”** Per-tube wording is accepted as context, not an unsupported unit. If stock is missing, supply it when asked. With 10 mg/mL stock, stock volumes are 100, 50 and 10 µL respectively, each made up to 1 mL. These are example inputs, not defaults. Independent direct dilutions are calculated; capacity, pipette range, mixing and dead volume remain unchecked.
 7. Ask **“How do I buy the pieces and assemble this?”** for the selected route's source links, purchase/configuration steps and unresolved checks. Guidance stays under collapsed **Project details**. Review the **Preparation plan**, confirm, then preview or generate revision-specific files. Photo inspection appears after an explicit request or accepted extension; only Analyze photo sends the selected image to Meta.
 
-The left side contains the brief or interactive model, with a compact partial cost/selection summary. Secondary details stay collapsed. All development, cooling and expansion requests use the same chat; there are no permanent arm/camera/cooling request fields. A rejected change preserves the previous project. Quantity-only edits preserve accepted geometry. A new layout clears an earlier inspection extension so it can be designed against the new arrangement.
+The left side contains the brief or interactive model, with a compact partial cost/selection summary. Secondary details stay collapsed. All development, cooling and expansion requests use the same chat; there are no permanent arm/camera/cooling request fields. A rejected change preserves the previous project. Quantity-only edits preserve the accepted layout, source/bed pose and inspection proposal; the custom sample-rack hole pattern follows the number of preparation targets. Exports belong to the resulting revision. A new layout clears an earlier inspection extension so it can be designed against the new arrangement.
 
 The fixed source envelope is approximately **483.1 × 612.7 × 564.4 mm** (width × depth × height). A width below 483.1 mm is rejected for this foundation. Meta may propose a **240–300 × 260–300 mm** custom insert and **95–150 mm** downward bed pose. These are bounded digital design choices, not validated travel or mounting limits. The camera/arm/cold sidecars add their own assembly bounds. Arbitrary CAD architectures and source-part editing are not implemented.
 
@@ -38,6 +44,8 @@ The OT-2 enclosure is **630 × 570 × 660 mm** (width × depth × height). Manuf
 **Save project / Open project** use a portable JSON file, capped at 256 KB. Compiler version 4 records engineering requirements/options, the selected platform, source identity/pose or slot assignments, then rebuilds canonical geometry without a Meta call. It accepts no arbitrary mesh URLs, CAD paths or executable code. Version-3 Jubilee designs retain geometry and acquire their existing platform choice. Version-1/2 files preserve inputs/history, clear incompatible designs/extensions and require a new design. New openings get a fresh runtime ID and retain lineage; old jobs/results are not restored. Browser-local resume is convenience, not cloud storage or a backup.
 
 After confirmation, **Project details → Generate project files** performs real CAD, document and archive work. The package contains the full workstation STEP, custom deck STEP/STL, standalone build123d regeneration source, original source STEP gzip, license/provenance, source bindings, preparation/BOM data, assembly guidance and file hashes. The viewer uses simplified source meshes; the original STEP is the geometric authority. The SVG is a custom-parts layout view and omits source geometry. Simulation records `not_run` for this imported foundation.
+
+When generation is ready, **Read project guide** opens the actual standalone HTML inside a sandboxed viewer; downloads remain available separately. A temporary status-request failure offers **Reconnect to generation**, which resumes checking the existing job instead of starting another heavy export.
 
 Full source CAD exports are substantially larger/slower than the former concept boxes and can take several minutes on first use. Progress advances only after actual stages; it does not show invented percentages. Packages have a 128 MiB ZIP cap and 512 MiB uncompressed cap. Downloads are restricted to the current revision. Known prices are partial dated catalogue observations; unpriced groups remain unknown, and a zero known subtotal displays “Pricing pending”. This is not a complete quotation.
 
@@ -191,6 +199,10 @@ Open http://127.0.0.1:5173/. The frontend proxies `/api` to the backend. Meta re
 npm.cmd --prefix web run build
 .\.venv\Scripts\python.exe tests/browser_foundation.py
 .\.venv\Scripts\python.exe tests/browser_engineering.py
+.\.venv\Scripts\python.exe tests/browser_platform.py
+.\.venv\Scripts\python.exe tests/browser_vision.py
+.\.venv\Scripts\python.exe tests/browser_scene_focus.py
+.\.venv\Scripts\python.exe tests/browser_project_files.py
 ```
 
 The first Python command runs the regular regression suite; the second runs the source-CAD checks, including a full export/reopen and standalone regeneration. That integration test reads expanded source geometry twice and requires substantial time and memory (several GiB on the verified Windows host). Run it separately from quick UI iteration. Both check sets are required for source/export changes.
@@ -198,6 +210,8 @@ The first Python command runs the regular regression suite; the second runs the 
 The current Chrome flow uses explicit offline Meta fixtures, the real API/compiler and real locally served Jubilee meshes. It checks discovery without presets, future examples without action, progress-before-reveal, chat design/revision/expansion, width rejection/rollback, late dilution arithmetic, confirmation, collapsed details, saved/reopened state and mobile layout. Set `MUSEAUTOLAB_BROWSER_SCREENSHOT` to an absolute path for an optional screenshot. It does not establish physical operation.
 
 `browser_engineering.py` checks comparison, no CAD before selection, both actual adapter routes, the exact per-tube prompt, unchanged layout, setup guidance and save/reopen. `browser_smoke.py` and the former design/evolution/source entry points delegate to the foundation flow. `browser_platform.py` checks generic discovery/workflow switching; `browser_vision.py` retains photo/review/archive/camera-track scenarios. Legacy direct `/design` endpoints/compiler fixtures remain for compatibility testing; current `/messages` development requires an explicit platform choice.
+
+`browser_project_files.py` uses explicit offline export responses to check both platform labels, reconnect after an interrupted status request without another export POST, explicit sandboxed guide reading and project reset. It does not generate heavy CAD or call Meta.
 
 The shareable [live Meta example](docs/examples/chat-foundation-live.json) records synthetic future-example, source-layout, bed revision and inspection requests. It distinguishes actual model choices from deterministic checks and preserves rejection evidence. Results are nondeterministic and are integration checks, not model accuracy or laboratory validation.
 

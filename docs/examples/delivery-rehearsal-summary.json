@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-29",
+  "prepared_on": "2026-10-30",
+  "scope": "Synthetic local-API rehearsal of needs, explicit platform selection, Jubilee design, bed revision, cooling, save/reopen, arm/camera expansion, quantities and confirmation. No hardware, laboratory performance, export timing, or reliability-rate claim.",
+  "model": "muse-spark-1.3-contributor",
+  "wonder_calls": 0,
+  "release_gate": {
+    "proposed_fresh_complete_paths": 3,
+    "observed_fresh_complete_paths": 2,
+    "status": "not_met",
+    "successful_recovered_paths": 1,
+    "third_path": "Safely blocked at platform choice because available equipment was not recorded; the backend requested equipment instead of generating a machine. No later stages were completed."
+  },
+  "live_totals": {
+    "physical_attempts_including_interruption": 57,
+    "provider_responses_received": 56,
+    "provider_http_200_responses": 56,
+    "attempts_by_schema": {
+      "requirement_turn": 37,
+      "layout_proposal": 15,
+      "inspection_proposal": 5
+    },
+    "reported_input_tokens": 356819,
+    "reported_output_tokens": 45743,
+    "reported_total_tokens": 402562,
+    "usage_unreported_attempts": 1,
+    "usage_limit": "Reported totals exclude the unknown consumption of one interrupted in-flight arm-extraction request. They are a lower bound, not billing or remaining-credit data.",
+    "known_provider_latency_seconds": {
+      "responses_with_timing": 56,
+      "sum": 462.917,
+      "median": 8.078,
+      "min": 3.766,
+      "max": 21.234
+    },
+    "latency_limit": "Individual provider-request timings and chat-turn sums exclude untimed save/reopen/confirmation overhead. No hardware or export timing is included."
+  },
+  "fresh_complete_paths": [
+    {
+      "scenario": "bench-dilutions",
+      "recorded_at_utc": "20261029T172051800954Z",
+      "physical_model_calls": 10,
+      "final_revision": 9,
+      "bed_drop_mm": {
+        "initial": 100.0,
+        "revised": 130.0,
+        "requested_delta": 30.0
+      },
+      "cold_storage_target_c": 4.0,
+      "arm_link_lengths_mm": [
+        275.0,
+        275.0
+      ],
+      "stock_volumes_ul": [
+        100.0,
+        50.0,
+        10.0
+      ],
+      "message_latency_seconds": {
+        "needs": 9.391,
+        "choice": 14.937,
+        "revision": 9.312,
+        "cooling": 10.031,
+        "arm": 12.172,
+        "quantities": 8.516
+      },
+      "message_latency_sum_seconds": 64.359,
+      "reported_input_tokens": 61813,
+      "reported_output_tokens": 6009,
+      "final_code_evidence": "Live run preceded the last parser hardening; all ten recorded responses replayed successfully offline on the fingerprints below."
+    },
+    {
+      "scenario": "flexible-preparation",
+      "recorded_at_utc": "20261029T172652978019Z",
+      "physical_model_calls": 10,
+      "final_revision": 9,
+      "bed_drop_mm": {
+        "initial": 100.0,
+        "revised": 125.0,
+        "requested_delta": 25.0
+      },
+      "cold_storage_target_c": 6.0,
+      "arm_link_lengths_mm": [
+        275.0,
+        275.0
+      ],
+      "stock_volumes_ul": [
+        50.0,
+        25.0,
+        5.0
+      ],
+      "message_latency_seconds": {
+        "needs": 10.812,
+        "choice": 15.547,
+        "revision": 11.125,
+        "cooling": 10.953,
+        "arm": 12.094,
+        "quantities": 7.907
+      },
+      "message_latency_sum_seconds": 68.438,
+      "reported_input_tokens": 62449,
+      "reported_output_tokens": 7194,
+      "final_code_evidence": "Live run recorded these exact final code fingerprints."
+    }
+  ],
+  "audited_behaviors": [
+    "Exact requested bed delta; fixed source identity, frame and purchased-part sizes retained.",
+    "Cooling preserved the accepted insert dimensions, placements and bed pose.",
+    "Save/reopen rebuilt the same design with no model request.",
+    "Arm extension retained the workstation and cold-storage components.",
+    "Quantity edits retained accepted layout/proposal/arm; only canonical sample-rack representation followed the target count.",
+    "Direct-dilution stock volumes matched deterministic calculations; final state was confirmed."
+  ],
+  "failures_and_limits": [
+    {
+      "kind": "source_validation",
+      "event": "An arm request repeated a historical platform-choice source; HTTP 502 preserved the project.",
+      "resolution": "Ignore only an exact inert echo of the already recorded choice; new choices still require current-message evidence."
+    },
+    {
+      "kind": "harness_false_positive",
+      "event": "Full design-dictionary equality rejected the intentional sample-rack change from one to three represented holes after three targets were supplied.",
+      "resolution": "Require exact canonical regeneration from the prior layout and new plan; do not broadly ignore geometry differences."
+    },
+    {
+      "kind": "real_semantic_failure",
+      "event": "An earlier cooling proposal moved five accepted components while claiming to preserve them. A later strict audit also rejected the recovered result from that snapshot.",
+      "resolution": "Explicit relative layout context plus bounded deterministic preservation checks before acceptance; violations receive the existing single correction attempt. No live correction of that specific bad response is claimed."
+    },
+    {
+      "kind": "interrupted_request",
+      "event": "One in-flight arm-extraction request was stopped while investigating the harness issue; no provider response or token usage was received.",
+      "resolution": "Count the request against the physical-attempt total; retain consumption as unknown."
+    },
+    {
+      "kind": "source_validation",
+      "event": "A procurement requirement used the literal descriptive route instead of its canonical enum; HTTP 502 preserved the project.",
+      "resolution": "Closed exact literal aliases normalize procurement format while retaining the source and without selecting a platform."
+    },
+    {
+      "kind": "source_validation",
+      "event": "A brief value copied the current message exactly but its cited source covered only the trailing words; HTTP 502 preserved the project.",
+      "resolution": "Repair only a current exact literal value span; no paraphrase, changed value, or historical-only source is accepted."
+    },
+    {
+      "kind": "missing_requirement",
+      "event": "The third fresh scenario described pipette-based work without explicitly recording available equipment; layout generation was rejected.",
+      "resolution": "Equipment clarification remains required. This scenario is incomplete and is not counted as a successful fresh route."
+    }
+  ],
+  "offline_replay": {
+    "scenario": "bench-dilutions",
+    "recorded_responses_reused": 10,
+    "new_physical_provider_calls": 0,
+    "status": "passed",
+    "purpose": "Revalidate the earlier successful live responses through final parser, compiler and preservation checks. Historical replay tokens are excluded from live totals."
+  },
+  "verification": {
+    "focused_backend_tests_passed": 104,
+    "ruff": "passed",
+    "code_sha256": {
+      "app/engineering.py": "d0b56b42d57f981b1c735d5e03f7d2b65840fac8abd95917482f36e6ede919c6",
+      "app/model_client.py": "245ab69cec810990d8437c7961c71f127a5318c8e9330e1394bdab1fc0dbb139",
+      "app/design_agent.py": "cd31a5b14c846a0381b9fd95ab7f5b1b51e6becac18b6d3d77cadac21410d873",
+      "scripts/rehearse_live_api.py": "551e3e2200cfb3624b0e88d45d6529bb494cee1891d0ed7e9d02bc7a47610836"
+    },
+    "fingerprints_match_final_live_run_and_offline_replay": true
+  },
+  "portable_example": "demo-project.json",
+  "raw_receipts": "All original responses, failed attempts and interrupted-request annotations are retained locally; raw transcripts, runtime IDs, credentials and private paths are omitted from this curated summary."
+}

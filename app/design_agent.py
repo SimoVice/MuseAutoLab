@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
+import re
 import time
 from copy import deepcopy
 from typing import Any
@@ -76,6 +78,24 @@ def _summarize_project(project: dict) -> dict:
                     "slot_id": item.get("slot_id"),
                 }
             )
+    insert_layout = None
+    if design.get("foundation"):
+        parts = {part["id"]: part for part in components}
+        try:
+            deck = parts["base"]
+            insert_layout = {
+                "deck_width_mm": deck["size"][0],
+                "deck_depth_mm": deck["size"][2],
+                "bed_drop_mm": design["foundation"]["bed_drop_mm"],
+                "placements": [
+                    {"component_id": cid,
+                     "x_mm": round(parts[cid]["position"][0] - deck["position"][0], 6),
+                     "z_mm": round(parts[cid]["position"][2] - deck["position"][2], 6)}
+                    for cid in ("source-rack", "sample-rack", "tip-rack", "tip-waste", "controller")
+                ],
+            }
+        except (KeyError, TypeError, IndexError):
+            insert_layout = None
     return {
         "revision": project.get("revision") if isinstance(project, dict) else None,
         "workspace_width_mm": summary.get("workspace_width_mm"),
@@ -89,6 +109,7 @@ def _summarize_project(project: dict) -> dict:
         },
         "cooling": {"enabled": cooling.get("enabled"), "target_c": cooling.get("target_c")},
         "components": components,
+        "current_insert_layout": insert_layout,
     }
 
 
@@ -122,7 +143,10 @@ def _developer_instructions(project: dict) -> str:
             "rather than placing three95mm racks across a300mm bed. "
             "For revisions, retain the current insert dimensions, placements and bed pose "
             "unless the user's requested change needs them changed. Use actual current "
-            "positions below, not an assumed starter layout. The source frame and "
+            "positions below, not an assumed starter layout. "
+            "Use current_insert_layout as the authoritative insert-relative parameters; "
+            "do not recompute or guess offsets from absolute component centres. Copy its "
+            "placements verbatim when the request preserves the arrangement. The source frame and "
             "native fixed parts are immutable. bed_drop_mm translates only the original "
             "build-plate subassembly downward; it is an illustrative unverified travel pose. "
             "The300mm workspace is a conservative placement hypothesis, not measured mounting "
@@ -278,6 +302,72 @@ def _attempt_record(
     }
 
 
+def _preservation_checks(project: dict, candidate: dict, instruction: str) -> list[dict]:
+    """Check a bounded English preservation vocabulary, not arbitrary user intent.
+
+    Recognized keep/retain/preserve/leave clauses can lock the existing insert
+    layout, insert dimensions, or bed pose. Negated clauses do not create locks.
+    A violation becomes ordinary model-correction feedback, never a silent edit.
+    """
+    current = _summarize_project(project)["current_insert_layout"]
+    if current is None or not isinstance(candidate, dict):
+        return []
+    locks = set()
+    for clause in re.split(r"[.!?;]", instruction.casefold()):
+        verb = re.search(r"\b(?:keep|retain|retaining|preserve|preserving|leave)\b", clause)
+        if not verb:
+            continue
+        prefix = clause[:verb.start()]
+        if re.search(r"(?:\bnot|\bnever|n't|\bno need to)\s*(?:\w+\s+){0,2}$", prefix):
+            continue
+        subject = re.split(
+            r"\b(?:but|then|while)\b|\band\s+(?:(?:please|also)\s+)?"
+            r"(?:change|move|resize|rearrange|redesign|lower|raise|increase|decrease|shrink|expand)\b",
+            clause[verb.end():], maxsplit=1,
+        )[0]
+        if re.search(r"\b(?:component|rack|insert) arrangement\b", subject):
+            locks.add("placements")
+        if re.search(r"\blayout\b", subject):
+            locks.update(("placements", "deck_width_mm", "deck_depth_mm"))
+        if re.search(r"\b(?:insert|deck) (?:dimensions|size|width|depth)\b", subject):
+            locks.update(("deck_width_mm", "deck_depth_mm"))
+        if re.search(r"\bbed (?:pose|position)\b", subject):
+            locks.add("bed_drop_mm")
+
+    def same_number(a, b):
+        try:
+            return (isinstance(a, (int, float)) and not isinstance(a, bool)
+                    and math.isclose(a, b, rel_tol=0, abs_tol=1e-5))
+        except (OverflowError, TypeError, ValueError):
+            return False
+
+    checks = []
+    for field in sorted(locks):
+        if field == "placements":
+            proposed = candidate.get(field)
+            valid_records = (
+                isinstance(proposed, list)
+                and all(isinstance(p, dict) and isinstance(p.get("component_id"), str)
+                        for p in proposed)
+            )
+            by_id = {part["component_id"]: part for part in proposed} if valid_records else {}
+            expected = {p["component_id"]: p for p in current[field]}
+            passed = set(by_id) == set(expected) and all(
+                same_number(by_id[cid].get(axis), expected[cid][axis])
+                for cid in expected for axis in ("x_mm", "z_mm")
+            )
+        else:
+            passed = same_number(candidate.get(field), current[field])
+        checks.append({
+            "id": f"preserve_{field}", "label": f"Preserve requested {field}",
+            "passed": passed,
+            "detail": ("Requested existing parameter retained." if passed else
+                       f"The user requested preserving {field}; copy current value "
+                       f"{json.dumps(current[field])} without changing it."),
+        })
+    return checks
+
+
 async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
     """Run at most two model attempts and compile the first valid candidate.
 
@@ -324,6 +414,7 @@ async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
                 raise error from None
             model = usage.get("model") or requested_model
             checks = check_candidate(source, candidate)
+            checks.extend(_preservation_checks(source, candidate, instruction))
             attempts.append(_attempt_record(number, candidate, checks, usage))
             if all(isinstance(c, dict) and c.get("passed") for c in checks):
                 provenance = {

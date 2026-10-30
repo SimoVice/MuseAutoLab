@@ -1,0 +1,150 @@
+# Reviewer and demo guide
+
+Current product path, updated **2026-10-30**. MuseAutoLab helps a researcher turn
+repetitive laboratory work into a sourced, editable automation proposal. The first
+engineering demonstrator is dilution and aliquot preparation. The result is a
+digital project with consistent geometry, calculations, source attribution and
+revision-specific files. No laboratory performance or time saving has been measured.
+
+## Choose how to review
+
+| Path | What you can inspect | Requirements |
+| --- | --- | --- |
+| Read without installing | This guide, architecture below, source documentation and dated JSON examples | No account or API key |
+| Reopen a recorded project | Real 3D, accepted layout, cold bay, inspection sweep and local exports from the example below | Locked setup and local servers; no Meta key or new inference |
+| Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](../README.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
+| Use the product with Meta | Natural conversation, platform choice, design and revisions | [Local configuration](../README.md#local-meta-configuration), your own account access/allowance, then [two local servers](../README.md#run-locally) |
+
+No hosted product or final demo-video URL is published here. Offline fixtures test
+software behavior; they are not fresh model responses. A saved project rebuilds
+locally without inference but does not restore export jobs or authenticate imported
+historical model metadata.
+
+## Open the recorded example without a key
+
+The [portable example](examples/demo-project.json) is a synthetic preparation project
+saved from a successful **real Contributor rehearsal on 2026-10-29**, compiler 4,
+revision 9. It contains the original Jubilee source identity, a 130 mm digital bed
+drop, a requested 4 °C cold-bay concept, an inspection-arm/camera proposal and a
+confirmed three-target dilution plan. It is recorded model output, not a new response
+or a physical test. The temperature is requested, not measured.
+
+![Real app reopening the recorded synthetic Meta project at revision 9](images/demo-project.png)
+
+Real app view after reopening the recorded synthetic Meta result. This capture made
+no new inference; it shows the digital proposal, not assembled laboratory hardware.
+
+1. Follow the [locked setup](../README.md#setup-on-windows-powershell), then start the
+   [two local servers](../README.md#run-locally). An API key and `.env` are unnecessary
+   for this recorded-project review.
+2. In the app, choose **Open project** and select `docs/examples/demo-project.json`
+   from the checkout. Geometry is rebuilt locally; the new runtime ID differs from
+   the historical saved project ID while revision/lineage remain available.
+3. Rotate the model, open **Project details**, select a component and use **Inspect
+   view** to isolate the selected part, working area or arm/camera. **Show full model**
+   returns to the whole assembly. Inspect the separate kinematic sweep if useful.
+4. Choose **Generate project files** to create an actual local package from the
+   reopened state. This uses local CAD/document generation, not Meta. The heavy
+   source export can take several minutes. Read the guide and download the ZIP after
+   the job is ready; historical export jobs are not restored.
+
+Conversation edits or fresh model proposals require separately configured Meta
+access and allowance. Opening the example does not authenticate the historical model
+metadata supplied in that file. Its scope remains a digital engineering proposal;
+neither cooling nor the inspection module is hardware-validated.
+
+## What Meta does
+
+Meta interprets the task, extracts grounded requirements, proposes sourced platform
+options and reasons, and proposes bounded layouts/revisions. On the Jubilee route,
+it can propose inspection-arm dimensions after an explicit request. The application
+supplies the supported architectures, source catalogue, arithmetic, geometry compiler,
+checks and acceptance rules. Imported Jubilee geometry was not invented by Meta.
+Development coding assistants are separate from these runtime requests.
+
+```mermaid
+flowchart LR
+    U[Researcher: ordinary chat] --> M[Meta: requirements and proposals]
+    M --> V[Typed validation and deterministic checks]
+    S[Pinned source catalogue and CAD] --> V
+    V -->|Accepted| P[Revisioned project]
+    V -->|Rejected: preserve prior project| U
+    P --> R[Interactive 3D and preparation arithmetic]
+    P --> J[Portable project JSON]
+    P --> E[CAD, guide, source records and archive]
+    I[Explicitly supplied photo] --> A[Separate Meta image analysis]
+    A --> H[Human review of image regions]
+```
+
+The current Jubilee and OT-2 routes have **no physics or hardware-control adapter**.
+Their packages record simulation `not_run`. An operating animation, a kinematic arm
+sweep, geometric checks and photo observations are distinct digital outputs.
+
+## Rehearse the main journey
+
+Use the ordinary chat throughout. Prompts below are synthetic examples, not commands
+that force an outcome. Actual Meta wording, latency and choices vary.
+
+1. **Start with the problem.** “I spend a lot of time preparing aliquots and dilutions
+   by hand. I have a pipette and microcentrifuge tubes.” Discuss the needs that affect
+   the choice, including space and willingness to assemble. Choose quantities later.
+2. **Compare and choose.** “Compare an assembled platform with an open-source buildable
+   one. Explain the tradeoffs and ask for my choice before designing.” Then explicitly
+   select Jubilee for this design/revise/expand demonstration. No platform is automatic.
+3. **Inspect the design.** The accepted proposal reveals actual source CAD plus custom
+   insert/layout. Select parts and inspect the recorded model, rationale and checks.
+   Jubilee's fixed frame stays approximately 483.1 × 612.7 × 564.4 mm; changing the insert
+   or bed pose does not shrink that frame.
+4. **Revise visibly, then add cooling.** For example, “Lower the existing build plate
+   by another 30 mm.” Request the cold-bay concept in chat and inspect the accepted
+   geometry and full sidecar footprint. Cooling is a digital concept, without measured
+   temperature control. A 450 mm overall-width request is a rejection example.
+5. **Save and reopen, then expand.** Save/Open the accepted project, then ask “Now add
+   an inspection arm and camera to this workstation.” Finish layout/cooling changes
+   first: a new layout clears an earlier extension. The sidecar and sweep are a bounded
+   kinematic concept; mounting, collisions, loads and camera coverage are unverified.
+6. **Choose a preparation.** For example, supply 10 mg/mL stock, targets 1, 0.5 and
+   0.1 mg/mL and 1 mL final volume per tube, preserving the layout. The deterministic
+   direct-dilution calculation gives 100, 50 and 10 µL of stock. Missing stock must be
+   asked, not inferred. Pipette range, capacity, mixing and dead volume are unchecked.
+7. **Confirm and generate.** Review the Preparation plan, confirm, then open Project
+   details and Generate project files. Progress follows completed work. Full Jubilee
+   source-CAD export can take several minutes. Read the actual guide, inspect downloads
+   and verify that the package revision matches the final accepted project.
+
+A failed or unsupported change should preserve the accepted project. Quantity-only
+edits preserve the accepted layout, source/bed pose and inspection proposal. The custom
+sample-rack hole pattern follows the number of preparation targets; exports remain
+revision-specific. Analyze photo is a separate explicit image-upload action;
+virtual camera placement is not a real photograph or automatic inspection.
+
+## The two routes are different
+
+| | Jubilee open-hardware route | OT-2 assembled route |
+| --- | --- | --- |
+| Source | Original pinned STEP, 809 unscaled solids, CC BY 4.0 | Schematic enclosure and official pinned deck-slot software data; not manufacturer CAD |
+| Meta design choices | Bounded insert/layout and digital bed pose | Three labware proxies in distinct deck slots |
+| Supported demo revisions | Bounded layout/bed, cold-bay concept, inspection sidecar | Bounded slot assignments; custom cooling/inspection rejected |
+| Guidance | Source build/BOM references plus unresolved tooling, actuation, mounting and calibration work | Configuration/quote, compatible instrument/labware and setup checklist |
+| Exports | Source-based assembly, custom geometry, provenance, documents | Schematic assembly, licensed deck data and setup documents; no executable robot protocol |
+| Limits | No build-ready interface, travel or source/custom collision proof | No verified internal fit, capacity or throughput; ventilation/setup review required |
+
+Neither route provides a complete priced procurement list or laboratory-ready protocol.
+See [source policy](source-grounding.md), [Jubilee asset reproduction](jubilee-cad-asset.md)
+and [third-party notices](../THIRD_PARTY_NOTICES.md) for source identity and rights.
+
+## Evidence and verification scope
+
+| Record | Date and scope |
+| --- | --- |
+| [Delivery verification](verification.md) | 2026-10-30; regular/source tests, browser checks, clean reconstruction and actual final revision-9 package; remaining delivery work explicit |
+| [Complete-path Meta rehearsals](examples/delivery-rehearsal-summary.json) | 2026-10-29, curated October 30; two complete fresh journeys, a recovered journey and failed/incomplete attempts; proposed third-fresh gate remains open |
+| [Current platform-choice example](examples/engineering-choice-live.json) | 2026-10-29; actual Contributor responses on synthetic needs, both routes and late quantities; retains earlier failures and reported usage |
+| [Source-CAD chat example](examples/chat-foundation-live.json) | 2026-10-28; actual Contributor source-layout, bed and inspection requests, with rejection evidence; predates the current needs/choice flow |
+| [Historical layout implementation](meta-design.md) and [project evolution](project-evolution.md) | 2026-10-28; older architecture/UI records, not instructions for today's interface |
+| [Product-check commands](../README.md#verify-the-product) | Reproducible checks, explicitly separated into regular, heavy source export and offline browser scopes |
+
+These examples document particular integration runs, not a benchmark, current release
+certificate, physical experiment or reliability percentage. Run the relevant checks
+against the revision under review; final submission/video access remains a separate
+delivery step.

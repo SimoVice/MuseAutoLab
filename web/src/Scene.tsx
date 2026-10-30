@@ -3,7 +3,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import type { Group } from 'three';
+import { Vector3 } from 'three';
+import type { Group, OrthographicCamera } from 'three';
 import type { Component, InspectionExtension, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
 import FoundationMesh from './FoundationMesh';
@@ -18,6 +19,7 @@ import type { OperationKeyframe, OperationSpec, Vec3 } from './operation';
 
 const SCALE = 100;
 const OPERATION_VISIT_ORDER = ['tip-rack', 'source-rack', 'sample-rack', 'tip-waste'] as const;
+const WORKING_AREA_IDS = ['base', 'carriage', 'pipette', 'source-rack', 'sample-rack', 'tip-rack', 'tip-waste', 'controller'];
 
 class SceneBoundary extends ReactComponent<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -29,15 +31,40 @@ class SceneBoundary extends ReactComponent<{ children: ReactNode }, { failed: bo
   }
 }
 
-function FitCamera({ width, height, depth }: { width: number; height: number; depth: number }) {
+function FitCamera({ width, height, depth, enabled }: { width: number; height: number; depth: number; enabled: boolean }) {
   const camera = useThree((state) => state.camera) as import('three').OrthographicCamera;
   const size = useThree((state) => state.size);
   useEffect(() => {
+    if (!enabled) return;
     const horizontalSpan = (width + depth * 0.58) / SCALE;
     const verticalSpan = (height + depth * 0.48) / SCALE;
     camera.zoom = Math.min(size.width / (horizontalSpan * 1.1), size.height / (verticalSpan * 1.05));
     camera.updateProjectionMatrix();
-  }, [camera, size.width, size.height, width, height, depth]);
+  }, [camera, size.width, size.height, width, height, depth, enabled]);
+  return null;
+}
+
+type FocusRequest = { position: Vec3; size: Vec3 };
+type Isolation = FocusRequest & { id: string; ids: string[]; mode: 'part' | 'work' | 'arm' };
+
+// Move only in response to an explicit inspection request; orbiting remains manual afterwards.
+function FocusCamera({ request }: { request: FocusRequest | null }) {
+  const camera = useThree((state) => state.camera) as OrthographicCamera;
+  const controls = useThree((state) => state.controls) as { target: Vector3; update: () => void } | null;
+  const viewport = useThree((state) => state.size);
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    if (!request || !controls) return;
+    const target = new Vector3(...request.position);
+    const direction = new Vector3(0.45, 1, -1).normalize();
+    const distance = Math.max(4, Math.max(...request.size) * 3);
+    camera.position.copy(target).addScaledVector(direction, distance);
+    controls.target.copy(target);
+    camera.zoom = Math.min(400, Math.max(15, Math.min(viewport.width, viewport.height) / (Math.max(...request.size, 0.15) * 1.8)));
+    camera.updateProjectionMatrix();
+    controls.update();
+    invalidate();
+  }, [request, camera, controls, invalidate]);
   return null;
 }
 
@@ -360,6 +387,16 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     return [...designComponents.map((part) => replacements.get(part.id) ?? part), ...displayed.filter((part) => !existing.has(part.id))];
   }, [designComponents, extension, inspectionTime, physicsActive]);
   const [viewKey, setViewKey] = useState(0);
+  const [isolation, setIsolation] = useState<Isolation | null>(null);
+  const isolatedRevision = useRef(`${project.id}:${project.revision}`);
+  useEffect(() => {
+    const revision = `${project.id}:${project.revision}`;
+    if (isolation && (isolation.id !== selectedId || isolatedRevision.current !== revision)) {
+      setIsolation(null);
+      setViewKey((value) => value + 1);
+    }
+    isolatedRevision.current = revision;
+  }, [isolation, selectedId, project.id, project.revision]);
   const bounds = useMemo(() => {
     if (!components.length) return { center: [0, 0, 0] as [number, number, number], height: 0 };
     const min = [0, 1, 2].map((axis) => Math.min(...components.map((part) => part.position[axis] - part.size[axis] / 2), extension?.bounds.min_mm[axis] ?? Infinity));
@@ -369,6 +406,29 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   const target: [number, number, number] = [0, bounds.height / SCALE / 2, 0];
 
   const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
+  const isolated = isolation?.id === selectedId ? isolation : null;
+  const selectedPart = selectedId ? byId.get(selectedId) : undefined;
+  const canInspectWork = Boolean(project.design.foundation && selectedId && WORKING_AREA_IDS.includes(selectedId));
+  const canInspectArm = Boolean(selectedId && extension?.component_ids.includes(selectedId));
+  const inspectSelection = (mode: Isolation['mode']) => {
+    if (!selectedPart) return;
+    const ids = mode === 'work' ? WORKING_AREA_IDS : mode === 'arm' ? extension?.component_ids ?? [] : [selectedPart.id];
+    const parts = components.filter((part) => ids.includes(part.id));
+    if (!parts.length) return;
+    const min = [0, 1, 2].map((axis) => Math.min(...parts.map((part) => part.position[axis] - part.size[axis] / 2)));
+    const max = [0, 1, 2].map((axis) => Math.max(...parts.map((part) => part.position[axis] + part.size[axis] / 2)));
+    setIsolation({
+      id: selectedPart.id,
+      ids,
+      mode,
+      position: min.map((value, axis) => ((value + max[axis]) / 2 - bounds.center[axis]) / SCALE) as Vec3,
+      size: min.map((value, axis) => (max[axis] - value) / SCALE) as Vec3,
+    });
+  };
+  const resetView = () => {
+    setIsolation(null);
+    setViewKey((value) => value + 1);
+  };
   const carriagePart = byId.get('carriage');
   const pipettePart = byId.get('pipette');
   const physicsFrame = useMemo(
@@ -466,20 +526,21 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         <directionalLight position={[8, 12, 7]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]}
           shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
         <directionalLight position={[-6, 5, -5]} intensity={0.7} />
-        <FitCamera width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
+        <FitCamera enabled={!isolated} width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
+        <FocusCamera request={isolated} />
         <group>
-          {staticParts.filter((part) => part.kind !== 'upstream-cad').map((part) => <GeometryPart key={part.id} part={part}
+          {(isolated ? components : staticParts).filter((part) => part.kind !== 'upstream-cad' && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={part}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
             selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
-        {project.design.foundation && <Suspense fallback={null}>
+        {project.design.foundation && (!isolated || isolated.ids.includes('foundation-jubilee')) && <Suspense fallback={null}>
           <group position={[-bounds.center[0] / SCALE, -bounds.center[1] / SCALE, -bounds.center[2] / SCALE]}>
             <FoundationMesh bedDropMm={project.design.foundation.bed_drop_mm}
               selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
           </group>
         </Suspense>}
-        <RackDetails components={components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} />
-        {physicsActive && physics && physics.result.obstacles.map((obstacle) => (
+        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} />
+        {!isolated && physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh
             key={obstacle.id}
             position={[
@@ -492,10 +553,11 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
             <meshStandardMaterial color="#e08a2e" transparent opacity={0.75} roughness={0.5} metalness={0.05} />
           </mesh>
         ))}
-        {physicsActive && carriagePart && pipettePart && physicsFrame && (
+        {!isolated && physicsActive && carriagePart && pipettePart && physicsFrame && (
           <PhysicalHead carriage={carriagePart} pipette={pipettePart} frame={physicsFrame} center={bounds.center} selectedId={selectedId} onSelect={onSelect} />
         )}
         {showAnimation && carriagePart && pipettePart && animationLayout && operation ? (
+          <group visible={!isolated}>
           <AnimatedPipetteCarriage
             carriage={carriagePart}
             pipette={pipettePart}
@@ -510,16 +572,25 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
             selectedId={selectedId}
             onSelect={onSelect}
           />
+          </group>
         ) : null}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
           <planeGeometry args={[18, 18]} />
           <meshStandardMaterial color="#eef4f4" roughness={1} />
         </mesh>
         <gridHelper args={[18, 36, '#cfdddd', '#dbe7e7']} position={[0, -0.025, 0]} />
-        <OrbitControls makeDefault target={target} minZoom={15} maxZoom={200} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
+        <OrbitControls makeDefault target={target} minZoom={15} maxZoom={400} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
       </Canvas>
     </SceneBoundary>
-    <button className="scene-reset" type="button" onClick={() => setViewKey((value) => value + 1)}>Reset view</button>
+    {selectedPart && <select className="scene-reset" style={{ right: 125, width: 155, maxWidth: 'calc(100% - 145px)' }}
+      aria-label="Inspect component view" value={isolated?.mode ?? ''}
+      onChange={(event) => { if (event.target.value) inspectSelection(event.target.value as Isolation['mode']); }}>
+      <option value="" disabled>Inspect view…</option>
+      <option value="part">Selected part only</option>
+      {canInspectWork && <option value="work">Working area only</option>}
+      {canInspectArm && <option value="arm">Arm + camera only</option>}
+    </select>}
+    <button className="scene-reset" type="button" onClick={resetView}>{isolated ? 'Show full model' : 'Reset view'}</button>
     </>
   );
 }

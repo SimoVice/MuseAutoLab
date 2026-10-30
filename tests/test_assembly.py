@@ -5,11 +5,14 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import subprocess
 import sys
 import tempfile
+from copy import deepcopy
 from decimal import Decimal
 from pathlib import Path
+from xml.etree import ElementTree
 
 from app.assembly import assembly_steps, build_document_files
 from app.domain import apply_update, confirm_project, new_project
@@ -62,6 +65,35 @@ def test_revision_and_unknown_prices():
     custom = [r for r in rows if r["price_kind"] == "unpriced"]
     assert custom and all(r["unit_price"] == "" and r["line_total"] == "" for r in custom)
     assert "0" not in [r["unit_price"] for r in custom]
+
+
+def test_guide_rounds_display_dimensions_without_mutating_canonical_geometry():
+    project = _confirmed()
+    project["design"]["components"][0]["position"] = [1.23456789, -0.000001, 89.999999]
+    project["design"]["components"][0]["size"] = [483.1234567, 300, 12.5555]
+    original = deepcopy(project)
+    guide = build_document_files(project)["assembly-guide.html"].decode()
+    assert "1.2, 0, 90" in guide and "483.1 × 300 × 12.6" in guide
+    assert "1.23456789" not in guide and "483.1234567" not in guide
+    assert "not a tolerance claim" in guide
+    assert project == original
+
+
+def test_extended_guide_legend_keeps_every_component_inside_svg_bounds():
+    project = _confirmed(cooling=True)
+    components = project["design"]["components"]
+    while len(components) < 19:
+        extra = deepcopy(components[-1])
+        extra["id"] = f"inspection-review-{len(components)}"
+        components.append(extra)
+    guide = build_document_files(project)["assembly-guide.html"].decode()
+    for svg_text in re.findall(r"<svg\b.*?</svg>", guide, flags=re.DOTALL):
+        svg = ElementTree.fromstring(svg_text)
+        width, height = [float(v) for v in svg.attrib["viewBox"].split()[2:]]
+        legend = [node for node in svg.iter("text") if ". " in (node.text or "")]
+        assert len(legend) == len(components)
+        assert all(0 < float(node.attrib["x"]) < width for node in legend)
+        assert all(0 < float(node.attrib["y"]) < height - 5 for node in legend)
 
 
 def test_escaping_and_preparation_and_preview_runs():
