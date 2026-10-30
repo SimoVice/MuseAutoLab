@@ -49,3 +49,23 @@ separately documented manufacturer enclosure dimensions. Absolute deck pose,
 internal mechanisms and labware fit are unverified. No Opentrons control code is
 installed and no endorsement or compatibility certification is claimed. Exported
 commercial packages retain the deck definition, license and provenance.
+
+## Multimodal demonstration media
+
+`docs/images/multimodal-reference.png` is an actual view of the attributed Jubilee
+foundation and MuseAutoLab custom concepts. `multimodal-illustration.png` is a Meta
+Muse Image result generated from that view on 2026-10-30. Original Jubilee design:
+Joshua Vasquez / Machine Agency, pinned revision and CC BY 4.0 attribution above.
+The generated presentation image changes some mechanical details and is not CAD,
+a technical assembly drawing or evidence of a built machine.
+
+## Supplier catalog facts and assembly references
+
+The application links primary Pololu, Adafruit, Filastruder, Mandala Rose Works,
+Jubilee and Opentrons pages for factual price, variant, source and instruction
+references. It does not redistribute complete supplier pages or upstream booklets.
+Supplier names and product identifiers identify their owners' products; inclusion
+does not imply endorsement, reserved inventory or certified compatibility. Jubilee
+candidate kits reference the living upstream V2.2.2 shopping sheet and retain the
+pinned source-CAD attribution above. Generated guides identify their source owners,
+licenses, checked dates and the limits of custom adaptations.

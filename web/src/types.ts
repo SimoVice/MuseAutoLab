@@ -353,3 +353,47 @@ export type ConfigurationUpdate = {
   cooling_target_c?: number;
   selections?: Record<string, string>;
 };
+
+export type ProcurementRow = {
+  group_id: string; component_ids: string[]; selected_id: string; label: string;
+  sku: string | null; quantity: number; pack_size: number | null; pack_count: number | null;
+  unit_price: number | null; line_total: number | null; currency: 'USD'; pack_price?: number | null;
+  last_known_line_total?: number | null; compatibility_note?: string; is_expired?: boolean;
+  is_candidate?: boolean; parent_group_id?: string; source_bom_url?: string; source_bom_row?: string;
+  source_project_revision?: string; variant_id?: string; variant_title?: string;
+  status: 'priced' | 'unavailable' | 'missing' | 'quote_needed' | 'unsupported';
+  freshness: 'fresh' | 'stale' | 'unverified'; availability: string;
+  price_source_url: string | null; availability_source_url: string | null;
+  fetched_at: string | null; last_known_price: number | null; last_known_fetched_at: string | null; issue: string | null;
+};
+
+export type ProcurementReport = {
+  report_id: string; project_id: string; project_revision: number; market: 'US'; currency: 'USD';
+  fetched_at: string; expires_at: string; rows: ProcurementRow[];
+  coverage: { row_count: number; fresh_priced_count: number; stale_priced_count: number; unpriced_count: number };
+  known_partial_subtotal: number; stale_last_known_subtotal: number; exclusions: string[];
+};
+
+export type ProcurementResponse = {
+  report: ProcurementReport | null; state: 'not_refreshed' | 'stale_revision' | 'current';
+};
+
+export type InstructionSource = { id: string; title: string; url: string; checked_on: string; scope: string; revision?: string };
+export type InstructionPart = {
+  component_id: string; label: string; quantity: number; position_mm: [number, number, number]; size_mm: [number, number, number];
+  slot_id: string | null; geometry_basis: string; reference_id: string | null;
+  selected_variants: { group_id: string; variant_id: string; label: string; quantity: number; source_url: string | null }[];
+};
+export type InstructionStep = {
+  id: string; title: string; status: 'ready' | 'reference_only' | 'needs_design'; component_ids: string[];
+  parts: InstructionPart[]; instructions: string[]; prerequisites: string[]; checks: string[];
+  required_tools: { label: string; source_id: string }[]; required_materials: { label: string; source_id: string }[];
+  sources: InstructionSource[]; engineering_tasks: { id: string; action: string; acceptance_criteria: string | string[] }[];
+};
+export type InstructionGuide = {
+  schema_version: number; project_id: string; project_revision: number; revision: number;
+  platform: string; status: 'review_ready' | 'needs_design'; procurement_report_id: string | null;
+  parts: InstructionPart[]; steps: InstructionStep[]; sources: InstructionSource[];
+  summary: { ready_steps: number; reference_steps: number; needs_design_steps: number; total_steps: number };
+  coordinate_system: string;
+};

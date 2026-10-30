@@ -25,6 +25,17 @@ def source_project():
     )
 
 
+def test_build_plan_action_opens_immediate_revision_instructions_without_design_change():
+    project = source_project()
+    before = deepcopy(project)
+    result, runs = asyncio.run(actions.execute_chat_actions(project, [
+        ChatAction(kind="show_build_plan", source="Show the build plan")], "Show the build plan"))
+    assert result == before and project == before
+    assert runs[0]["status"] == "ready"
+    assert "Build instructions" in runs[0]["message"] and "Parts & pricing" in runs[0]["message"]
+    assert "Project details" not in runs[0]["message"]
+
+
 def test_source_revisions_keep_original_frame_and_move_real_bed_pose():
     before = source_project()
     after = apply_candidate(before, source_proposal(130), {})

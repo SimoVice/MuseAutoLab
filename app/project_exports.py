@@ -62,7 +62,31 @@ def _check_coherence(project: dict, job: dict) -> None:
         raise ExportError(404, "Export job not found for this project.")
     if project.get("revision") != job["revision"]:
         raise ExportError(409, "Export is stale for the current project revision.")
+    if (_procurement_id(project) != job.get("procurement_report_id")
+            or _procurement_sha256(project) != job.get("procurement_sha256")):
+        raise ExportError(
+            409, "Export procurement report is stale. Generate files with the current report."
+        )
     _ensure_supported(project)
+
+
+def _procurement_id(project: dict) -> str | None:
+    report = project.get("procurement_report")
+    if report is None:
+        return None
+    if (not isinstance(report, dict) or report.get("project_id") != project.get("id")
+            or report.get("project_revision") != project.get("revision")
+            or not report.get("report_id")):
+        raise ExportError(409, "Procurement report does not match the current project revision.")
+    return report["report_id"]
+
+
+def _procurement_sha256(project: dict) -> str | None:
+    report = project.get("procurement_report")
+    if report is None:
+        return None
+    canonical = json.dumps(report, sort_keys=True, allow_nan=False).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _media_type(name: str) -> str:
@@ -116,6 +140,7 @@ def _public_metadata(job: dict) -> dict:
         "id": job["id"],
         "project_id": job["project_id"],
         "revision": job["revision"],
+        "procurement_report_id": job.get("procurement_report_id"),
         "status": job["status"],
         "stage": job["stage"],
         "completed_stages": job["completed_stages"],
@@ -239,6 +264,7 @@ async def _run_job(job_id: str) -> None:
                 "schema_version": 1,
                 "project_id": snapshot.get("id"),
                 "revision": snapshot.get("revision"),
+                "procurement_report_id": job.get("procurement_report_id"),
                 "input_sha256": _input_sha256(snapshot),
                 "files": [
                     {
@@ -297,18 +323,23 @@ async def start_export(project: dict) -> dict:
     _ensure_supported(project)
     project_id = project.get("id")
     revision = project.get("revision")
+    report_id = _procurement_id(project)
+    report_sha256 = _procurement_sha256(project)
     # Duplicate active job guard and same-revision cache.
     for job in _jobs.values():
         if job["project_id"] != project_id:
             continue
         if job["status"] in ("queued", "running"):
-            if job["revision"] == revision:
+            if (job["revision"] == revision and job.get("procurement_report_id") == report_id
+                    and job.get("procurement_sha256") == report_sha256):
                 return _public_metadata(job)
             raise ExportError(409, "Another export is already running for this project.")
     for job in _jobs.values():
         if (
             job["project_id"] == project_id
             and job["revision"] == revision
+            and job.get("procurement_report_id") == report_id
+            and job.get("procurement_sha256") == report_sha256
             and job["status"] == "ready"
         ):
             return _public_metadata(job)
@@ -323,6 +354,8 @@ async def start_export(project: dict) -> dict:
         "id": job_id,
         "project_id": project_id,
         "revision": revision,
+        "procurement_report_id": report_id,
+        "procurement_sha256": report_sha256,
         "status": "queued",
         "stage": "queued",
         "completed_stages": 0,

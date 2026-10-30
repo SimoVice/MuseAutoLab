@@ -62,14 +62,16 @@ def run(url):
                 expect(page.locator(".plan-card")).to_contain_text("Ready")
                 expect(page.locator(".plan-card")).not_to_contain_text("unsupported unit")
                 harness.send_chat(
-                    page, "How do I buy the pieces and assemble this?", "Purchase and assembly"
+                    page, "How do I buy the pieces and assemble this?", "Build instructions"
                 )
-                expect(page.locator("details.project-details")).to_have_attribute("open", "")
-                expect(page.get_by_text("Purchase and assembly plan", exact=True)).to_be_visible()
+                guide = page.locator("#build-instructions-panel")
+                expect(guide).to_be_visible()
+                expect(guide.locator(".instruction-step")).to_be_visible()
+                expect(guide.get_by_role("link", name="Download guide HTML")).to_be_visible()
+                expect(page.locator("details.project-details")).not_to_have_attribute("open", "")
                 if route == "prebuilt":
-                    expect(page.locator("details.project-details")).to_contain_text(
-                        "Specify and quote"
-                    )
+                    guide.get_by_label("Go to step").select_option("1")
+                    expect(guide).to_contain_text("quotation")
                 with page.expect_download() as download:
                     page.get_by_role("button", name="Save project", exact=True).click()
                 saved = download.value.path()

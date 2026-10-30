@@ -2,6 +2,59 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-30: US catalog retrieval and project-specific instructions
+
+Added bounded live adapters for fifteen reviewed supplier SKU/variants, including
+six non-overlapping candidate Jubilee kits linked to the upstream BOM. Explicit
+refresh produces revision-bound US/USD observations with exact identity, quantity,
+packs, availability, provenance, freshness, separate stale prices and unknown costs.
+No candidate offer silently changes the accepted source geometry or places an order.
+
+Added immediate structured instructions, source-guided steps, canonical part/variant
+and placement references, prerequisites and actionable engineering tasks. The same
+guide feeds HTML/Markdown/JSON and full packages. Pricing CSV/JSON and guide exports
+are bound to the report; replaced or expired report content cannot be served as
+current. Chat receives compact current facts and opens the instruction panel.
+
+GPT-6.1 Sol implemented backend, instructions, UI and reproducible checks; Codex
+researched primary supplier/BOM evidence, reviewed integration and exercised the
+actual product. The complete recorded project retrieved eight fresh prices across
+fifteen groups, a USD 591.86 partial subtotal, and seven unpriced groups. One actual
+Contributor browser response used that report and left all thirteen portable
+canonical fields unchanged. See [verification](docs/verification.md) for software,
+package, usability and real-call evidence. No hardware, purchase or laboratory
+performance is claimed. Final-video work is deferred while the product is improved.
+
+## 2026-10-30: Runtime model choice, dictation, illustration and usability
+
+Added a server-validated Spark Contributor/Standard/Wonder selector with account
+availability, session context preservation and selected-model propagation to chat,
+layout, extension and photo requests. Added bounded Muse Voice recorded dictation
+into an editable draft, explicit Send, cancellation and recovery. Added optional
+Muse Image generation from the actual WebGL view, clearly separated from CAD and
+technical instructions, with comparison, download and stale-revision protection.
+
+Agent usability walkthroughs found and corrected reset data loss on failure,
+missing plan/file navigation, mobile overflow, an invisible keyboard stop, absent
+keyboard camera controls and a sticky scene obscuring illustration results. Source
+loading/failure and microphone lifecycle feedback are explicit. A live voice test
+exposed a number-word parsing failure; strict deterministic English normalization
+and source-equivalence checks now preserve equivalent accepted quantities. Earlier
+failed responses remain recorded. Wonder's empty-delta request guidance was clarified
+without relaxing source validation.
+
+GPT-6.1 Sol implemented backend, frontend and browser checks; GPT-6.1 Terra xhigh
+implemented scene accessibility/capture; Codex reviewed and integrated. Dependencies,
+source geometry and the CAD exporter are unchanged. Verification: 539 regular Python
+tests, eight offline browser flows, Ruff and production build passed. Twelve bounded
+real provider calls covered six text, four transcription and two image requests.
+The final reviewed dictation retained confirmed r9, the layout/arm and a ready
+200/100/20 microliter stock plan. See the [curated record](docs/examples/multimodal-verification.json)
+for failures, exact usage and the declared split in the final voice recording.
+
+This is digital integration and agent usability evidence, not an external-user
+study or laboratory validation. Video finishing is a later delivery step.
+
 ## 2026-10-30: Third fresh journey and three-minute recorded demo
 
 Completed the third varied fresh Meta journey through the actual browser, with ten

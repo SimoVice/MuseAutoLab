@@ -6,13 +6,13 @@ import type { ImageCapability, VoiceCapability } from './ModelSelector';
 import IllustrationPanel from './IllustrationPanel';
 import VoiceDictation from './VoiceDictation';
 import AgentActivity, { finishAgentReveal } from './AgentActivity';
-import ComponentCatalog from './ComponentCatalog';
+import ProjectResources from './ProjectResources';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
 import CameraPanel from './CameraPanel';
 import DesignSources from './DesignSources';
 import './chat-workspace.css';
-import type { ConversationEntry, PhysicsView, PreparationPlan, Project, ProjectBrief, ProjectResponse } from './types';
+import type { ConversationEntry, PhysicsView, PreparationPlan, ProcurementReport, Project, ProjectBrief, ProjectResponse } from './types';
 
 const WELCOME = 'What would you like to automate in your lab? Describe the task and what makes it difficult.';
 const LIQUID_NOTE = 'This workflow is at the concept stage. 3D previews and build files are currently available for liquid preparation.';
@@ -108,6 +108,7 @@ function sameDesign(a: Project | null, b: Project): boolean {
 
 export default function App() {
   const [project, setProject] = useState<Project | null>(null);
+  const [procurementReport, setProcurementReport] = useState<ProcurementReport | null>(null);
   const [messages, setMessages] = useState<ConversationEntry[]>([{ id: 0, role: 'assistant', text: WELCOME }]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -250,7 +251,7 @@ export default function App() {
   const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && hasEngineeringDesign;
   const acceptedLayoutId = project?.engineering_design?.provenance.run_id;
   useEffect(() => {
-    if (actionRuns.some((run) => run.status === 'ready') && details.current) {
+    if (actionRuns.some((run) => run.status === 'ready' && run.kind !== 'show_build_plan') && details.current) {
       details.current.open = true;
     }
   }, [actionRuns]);
@@ -495,14 +496,9 @@ export default function App() {
     { label: 'Equipment', value: summary?.equipment },
     { label: 'Available width', value: summary?.workspace_width_mm != null ? `${formatDimension(summary.workspace_width_mm)} mm` : null },
   ];
-  const sourcing = hasEngineeringDesign ? (project?.sourcing ?? null) : null;
-  const estimatedAmount = project?.design.estimated_cost.amount;
-  const costCurrency = sourcing?.currency ?? project?.design.estimated_cost.currency ?? 'USD';
-  const costAmount = hasEngineeringDesign ? (sourcing ? sourcing.subtotal : estimatedAmount) : null;
-  const costText = costAmount == null
-    ? 'Not estimated yet'
-    : costAmount === 0 && sourcing && sourcing.unpriced_count > 0 ? 'Pricing pending'
-    : `${sourcing?.is_lower_bound ? 'from ' : ''}${formatMoney(costAmount, costCurrency)}`;
+  const currentProcurement = procurementReport?.project_id === project?.id && procurementReport?.project_revision === project?.revision ? procurementReport : null;
+  const costText = currentProcurement?.coverage.fresh_priced_count
+    ? formatMoney(currentProcurement.known_partial_subtotal, 'USD') : currentProcurement ? 'No fresh prices' : 'Not refreshed';
   const isConfirmed = project?.status === 'confirmed';
   const headerLabel = hasBrief || hasEngineeringDesign ? 'Lab automation project' : 'New automation project';
   const showPhotoCheck = Boolean(project?.inspection_extension) || actionRuns.some((run) => run.kind === 'show_photo_check');
@@ -586,9 +582,11 @@ export default function App() {
               </div>
 
               <div className="below-viewer">
-                <div className="cost-block"><span>Known parts subtotal</span><strong>{costText}</strong><small>{sourcing ? `${sourcing.unpriced_count} unpriced group${sourcing.unpriced_count === 1 ? '' : 's'} · Excludes shipping and taxes · Curated snapshot ${sourcing.checked_on}, not a live feed. Partial estimate only.` : 'Pricing is not yet available for this concept.'}</small></div>
+                <div className="cost-block"><span>Fresh listed parts subtotal · USD</span><strong>{costText}</strong><small>{currentProcurement ? `${currentProcurement.coverage.fresh_priced_count}/${currentProcurement.coverage.row_count} groups freshly priced · ${currentProcurement.coverage.unpriced_count} without fresh prices · Complete machine cost unknown. Excludes shipping and taxes.` : 'Open Parts & pricing to check US catalogs. Complete machine cost is unknown.'}</small></div>
                 <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
               </div>
+
+              {project && <ProjectResources key={`${project.id}:${project.revision}`} project={project} busy={uiBusy} onSelect={handleVisionSelect} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find((run) => run.kind === 'show_build_plan' && run.status === 'ready')} />}
 
               <details className="project-details" ref={details}>
                 <summary>Project details</summary>
@@ -617,12 +615,6 @@ export default function App() {
                   </div>
                 )}
                 {project && <DesignSources project={project} showBindings={hasEngineeringDesign} onHighlight={handleVisionSelect} />}
-                <ComponentCatalog
-                  sourcing={sourcing}
-                  busy={uiBusy || !project}
-                  onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)}
-                  onHighlight={(componentId) => setSelectedId(componentId)}
-                />
                 {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
                 {project?.inspection_extension && (
                   <div className="inspection-sweep">

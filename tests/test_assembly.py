@@ -119,6 +119,7 @@ def test_expected_file_set_and_extension_plan():
     files = build_document_files(_confirmed())
     assert set(files) == {
         "assembly-guide.html",
+        "assembly-guide.md",
         "assembly.json",
         "bill-of-materials.csv",
         "preparation.csv",

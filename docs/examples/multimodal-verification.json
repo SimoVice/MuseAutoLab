@@ -1,0 +1,285 @@
+{
+  "date": "2026-10-30",
+  "scope": "Bounded synthetic/shareable integration observations and agent usability checks, not an external human study, model benchmark or laboratory validation.",
+  "base_commit": "be496feeecb323007da5f421a3f9a6cd4fa4b8a8",
+  "project": {
+    "source": "demo-video-project.json",
+    "lineage": "e13e6c62-eaac-45dd-89c1-50a6baed8d81",
+    "revision": 9,
+    "bed_drop_mm": 120,
+    "cooling_target_c": 8,
+    "stock_volumes_ul": [
+      200,
+      100,
+      20
+    ]
+  },
+  "requests": [
+    {
+      "kind": "agent_model",
+      "requested_model": "muse-wonder-1.0",
+      "prompt": "Which platform is selected for this saved project? Answer briefly without changing any requirements, layout or modules.",
+      "selection_preserved_project": true,
+      "status": "failed",
+      "http_status": 502,
+      "elapsed_s": 3.328,
+      "response": {
+        "usage": {
+          "model": "muse-wonder-1.0",
+          "prompt_tokens": 8759,
+          "completion_tokens": 455,
+          "total_tokens": 9214
+        },
+        "failure_kind": "source_validation"
+      }
+    },
+    {
+      "kind": "agent_model",
+      "requested_model": "muse-spark-1.3",
+      "prompt": "Which platform is selected for this saved project? Answer briefly without changing any requirements, layout or modules.",
+      "selection_preserved_project": true,
+      "status": "passed",
+      "http_status": 200,
+      "elapsed_s": 3.391,
+      "reported_model": "muse-spark-1.3",
+      "project_unchanged": true,
+      "response": {
+        "usage": {
+          "model": "muse-spark-1.3",
+          "prompt_tokens": 10246,
+          "completion_tokens": 428,
+          "total_tokens": 10674
+        }
+      }
+    },
+    {
+      "kind": "voice",
+      "case": "revision",
+      "status": "passed",
+      "http_status": 200,
+      "elapsed_s": 3.609,
+      "input_source": "Windows synthetic speech",
+      "input_sha256": "cd7e8d4639af1c47280e0c34969f75e14d46444d7743101fd63706752d1e92c2",
+      "response": {
+        "text": "lower the existing build plate by 20 millimeters. Keep all component positions unchanged.",
+        "model": "muse-voice-transcribe-1.0",
+        "duration_ms": 7480
+      }
+    },
+    {
+      "kind": "voice",
+      "case": "silence",
+      "status": "passed",
+      "http_status": 200,
+      "elapsed_s": 1.359,
+      "input_source": "Two seconds of PCM silence",
+      "input_sha256": "20eaebffe1816e0ffa6f7f854f5ef4ea80d5349faaf0ce1fec1b713e7fde58fa",
+      "response": {
+        "text": "",
+        "model": "muse-voice-transcribe-1.0",
+        "duration_ms": 2000
+      }
+    },
+    {
+      "kind": "model_diagnostic",
+      "status": "rejected",
+      "model": "muse-wonder-1.0",
+      "http_status": 200,
+      "usage": {
+        "completion_tokens": 418,
+        "prompt_tokens": 8759,
+        "total_tokens": 9177,
+        "completion_tokens_details": {
+          "reasoning_tokens": 56
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "elapsed_s": 3.344,
+      "failure_kind": "source_validation",
+      "finding": "Repeated ungrounded procurement values with replacement-character text; strict source validation rejected the response."
+    },
+    {
+      "kind": "model_confirmation",
+      "status": "passed",
+      "http_status": 200,
+      "elapsed_s": 2.625,
+      "selection_preserved_project": true,
+      "project_unchanged": true,
+      "response": {
+        "assistant_message": "Jubilee is the selected platform for this saved project.",
+        "usage": {
+          "model": "muse-wonder-1.0",
+          "prompt_tokens": 8935,
+          "completion_tokens": 293,
+          "total_tokens": 9228
+        },
+        "action_runs": []
+      },
+      "change": "Request guidance clarified empty update arrays; source validation remained strict. One bounded confirmation is not a reliability benchmark."
+    },
+    {
+      "kind": "image_utility_probe",
+      "model": "muse-image-1.0",
+      "http_status": 200,
+      "status": "completed",
+      "elapsed_seconds": 13.703,
+      "usage": {
+        "input_tokens": 5306,
+        "input_tokens_details": {
+          "cached_tokens": 3968
+        },
+        "output_tokens": 891,
+        "output_tokens_details": {
+          "reasoning_tokens": 117
+        },
+        "total_tokens": 6197
+      },
+      "returned_images": 1,
+      "finding": "Recognizable visual presentation; small mechanical details differ. Not a technical drawing."
+    },
+    {
+      "kind": "initial_browser_voice",
+      "http_status": 200,
+      "response": {
+        "text": "UseUse a stock concentration of five milligrams per milliliter. Prepare targets of 0.5, 0.25, and 0.05 milligrams per milliliter with two milliliters per tube.",
+        "model": "muse-voice-transcribe-1.0",
+        "duration_ms": 16592
+      },
+      "finding": "Editable draft with correct semantic quantities; opening UseUse duplication preserved."
+    },
+    {
+      "kind": "initial_browser_send",
+      "http_status": 200,
+      "usage": {
+        "model": "muse-spark-1.3-contributor",
+        "prompt_tokens": 10264,
+        "completion_tokens": 890,
+        "total_tokens": 11154
+      },
+      "status": "integration_failed",
+      "finding": "Number words were stored literally and invalidated the plan. Confirmed r9 became draft r10; geometry remained unchanged. Fixed by bounded deterministic normalization and source-equivalence checks."
+    },
+    {
+      "kind": "browser_image",
+      "http_status": 200,
+      "response": {
+        "model": "muse-image-1.0",
+        "project_revision": 9,
+        "reference_sha256": "35a04c6e0c980f2936710e8ed52a8f5dc0923ef82fa9bc0d04232d992a1dc10b",
+        "image_sha256": "9e14d3d14876b5eda8a361da8c8c5b827076439e1c87eda379f74721faa651a5",
+        "width": 1920,
+        "height": 1280,
+        "usage": {
+          "model": "muse-image-1.0",
+          "images": 1,
+          "input_tokens": 4598,
+          "output_tokens": 787,
+          "total_tokens": 5385
+        },
+        "scope": "AI-generated concept illustration for presentation only. The rendered model, CAD and assembly instructions remain authoritative. This image may change or omit details and does not establish dimensions, compatibility, manufacturing readiness or hardware performance."
+      },
+      "download_matches_response": true,
+      "elapsed_s": 13.281,
+      "finding": "Separate explicit reopen of original confirmed r9; one image, presentation use only."
+    },
+    {
+      "kind": "final_browser_voice",
+      "http_status": 200,
+      "response": {
+        "text": "Use a stock concentration of five milligrams per milliliter. Prepare targets of 0.5, 0.25, and 0.05 milligrams per milliliter with two with two milliliters per tube.",
+        "model": "muse-voice-transcribe-1.0",
+        "duration_ms": 16611
+      },
+      "elapsed_s": 4.297,
+      "finding": "Editable draft, no automatic Send. Duplicate phrase reviewed and corrected visibly."
+    },
+    {
+      "kind": "final_browser_send",
+      "http_status": 200,
+      "usage": {
+        "model": "muse-spark-1.3-contributor",
+        "prompt_tokens": 10562,
+        "completion_tokens": 1240,
+        "total_tokens": 11802
+      },
+      "action_runs": [],
+      "original_asr_text": "Use a stock concentration of five milligrams per milliliter. Prepare targets of 0.5, 0.25, and 0.05 milligrams per milliliter with two with two milliliters per tube.",
+      "reviewed_sent_text": "Use a stock concentration of five milligrams per milliliter. Prepare targets of 0.5, 0.25, and 0.05 milligrams per milliliter with two milliliters per tube.",
+      "edit": "Removed only duplicate phrase with two with two -> with two; numbers/units preserved.",
+      "final_revision": 9,
+      "final_status": "confirmed",
+      "stock_volumes_ul": [
+        200.0,
+        100.0,
+        20.0
+      ],
+      "unchanged_confirmed_r9": true,
+      "preserved": {
+        "engineering_design": true,
+        "design": true,
+        "inspection_extension": true,
+        "engineering": true
+      },
+      "elapsed_s": 12.531,
+      "status": "passed",
+      "recording_limit": "Separate declared continuation after the test edit guard stopped the first capture. Same public r9 snapshot and actual ASR text restored; no second ASR."
+    }
+  ],
+  "accounting": {
+    "physical_inference_requests": 12,
+    "text_requests": 6,
+    "voice_requests": 4,
+    "image_requests": 2,
+    "reported_text_tokens": 61249,
+    "reported_image_tokens": 11582,
+    "voice_tokens": "Not exposed by the transcription endpoint.",
+    "catalogue_requests": "Read-only model discovery; not inference.",
+    "billing": "Remaining credit and actual charges were not inspected. Token counts across modalities are not a bill."
+  },
+  "software_checks": {
+    "regular_python": {
+      "passed": 539,
+      "seconds": 77.89
+    },
+    "ruff": "passed",
+    "production_build": "passed",
+    "offline_browser_flows": [
+      "foundation",
+      "engineering",
+      "platform",
+      "vision",
+      "scene_focus",
+      "project_files",
+      "multimodal",
+      "scene_accessibility"
+    ],
+    "historical_source_cad": "8 passed on October29; not rerun because source geometry/export/dependencies unchanged."
+  },
+  "usability": {
+    "reset_failure_preserves_work": "passed",
+    "reset_undo": "passed",
+    "mobile_first_composer": "passed",
+    "hidden_file_tab_stop_removed": "passed",
+    "file_shortcut": "passed",
+    "ready_plan_shortcut": "passed",
+    "keyboard_camera": "passed",
+    "source_loading_failure": "passed",
+    "populated_mobile_width_px": 390,
+    "illustration_not_obscured_by_sticky_scene": "passed offline"
+  },
+  "limitations": [
+    "Speech review remains necessary; duplicated words occurred.",
+    "Image generation changes small mechanical details.",
+    "No microphone hardware/acoustic benchmark.",
+    "No hardware, collision, cooling or laboratory-performance validation.",
+    "No Cerebral Valley account access or event submission."
+  ],
+  "reviewed_application_source": {
+    "sha256": "5be909a304db7cf3c518363394f81ec7c6e06e8c40d20cb57e9b7b3fec6b67b0",
+    "files": 54,
+    "method": "SHA256 of sorted compact JSON mapping app/**/*.py and web/src/**/*.{ts,tsx,css} paths to their file-byte SHA256; local manifest retained."
+  },
+  "implementation_commit": "b6039143a6294ff5cc2274860561a3ec3230c465"
+}

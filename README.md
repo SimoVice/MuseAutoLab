@@ -8,7 +8,7 @@ The current result is a **working digital prototype**: compare two reviewed plat
 
 **Start here:** [watch the three-minute demo](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4) · [reviewer/demo guide and architecture](docs/demo-guide.md) · [delivery verification](docs/verification.md) · [locked setup](#setup-on-windows-powershell) · [run locally](#run-locally) · [offline checks](#verify-the-product) · [latest live Meta journey](docs/examples/delivery-third-rehearsal.json) · [source attribution](THIRD_PARTY_NOTICES.md).
 
-The [180-second video](docs/video/README.md) shows actual product captures with English captions and no narration. The guide includes its [recorded real-Meta project you can reopen without a key](docs/demo-guide.md#open-the-recorded-example-without-a-key), plus offline checks and the live product path, which requires your own Meta API access. The interactive product runs locally. Historical feature documents retain their original scope; use this README and the guide for the current flow.
+The published 180-second video records the earlier core design journey with English captions. The product now also includes model selection, dictation, optional illustrations, US catalog pricing and immediate build instructions; the video will be updated after product verification. The guide includes the [recorded real-Meta project you can reopen without a key](docs/demo-guide.md#open-the-recorded-example-without-a-key), plus offline checks and the live product path, which requires your own Meta API access. The interactive product runs locally. Historical feature documents retain their original scope; use this README and the guide for the current flow.
 
 [![Watch the three-minute MuseAutoLab demo](docs/images/demo-video-poster.png)](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4)
 
@@ -33,9 +33,13 @@ This is a working software prototype for digital proposals, not a tested laborat
 4. Request a revision in chat, for example **“Lower the existing build plate by another 30 mm.”** for Jubilee, or **“Move only the sample rack to slot 8.”** for OT-2. Existing positions reach Meta as context. The compiler accepts or rejects a bounded proposal; it never silently rescales source parts.
 5. On Jubilee, request any cold-bay/layout changes **before** expansion, inspect the full resulting footprint, then Save/Open the project and ask **“Now add an inspection arm and camera to this workstation.”** A new layout clears an earlier extension. Future examples do not add it. A separate custom sidecar is proposed; its sweep is kinematic, with no coverage, mounting or collision validation. Custom inspection/cooling integration on OT-2 is unsupported and rejected while preserving the accepted project.
 6. Choose concentrations and final volume when useful: **“Use target concentrations of 1, 0.5 and 0.1 mg/mL, with a final volume of 1 mL per tube. Keep the machine layout unchanged.”** Per-tube wording is accepted as context, not an unsupported unit. If stock is missing, supply it when asked. With 10 mg/mL stock, stock volumes are 100, 50 and 10 µL respectively, each made up to 1 mL. These are example inputs, not defaults. Independent direct dilutions are calculated; capacity, pipette range, mixing and dead volume remain unchecked.
-7. Ask **“How do I buy the pieces and assemble this?”** for the selected route's source links, purchase/configuration steps and unresolved checks. Guidance stays under collapsed **Project details**. Review the **Preparation plan**, confirm, then preview or generate revision-specific files. Photo inspection appears after an explicit request or accepted extension; only Analyze photo sends the selected image to Meta.
+7. Open **Parts & pricing → Refresh US prices** for actual USD supplier listings, dated availability and partial-cost coverage. Ask **“How do I buy the pieces and assemble this?”** to open **Build instructions**: revision-specific steps, selected parts, official references and unresolved engineering tasks, with immediate HTML/Markdown/JSON downloads. Review the **Preparation plan**, confirm, then generate the full CAD package if needed. Photo inspection appears after an explicit request or accepted extension; only Analyze photo sends the selected image to Meta.
 
 The left side contains the brief or interactive model, with a compact partial cost/selection summary. Secondary details stay collapsed. All development, cooling and expansion requests use the same chat; there are no permanent arm/camera/cooling request fields. A rejected change preserves the previous project. Quantity-only edits preserve the accepted layout, source/bed pose and inspection proposal; the custom sample-rack hole pattern follows the number of preparation targets. Exports belong to the resulting revision. A new layout clears an earlier inspection extension so it can be designed against the new arrangement.
+
+Choose Spark Contributor, Spark Standard or Wonder above chat using the account-checked selector. **Muse Voice** transcribes a recording into an editable draft; review numbers and units, then explicitly send. With an accepted design, **Project details → Project illustration** generates an optional Muse Image presentation PNG from the actual 3D view, labelled as nontechnical artwork. These paths use real server-side Meta access and preserve the canonical project. See [model choice, dictation and illustrations](docs/multimodal-demo.md) for supported formats, cancellation, privacy, availability and limits.
+
+Visible **Review preparation plan** and **Project files** shortcuts reveal the relevant section. Keyboard controls rotate/zoom the scene. A failed new-project request preserves the workspace; a successful reset offers **Undo new project**.
 
 The fixed source envelope is approximately **483.1 × 612.7 × 564.4 mm** (width × depth × height). A width below 483.1 mm is rejected for this foundation. Meta may propose a **240–300 × 260–300 mm** custom insert and **95–150 mm** downward bed pose. These are bounded digital design choices, not validated travel or mounting limits. The camera/arm/cold sidecars add their own assembly bounds. Arbitrary CAD architectures and source-part editing are not implemented.
 
@@ -49,7 +53,7 @@ After confirmation, **Project details → Generate project files** performs real
 
 When generation is ready, **Read project guide** opens the actual standalone HTML inside a sandboxed viewer; downloads remain available separately. A temporary status-request failure offers **Reconnect to generation**, which resumes checking the existing job instead of starting another heavy export.
 
-Full source CAD exports are substantially larger/slower than the former concept boxes and can take several minutes on first use. Progress advances only after actual stages; it does not show invented percentages. Packages have a 128 MiB ZIP cap and 512 MiB uncompressed cap. Downloads are restricted to the current revision. Known prices are partial dated catalogue observations; unpriced groups remain unknown, and a zero known subtotal displays “Pricing pending”. This is not a complete quotation.
+Full source CAD exports are substantially larger/slower than the former concept boxes and can take several minutes on first use. Progress advances only after actual stages; it does not show invented percentages. Packages have a 128 MiB ZIP cap and 512 MiB uncompressed cap. Lightweight instruction downloads are available immediately. Full-package downloads are restricted to the current revision and bound procurement snapshot. A price refresh or expiry invalidates price-bearing old exports. Unknown costs remain unknown; listed parts are only a partial subtotal. See [US pricing and project instructions](docs/procurement-and-instructions.md) for supplier coverage, packs, freshness and download behavior.
 
 OT-2 packages contain the schematic layout, configuration/setup guidance, quote checklist and licensed official deck data. They do not contain manufacturer fabrication CAD or executable robot protocols. Both selected-platform paths record simulation `not_run`; legacy XYZ physics cannot validate either instrument.
 
@@ -205,6 +209,9 @@ npm.cmd --prefix web run build
 .\.venv\Scripts\python.exe tests/browser_vision.py
 .\.venv\Scripts\python.exe tests/browser_scene_focus.py
 .\.venv\Scripts\python.exe tests/browser_project_files.py
+.\.venv\Scripts\python.exe tests/browser_multimodal.py
+.\.venv\Scripts\python.exe tests/browser_scene_accessibility.py
+.\.venv\Scripts\python.exe tests/browser_resources.py
 ```
 
 The first Python command runs the regular regression suite; the second runs the source-CAD checks, including a full export/reopen and standalone regeneration. That integration test reads expanded source geometry twice and requires substantial time and memory (several GiB on the verified Windows host). Run it separately from quick UI iteration. Both check sets are required for source/export changes.
@@ -215,13 +222,20 @@ The current Chrome flow uses explicit offline Meta fixtures, the real API/compil
 
 `browser_project_files.py` uses explicit offline export responses to check both platform labels, reconnect after an interrupted status request without another export POST, explicit sandboxed guide reading and project reset. It does not generate heavy CAD or call Meta.
 
+`browser_resources.py` checks pricing coverage, failed refresh recovery, expiry and
+focus/visibility rereads without automatic supplier calls, candidate/source labels,
+instruction navigation, real document download, revision/report guards, saved-project
+reopening and mobile layout. Catalog responses are controlled fixtures; the separate
+[live supplier and Meta record](docs/examples/procurement-instructions-verification.json)
+contains actual observations.
+
 The shareable [live Meta example](docs/examples/chat-foundation-live.json) records synthetic future-example, source-layout, bed revision and inspection requests. It distinguishes actual model choices from deterministic checks and preserves rejection evidence. Results are nondeterministic and are integration checks, not model accuracy or laboratory validation.
 
 ## Boundaries
 
 Implemented: general discovery, bounded Meta liquid-workstation/inspection proposals, imported source CAD, checked custom geometry, direct-dilution calculations, interactive 3D, optional real-photo analysis with human review, local portable state and revision-specific exports.
 
-Not implemented: arbitrary robot synthesis, fabrication-ready interfaces, calibrated hardware control, pipetting/temperature validation, arm dynamics/collision simulation, full Jubilee physics, live procurement, model selection, dictation or generated instruction illustrations. Photo detections are image regions, not calibrated world coordinates or measured volumes. Historic live checks and screenshots in older documents describe their recorded version; this README and the current source asset documentation describe today's interface.
+Not implemented: arbitrary robot synthesis, fabrication-ready custom interfaces, calibrated hardware control, pipetting/temperature validation, arm dynamics/collision simulation, full Jubilee physics, automated ordering or a complete priced/verified machine BOM. US catalog retrieval and source-grounded instruction generation are implemented; compatibility gaps remain explicit engineering tasks. Optional Muse Image output is presentation artwork and may alter details. Photo detections are image regions, not calibrated world coordinates or measured volumes. Historic live checks and screenshots in older documents describe their recorded version; this README and the current source asset documentation describe today's interface.
 
 ## Updating requirements deliberately
 

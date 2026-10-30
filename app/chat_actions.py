@@ -121,8 +121,11 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
             else:
                 if kind == "show_build_plan":
                     runs.append({"kind": kind, "status": "ready", "message":
-                        "Purchase and assembly guidance is in Project details. Prices and "
-                        "unresolved compatibility are kept explicit." if state_for(result)[
+                        "Open Build instructions for this revision's sourced build/setup steps, "
+                        "required engineering tasks and immediate HTML, Markdown "
+                        "or JSON downloads. "
+                        "Parts & pricing shows US supplier prices, dates and unresolved items."
+                        if state_for(result)[
                         "selected_platform_id"] else "Choose a proposed platform first so the "
                         "purchase and assembly steps match your needs."})
                     continue
@@ -140,7 +143,8 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                         "message": {
                             "show_files": "Project files are available in Project details.",
                             "show_sources": "Reviewed sources are available in Project details.",
-                            "show_components": "Current components are in Project details.",
+                            "show_components": "Current components and US price refresh are "
+                            "in Parts & pricing.",
                             "show_photo_check": "Photo check is available in Project details.",
                         }[kind],
                     }

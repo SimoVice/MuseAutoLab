@@ -10,7 +10,7 @@ revision-specific files. No laboratory performance or time saving has been measu
 
 | Path | What you can inspect | Requirements |
 | --- | --- | --- |
-| Watch the demo | [Three-minute MP4](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4), actual product captures with English captions | No account or API key; [recording scope and captions](video/README.md) |
+| Watch the core demo | [Three-minute MP4](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4), recorded core product journey with English captions | No account or API key; latest pricing/instruction features are described below |
 | Read without installing | This guide, architecture below, source documentation and dated JSON examples | No account or API key |
 | Reopen a recorded project | Real 3D, accepted layout, cold bay, inspection sweep and local exports from the example below | Locked setup and local servers; no Meta key or new inference |
 | Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](../README.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
@@ -44,7 +44,11 @@ no new inference; it shows the digital proposal, not assembled laboratory hardwa
 3. Rotate the model, open **Project details**, select a component and use **Inspect
    view** to isolate the selected part, working area or arm/camera. **Show full model**
    returns to the whole assembly. Inspect the separate kinematic sweep if useful.
-4. Choose **Generate project files** to create an actual local package from the
+4. Open **Parts & pricing** and explicitly refresh US prices for current supplier
+   observations. Open **Build instructions** for the immediate revision-specific
+   guide and HTML/Markdown/JSON downloads. Neither requires Meta inference; only
+   the explicit price refresh contacts suppliers. See [pricing and instruction scope](procurement-and-instructions.md).
+5. Choose **Generate project files** to create an actual local package from the
    reopened state. This uses local CAD/document generation, not Meta. The heavy
    source export can take several minutes. Read the guide and download the ZIP after
    the job is ready; historical export jobs are not restored.
@@ -142,12 +146,19 @@ and [third-party notices](../THIRD_PARTY_NOTICES.md) for source identity and rig
 
 ## Evidence and verification scope
 
+The [multimodal walkthrough](multimodal-demo.md) covers the implemented account-checked
+Spark/Wonder selector, editable Muse Voice dictation and optional Muse Image
+illustration. The [curated verification appendix](examples/multimodal-verification.json)
+retains real request outcomes, failures and fixes. Agent usability checks improved
+reset recovery, keyboard view controls, mobile layout and discovery of plans/files.
+They are separate from the earlier core journey and from testing with external users.
+
 | Record | Date and scope |
 | --- | --- |
 | [Third complete live browser journey](examples/delivery-third-rehearsal.json) and [video project](examples/demo-video-project.json) | 2026-10-30; real browser conversation, third fresh completion and a live 450 mm rejection preserving the confirmed state; distinct from the earlier example below |
-| [Delivery verification](verification.md) | 2026-10-30; regular/source tests, browser checks, clean reconstruction and actual final revision-9 package; remaining delivery work explicit |
+| [Delivery verification](verification.md) | 2026-10-30; 539 regular tests and eight offline browser flows after multimodal fixes; historical source-CAD/reconstruction and actual revision-9 package evidence remain separately dated |
 | [Initial complete-path Meta rehearsals](examples/delivery-rehearsal-summary.json) | 2026-10-29, curated October 30; two complete fresh journeys, a recovered journey and failed/incomplete attempts; retained unchanged, with the third fresh completion recorded separately above |
-| [Three-minute video](video/README.md) | 2026-10-30; 180 s, 1080p30, full decode and 12-frame visual review passed; English captions, no narration, shortened waits identified |
+| [Three-minute video](video/README.md) | 2026-10-30; 180 s, 1080p30, synthetic English narration and timed captions; final media checks and labelled cuts in the video record |
 | [Current platform-choice example](examples/engineering-choice-live.json) | 2026-10-29; actual Contributor responses on synthetic needs, both routes and late quantities; retains earlier failures and reported usage |
 | [Source-CAD chat example](examples/chat-foundation-live.json) | 2026-10-28; actual Contributor source-layout, bed and inspection requests, with rejection evidence; predates the current needs/choice flow |
 | [Historical layout implementation](meta-design.md) and [project evolution](project-evolution.md) | 2026-10-28; older architecture/UI records, not instructions for today's interface |

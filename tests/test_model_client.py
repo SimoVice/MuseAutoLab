@@ -47,6 +47,85 @@ def run_turn(handler, message="My workspace is 40 cm wide", history=None):
     return asyncio.run(run())
 
 
+def test_accepted_design_context_uses_bound_current_prices_and_actionable_guide():
+    from copy import deepcopy
+
+    from test_foundation_storage import source_project
+    from test_instructions import report_for
+
+    project = source_project()
+    project["procurement_report"] = report_for(project)
+    row = project["procurement_report"]["rows"][0]
+    row["compatibility_note"] = "Kit covers platform hardware; liquid tooling needs review."
+    before = deepcopy(project)
+    captured = {}
+
+    def handler(request):
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200, json=valid_response(assistant_message="Review the custom insert attachment next.")
+        )
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await generate_turn(
+                project, "What do I build next?", [], client=client, settings=TEST_SETTINGS
+            )
+    asyncio.run(run())
+    state_text = captured["messages"][1]["content"]
+    state = json.loads(state_text.removeprefix("Current recorded project state: "))
+    facts = state["catalogue"]
+    assert facts["report_id"] == "quote-one"
+    assert facts["known_partial_subtotal"] == 1200 and facts["currency"] == "USD"
+    assert "subtotal_usd" not in facts and "dated_reference_subtotal_usd" not in facts
+    assert facts["selected_items"][0]["price_source_url"] == row["price_source_url"]
+    assert facts["selected_items"][0]["compatibility_note"] == row["compatibility_note"]
+    instructions = state["build_instructions"]
+    assert instructions["project_revision"] == project["revision"]
+    assert instructions["procurement_report_id"] == "quote-one"
+    assert any(step["engineering_tasks"] for step in instructions["steps"])
+    assert all("parts" not in step and "instructions" not in step for step in instructions["steps"])
+    assert "Build instructions" in captured["messages"][0]["content"]
+    assert "supplier text" in captured["messages"][0]["content"]
+    assert project == before
+
+
+def test_static_prices_and_mismatched_reports_never_become_current_machine_total():
+    from test_foundation_storage import source_project
+    from test_instructions import report_for
+
+    from app.model_client import _catalogue_facts
+
+    project = source_project()
+    facts = _catalogue_facts(project)
+    assert facts["status"] == "not_refreshed" and facts["known_partial_subtotal"] is None
+    assert "subtotal_usd" not in facts
+    assert "dated_reference_subtotal_usd" in facts
+    project["procurement_report"] = report_for(project)
+    project["procurement_report"]["project_revision"] += 1
+    assert _catalogue_facts(project)["status"] == "not_refreshed"
+
+
+def test_expired_prices_remain_last_known_in_chat_context():
+    from test_foundation_storage import source_project
+    from test_instructions import report_for
+
+    from app.model_client import _catalogue_facts
+
+    project = source_project()
+    report = report_for(project)
+    report["rows"][0].update(unit_price=None, line_total=None, freshness="stale",
+                              last_known_price=1200, last_known_fetched_at=report["fetched_at"])
+    report["known_partial_subtotal"] = 0
+    report["stale_last_known_subtotal"] = 1200
+    project["procurement_report"] = report
+    facts = _catalogue_facts(project)
+    assert facts["known_partial_subtotal"] == 0
+    assert facts["stale_last_known_subtotal"] == 1200
+    assert facts["selected_items"][0]["unit_price"] is None
+    assert facts["selected_items"][0]["last_known_price"] == 1200
+
+
 def test_request_uses_meta_schema_budget_and_preserves_zero_cost_usage():
     captured = {}
 

@@ -10,53 +10,6 @@ from pprint import pformat
 
 CHECKED_LABEL = "not recorded"
 
-STEP_DEFS = [
-    {
-        "id": "design-review",
-        "title": "Stage 1 — Design review and concept gate",
-        "component_ids": [],
-        "requires_design": False,
-    },
-    {
-        "id": "frame",
-        "title": "Stage 2 — Frame and custom deck",
-        "component_ids": ["base", "column-left", "column-right", "crossbar"],
-        "requires_design": True,
-    },
-    {
-        "id": "motion-pipette",
-        "title": "Stage 3 — Motion axes and pipette mount",
-        "component_ids": ["carriage", "crossbar", "pipette"],
-        "requires_design": True,
-    },
-    {
-        "id": "racks",
-        "title": "Stage 4 — Racks and waste containers",
-        "component_ids": ["source-rack", "sample-rack", "tip-rack", "tip-waste"],
-        "requires_design": True,
-    },
-    {
-        "id": "controller",
-        "title": "Stage 5 — Controller integration",
-        "component_ids": ["controller"],
-        "requires_design": True,
-    },
-    {
-        "id": "cold-bay",
-        "title": "Stage 6 — Optional refrigerated bay (only when cooling is enabled)",
-        "component_ids": ["cold-storage"],
-        "requires_design": True,
-        "conditional": True,
-    },
-    {
-        "id": "checks",
-        "title": "Stage 7 — Checks before operation",
-        "component_ids": [],
-        "requires_design": False,
-    },
-]
-
-
 def _project_id(project: dict) -> str:
     return str(project.get("id", "unknown"))
 
@@ -147,219 +100,11 @@ def _display_vector(value, separator: str) -> str:
     return str(value)
 
 
-def assembly_steps(project: dict) -> list[dict]:
-    """Return the proposed concept assembly sequence for the snapshot."""
-    if project.get("design", {}).get("platform"):
-        from app.platform_profiles import engineering_guidance
+def assembly_steps(project: dict, procurement: dict | None = None) -> list[dict]:
+    """Return the same revision-bound sequence used by immediate previews and exports."""
+    from app.instructions import build_instruction_guide
 
-        guidance = engineering_guidance(project)
-        return [{"id": f"prebuilt-setup-{i}", "title": step["title"],
-                 "component_ids": ["base"], "instructions": [step["detail"], step["url"]],
-                 "checks": ["Follow official instructions for the actual purchased configuration.",
-                            "Reference CAD is schematic; do not fabricate the purchased robot."],
-                 "requires_design": True} for i, step in enumerate(guidance["steps"], 1)]
-    index = _comp_index(project)
-    cooling = _cooling(project)
-    fp = _footprint(project)
-    sourcing = project.get("sourcing") or {}
-    checked = str(sourcing.get("checked_on", CHECKED_LABEL))
-    currency = str(sourcing.get("currency", "USD"))
-    subtotal = sourcing.get("subtotal")
-    subtotal_text = f"{float(subtotal):.2f} {currency}" if subtotal is not None else "unknown"
-    width_text = _display_mm(fp.get("width_mm"))
-    variant = cooling["variant_id"] or "none selected"
-    target = cooling["target_c"]
-    target_text = (
-        f"{target} C ({cooling['target_source']})" if target is not None else "no target set"
-    )
-
-    def existing(ids: list[str]) -> list[str]:
-        return [i for i in ids if i in index]
-
-    steps: list[dict] = []
-    for spec in STEP_DEFS:
-        if spec.get("conditional") and not cooling["enabled"]:
-            continue
-        sid = spec["id"]
-        comp_ids = existing(list(spec["component_ids"]))
-        # Cold bay: only keep when the component exists; otherwise keep empty list
-        # so the conditional step is still visible when cooling is enabled.
-        if sid == "design-review":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": [],
-                    "instructions": [
-                        f"Confirm project {_project_id(project)} revision "
-                        f"{_revision(project)} before handling parts.",
-                        "Cross-check selected variants and quantities in bill-of-materials.csv.",
-                        f"Known subtotal {subtotal_text}; unpriced groups remain excluded. "
-                        f"Sources checked {checked}.",
-                        f"Footprint {fp.get('width_mm')} x {fp.get('depth_mm')} x "
-                        f"{fp.get('height_mm')} mm; width requirement {width_text} mm.",
-                        "Treat rails, mounts, pipette actuation, and electronics as open "
-                        "design items; do not proceed past this gate with assumed interfaces.",
-                    ],
-                    "checks": [
-                        "Dilution plan status and workspace width requirement reviewed.",
-                        "Open mechanical and electronic interfaces acknowledged.",
-                    ],
-                    "requires_design": False,
-                }
-            )
-        elif sid == "frame":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": comp_ids,
-                    "instructions": [
-                        "Place the custom deck blank on a level surface and position the "
-                        "frame posts and crossbar per the concept envelopes.",
-                        "Design gate: rail spans, post mounts, and deck fixation are not "
-                        "specified; no bolt sizes or torque values are given.",
-                    ],
-                    "checks": [
-                        "Frame parts match the concept envelopes.",
-                        "Custom mounts flagged as still to design.",
-                    ],
-                    "requires_design": True,
-                }
-            )
-        elif sid == "motion-pipette":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": comp_ids,
-                    "instructions": [
-                        "Offer up the carriage and pipette concept to the crossbar region to "
-                        "review clearances.",
-                        "Design gate: linear rails, transmission, pipette mounts, and tip "
-                        "handling are custom and unverified; travel and collisions are not "
-                        "established.",
-                    ],
-                    "checks": [
-                        "Carriage and pipette envelopes reviewed.",
-                        "Motion design left open; nothing is claimed as validated.",
-                    ],
-                    "requires_design": True,
-                }
-            )
-        elif sid == "racks":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": comp_ids,
-                    "instructions": [
-                        "Place source, sample, and tip racks and the waste container on the "
-                        "deck in the concept positions.",
-                        "Printed fixtures and labware are custom; positions are illustrative only.",
-                    ],
-                    "checks": [
-                        "Rack envelopes sit within the deck area.",
-                        "Labware fit still to verify.",
-                    ],
-                    "requires_design": True,
-                }
-            )
-        elif sid == "controller":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": comp_ids,
-                    "instructions": [
-                        "Place the controller enclosure concept in its shown position and "
-                        "plan cable routing at concept level.",
-                        "Design gate: carrier board, firmware, power, and wiring protection "
-                        "are not specified; no pinouts are given.",
-                    ],
-                    "checks": [
-                        "Controller envelope reviewed.",
-                        "Electronics integration left open.",
-                    ],
-                    "requires_design": True,
-                }
-            )
-        elif sid == "cold-bay":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": comp_ids,
-                    "instructions": [
-                        f"Attach the refrigerated bay concept (variant {variant}); requested "
-                        f"target {target_text} with manual sample transfer.",
-                        "Design gate: enclosure, insulation, power, condensation, and "
-                        "ventilation are assumed and unverified; target is a requested "
-                        "setting, never a measured temperature.",
-                    ],
-                    "checks": [
-                        "Cold bay envelope reviewed.",
-                        "Manual transfer workflow acknowledged.",
-                    ],
-                    "requires_design": True,
-                }
-            )
-        elif sid == "checks":
-            steps.append(
-                {
-                    "id": sid,
-                    "title": spec["title"],
-                    "component_ids": [],
-                    "instructions": [
-                        "Re-check the full concept: footprint, rack layout, manual cold "
-                        "transfer, and cost scope with unknowns.",
-                        "Run automation/preview.py to review the logical liquid-handling "
-                        "trace (no hardware control).",
-                        "Do not operate hardware from this concept sequence; mechanical and "
-                        "electronic interfaces are unverified.",
-                    ],
-                    "checks": ["All open interfaces listed.", "Preview trace reviewed."],
-                    "requires_design": False,
-                }
-            )
-    extension = project.get("inspection_extension")
-    if extension:
-        steps.insert(-1, {
-            "id": "inspection-extension", "title": "Inspection arm and camera concept",
-            "component_ids": list(extension["component_ids"]), "requires_design": True,
-            "instructions": [
-                "Review the sidecar pad, mast, two links and downward camera in the CAD model.",
-                "The sidecar adds depth beyond the current deck, including any cold bay.",
-                "Design the fasteners, load path, power and cabling before physical assembly.",
-                "Use inspection-module.json for the proposed dimensions and kinematic poses; "
-                "perform real image analysis separately through Labware photo check.",
-            ], "checks": [
-                "Recorded target poses pass planar reach and width-envelope screening.",
-                "Motion clearance, mount loads and image coverage remain unverified.",
-                "MuJoCo results cover the pipette workstation only, excluding this module.",
-            ],
-        })
-    for step in steps:
-        step["title"] = step["title"].split(" — ", 1)[-1]
-    if project.get("design", {}).get("foundation"):
-        for step in steps:
-            if step["id"] == "frame":
-                step.update(title="Source platform and custom insert",
-                            component_ids=["foundation-jubilee", "base"], instructions=[
-                    "Review the original Jubilee assembly at its pinned revision and source BOM.",
-                    "Review the proposed bed pose and custom insert; source parts are unscaled.",
-                    "Design and verify insert attachment, bed travel, cabling and tool interfaces "
-                    "before physical work. Imported geometry does not establish an adapter.",
-                ], checks=["Original source identity and attribution retained.",
-                           "Bed pose and custom interfaces require physical review."])
-            if step["id"] == "motion-pipette":
-                step["instructions"][0] = (
-                    "Review the custom pipette and adapter concept inside the source frame. "
-                    "A working attachment to the original tool carriage is not established.")
-            step["checks"] = [
-                "Jubilee physical simulation is not implemented; no MuJoCo pass is claimed."
-                if "MuJoCo" in check else check for check in step["checks"]]
-    return steps
+    return build_instruction_guide(project, procurement)["steps"]
 
 
 def _csv_cell(value: str) -> str:
@@ -571,13 +316,20 @@ def _source_basis_html(project: dict) -> str:
             'in project.json and cad/geometry-report.json under design_basis.</p></section>')
 
 
-def build_guide_html(project: dict, steps: list[dict]) -> bytes:
+def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = None) -> bytes:
+    from app.instructions import procurement_html, step_details_html
     pid = html.escape(_project_id(project))
     rev = _revision(project)
     fp = _footprint(project)
     cooling = _cooling(project)
     sourcing = project.get("sourcing") or {}
     checked = html.escape(str(sourcing.get("checked_on", CHECKED_LABEL)))
+    if guide is not None:
+        dates = [source.get("checked_on", "") for source in guide.get("sources", [])]
+        checked = (
+            f"historical component snapshot {checked}; instruction references "
+            + html.escape(max(dates, default=CHECKED_LABEL))
+        )
     limitations = [
         "Concept sequence only; mechanical, thermal, and electronic interfaces are unverified.",
         "Custom deck is a solid blank for review, not fabrication-ready; no drill patterns "
@@ -611,7 +363,7 @@ def build_guide_html(project: dict, steps: list[dict]) -> bytes:
             f"<li>{html.escape(str(t))}</li>" for t in step.get("instructions", [])
         )
         checks = "".join(f"<li>{html.escape(str(t))}</li>" for t in step.get("checks", []))
-        gate = "Open design items remain." if step.get("requires_design") else "Review gate."
+        gate = str(step.get("status", "needs_design")).replace("_", " ")
         step_sections.append(
             '<section class="step"><h3>{}. {}</h3>'
             '<p class="meta">Components: {} &middot; {}</p>{}<ul>{}</ul>'
@@ -623,7 +375,7 @@ def build_guide_html(project: dict, steps: list[dict]) -> bytes:
                 _step_svg(project, list(step.get("component_ids", []))),
                 instructions,
                 checks,
-            )
+            ).replace("</section>", step_details_html(step) + "</section>")
         )
     target_text = html.escape(str(cooling["target_c"]))
     page = """<!DOCTYPE html>
@@ -652,13 +404,29 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 .table-scroll table{min-width:600px}.table-scroll:focus-visible{outline:2px solid #0f766e}
 th,td{border:1px solid #bcd8d3;padding:6px;text-align:left}
 th{background:#d7e8e4}
+.procurement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.procurement-item{border:1px solid #c9ded8;border-radius:8px;padding:18px;min-width:0;
+font-size:14px;line-height:1.55;break-inside:avoid}
+.procurement-item h3{font-size:18px;line-height:1.3;margin:8px 0;overflow-wrap:normal}
+.procurement-item h4{margin:16px 0 6px}.procurement-item p{margin:8px 0}
+.procurement-role{display:inline-block;background:#edf5f2;border-radius:4px;padding:3px 7px;
+font-size:12px;color:#305b52}
+.procurement-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+border-block:1px solid #d8e7e1;padding:14px 0;margin:16px 0}
+.procurement-facts dt{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58716c}
+.procurement-facts dd{margin:3px 0 0;font-size:14px;font-weight:600}
+.procurement-source{font-size:12px;line-height:1.7}
 @media(max-width:600px){header{padding:26px 18px}h1{font-size:30px}
-main{padding:8px 12px}.card,.step{padding:16px;margin:12px 0}h2{font-size:19px}}
+main{padding:8px 12px}.card,.step{padding:16px;margin:12px 0}h2{font-size:19px}
+.procurement-grid{grid-template-columns:minmax(0,1fr)}.procurement-item{padding:14px}}
 @media print{body{background:white;font-size:10pt}
 header{color:#103f45;background:white;border-bottom:2px solid #0f766e;padding:12px}
 header p{color:#44635f}main{padding:0}.step{break-before:page;border:none}
 svg{max-width:640px}table{font-size:9pt}th,td{overflow-wrap:anywhere}
-.table-scroll{overflow:visible}.table-scroll table{min-width:0}}
+.table-scroll{overflow:visible}.table-scroll table{min-width:0}
+.procurement-grid{display:block}.procurement-item{margin:12px 0;border-radius:0;font-size:10pt}
+.procurement-item h3{font-size:13pt}.procurement-facts dd{font-size:10pt}
+.procurement-source a::after{content:" (" attr(href) ")";overflow-wrap:anywhere}}
 </style>
 </head>
 <body>
@@ -726,6 +494,8 @@ STEPS
             "Rack proxies mark the chosen software slots; exact labware fit is unverified.")
         page = page.replace("Physics uses conservative component envelopes.",
                             "OT-2 physical simulation is not implemented.")
+    if guide is not None:
+        page = page.replace("</main>", procurement_html(guide) + "</main>")
     return page.encode("utf-8")
 
 
@@ -988,16 +758,12 @@ def build_extensions_md(project: dict) -> bytes:
     return text.encode("utf-8")
 
 
-def build_document_files(project: dict) -> dict[str, bytes]:
+def build_document_files(project: dict, procurement: dict | None = None) -> dict[str, bytes]:
     """Build all standalone document bytes for the snapshot."""
-    steps = assembly_steps(project)
+    from app.instructions import build_instruction_files
+
     files: dict[str, bytes] = {
-        "assembly-guide.html": build_guide_html(project, steps),
-        "assembly.json": json.dumps(
-            {"project_id": _project_id(project), "revision": _revision(project), "steps": steps},
-            indent=2,
-            sort_keys=True,
-        ).encode("utf-8"),
+        **build_instruction_files(project, procurement),
         "bill-of-materials.csv": build_bom_csv(project),
         "preparation.csv": build_preparation_csv(project),
         "automation/preview.py": build_preview_source(project),
@@ -1005,6 +771,23 @@ def build_document_files(project: dict) -> dict[str, bytes]:
         "extension-plan.json": build_extension_plan(project),
         "extensions.md": build_extensions_md(project),
     }
+    report = procurement if procurement is not None else project.get("procurement_report")
+    if report:
+        from app.procurement import report_csv, report_json
+
+        files["bill-of-materials.csv"] = report_csv(report)
+        files["procurement-report.json"] = report_json(report)
+        files["README.md"] = files["README.md"].replace(
+            b"bill-of-materials.csv is an unpriced quotation checklist, not a custom motor BOM.",
+            b"bill-of-materials.csv is the bound US procurement snapshot, not a custom motor BOM.")
+        files["README.md"] += (
+            "\n## Bound procurement report\n\n"
+            f"Report {report['report_id']} belongs to this project revision. "
+            "bill-of-materials.csv and procurement-report.json preserve its current prices, "
+            "quantities, source URLs, dates, gaps and stale/unavailable statuses. "
+            "The known subtotal is partial, excludes unresolved items, and is not a "
+            "complete machine quotation. Commercial offers do not replace accepted geometry.\n"
+        ).encode("utf-8")
     extension = project.get("inspection_extension")
     if extension:
         files["inspection-module.json"] = json.dumps({

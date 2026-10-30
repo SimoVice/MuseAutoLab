@@ -39,6 +39,13 @@ from app.model_client import (
     generate_turn,
     using_model,
 )
+from app.procurement import (
+    project_with_report,
+    refresh_procurement,
+    report_csv,
+    report_for_project,
+    report_json,
+)
 from app.project_exports import (
     ExportError,
     export_archive,
@@ -128,6 +135,8 @@ class ProjectSession:
     history: list[dict[str, str]] = field(default_factory=list)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     model: str = field(default_factory=configured_model)
+    procurement_report: dict | None = None
+    procurement_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     @asynccontextmanager
     async def model_lock(self):
@@ -158,7 +167,8 @@ def _configuration_message(project: dict) -> str:
         status = "Refrigerated bay is off."
     prefix = "from " if sourcing["is_lower_bound"] else ""
     return (
-        f"{status} Known parts subtotal: {prefix}${sourcing['subtotal']:.2f} USD. "
+        f"{status} Dated catalog fallback: {prefix}${sourcing['subtotal']:.2f} USD "
+        f"(checked {sourcing['checked_on']}). Refresh US prices for the current revision. "
         "Unpriced parts, shipping and taxes are excluded. Cooling performance is unverified."
     )
 
@@ -321,6 +331,126 @@ async def get_reference_library() -> dict:
     return reference_library()
 
 
+class ProcurementRefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    project_revision: int = Field(strict=True, ge=0)
+
+
+def _check_procurement_revision(project: dict, revision: int) -> None:
+    if revision != project["revision"]:
+        raise HTTPException(
+            status_code=409, detail="The project changed. Use its current revision."
+        )
+
+
+@app.get("/api/projects/{project_id}/procurement")
+async def get_procurement(project_id: str, revision: int) -> dict:
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        current = report_for_project(session.project, session.procurement_report)
+        state = "current" if current else (
+            "stale_revision" if session.procurement_report else "not_refreshed"
+        )
+        # A report for an older design is never presented as current commercial data.
+        return {"report": current, "state": state}
+
+
+async def _refresh_procurement_connected(request: Request, operation) -> dict:
+    task = asyncio.create_task(operation)
+    try:
+        while not task.done():
+            if await request.is_disconnected():
+                raise HTTPException(status_code=499, detail="Catalog refresh was cancelled.")
+            await asyncio.wait({task}, timeout=0.1)
+        return await task
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+
+@app.post("/api/projects/{project_id}/procurement/refresh")
+async def refresh_project_procurement(
+    project_id: str, payload: ProcurementRefreshRequest, request: Request
+) -> dict:
+    session = session_for(project_id)
+
+    async def operation():
+        async with session.procurement_lock:
+            async with session.model_lock():
+                _check_procurement_revision(session.project, payload.project_revision)
+                if not session.project.get("engineering_design"):
+                    raise HTTPException(
+                        status_code=409, detail="Develop a machine before refreshing its parts."
+                    )
+                project = deepcopy(session.project)
+            result = await refresh_procurement(project)
+            async with session.model_lock():
+                _check_procurement_revision(session.project, payload.project_revision)
+                session.procurement_report = result
+                return {"report": deepcopy(result), "state": "current"}
+
+    return await _refresh_procurement_connected(request, operation())
+
+
+@app.get("/api/projects/{project_id}/procurement/download")
+async def download_procurement(
+    project_id: str, revision: int, report_id: str, format: str = "json"
+) -> Response:
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        report = report_for_project(session.project, session.procurement_report)
+        if report is None or report["report_id"] != report_id:
+            raise HTTPException(status_code=409, detail="Refresh and download the current report.")
+    if format not in ("json", "csv"):
+        raise HTTPException(status_code=422, detail="Choose JSON or CSV for the catalog report.")
+    body = report_json(report) if format == "json" else report_csv(report)
+    return Response(
+        content=body, media_type="application/json" if format == "json" else "text/csv",
+        headers={"Content-Disposition": f'attachment; filename="procurement-r{revision}.{format}"',
+                 "Cache-Control": "no-store"},
+    )
+
+
+@app.get("/api/projects/{project_id}/instructions")
+async def get_instructions(project_id: str, revision: int) -> dict:
+    from app.instructions import build_instruction_guide
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        current = project_with_report(session.project, session.procurement_report)
+    return build_instruction_guide(current)
+
+
+@app.get("/api/projects/{project_id}/instructions/download")
+async def download_instructions(
+    project_id: str, revision: int, format: str = "html", report_id: str | None = None
+) -> Response:
+    from app.instructions import build_instruction_files
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        current = project_with_report(session.project, session.procurement_report)
+        if (report_id is not None
+                and current.get("procurement_report", {}).get("report_id") != report_id):
+            raise HTTPException(
+                status_code=409, detail="Download instructions for the current report."
+            )
+    names = {"html": "assembly-guide.html", "md": "assembly-guide.md", "json": "assembly.json"}
+    if format not in names:
+        raise HTTPException(status_code=422, detail="Choose HTML, Markdown or JSON instructions.")
+    name = names[format]
+    return Response(
+        content=build_instruction_files(current)[name], media_type=media_type_for(name),
+        headers={"Content-Disposition": f'attachment; filename="{name}"',
+                 "Cache-Control": "no-store"},
+    )
+
+
 @app.get("/api/projects/{project_id}/sources")
 async def get_project_sources(project_id: str, revision: int) -> Response:
     session = session_for(project_id)
@@ -377,7 +507,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         current = session.project
         try:
             turn, usage = await generate_turn(
-                deepcopy(current), request.message, list(session.history)
+                project_with_report(current, session.procurement_report),
+                request.message, list(session.history)
             )
             actions = list(turn.actions)
             patch = extension_only_patch(turn.patch(), actions)
@@ -739,7 +870,7 @@ class InspectionReviewRequest(BaseModel):
 async def create_export(project_id: str) -> dict:
     session = session_for(project_id)
     async with session.model_lock():
-        current = deepcopy(session.project)
+        current = project_with_report(session.project, session.procurement_report)
     try:
         job = await start_export(current)
     except ExportError as exc:
@@ -751,7 +882,7 @@ async def create_export(project_id: str) -> dict:
 async def get_export(project_id: str, job_id: str) -> dict:
     session = session_for(project_id)
     async with session.model_lock():
-        current = deepcopy(session.project)
+        current = project_with_report(session.project, session.procurement_report)
     try:
         return await export_status(current, job_id)
     except ExportError as exc:
@@ -762,7 +893,7 @@ async def get_export(project_id: str, job_id: str) -> dict:
 async def download_export(project_id: str, job_id: str) -> Response:
     session = session_for(project_id)
     async with session.model_lock():
-        current = deepcopy(session.project)
+        current = project_with_report(session.project, session.procurement_report)
     try:
         payload = await export_archive(current, job_id)
         meta = await export_status(current, job_id)
@@ -903,7 +1034,7 @@ async def download_inspection_archive(
 async def download_export_file(project_id: str, job_id: str, name: str) -> Response:
     session = session_for(project_id)
     async with session.model_lock():
-        current = deepcopy(session.project)
+        current = project_with_report(session.project, session.procurement_report)
     try:
         payload = await export_file(current, job_id, name)
     except ExportError as exc:

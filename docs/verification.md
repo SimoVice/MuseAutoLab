@@ -17,16 +17,21 @@ the interactive product runs locally.
 
 | Check | Observed result | Scope |
 | --- | --- | --- |
-| Regular Python suite, October 30 | **415 passed**, 83.28 s | Backend, state preservation, arithmetic, imports, API, CAD/document boundaries and regressions; excludes the heavy source suite |
-| Heavy source-CAD suite, October 29 | **8 passed**, 670.95 s | Original source geometry, STEP export/reopen, bed pose, independent standalone regeneration and altered-source rejection |
+| Final regular Python suite, October 30, after pricing/instructions and document readability fixes | **586 passed**, 67.46 s | Backend, current supplier adapters, freshness/revision/report guards, instructions, model context and previous multimodal regressions; excludes the heavy source suite |
+| Source-CAD tests, October 30 | **8 passed** within the earlier **591-test full run**, 749.47 s for that full run | Original source geometry, STEP export/reopen, bed pose, independent standalone regeneration and altered-source rejection; not a separately measured eight-test runtime |
 | Ruff | Passed | `app`, `tests`, `scripts` |
 | TypeScript / Vite production build | Passed | Production frontend compilation |
-| Six browser flows | Passed | Foundation, engineering choice, general platform, vision, scene focus and project files; explicit offline Meta fixtures, real app/API where required by each test |
+| Three current browser flows | Passed | Pricing/instructions, both platform engineering routes, and project files; expiry, safe rereads, failed refresh, downloads, revision guards, chat navigation and mobile |
+| Eight earlier multimodal browser flows, October 30 | Passed at that milestone | Foundation, engineering choice, general platform, vision, scene focus, project files, multimodal lifecycle and scene accessibility; explicit offline Meta fixtures, real app/API where required by each test |
 | Isolated Windows reconstruction | Passed | New Python and JavaScript environments from unchanged locks; dependency/environment checks, production build and actual recorded-project open/re-save without credentials |
 | Recorded-project browser review | Passed | Revision 9, real local source meshes, retained accepted proposals and 100/50/10 µL stock volumes; no new model request or page error |
 
-The two Python suites contain **423 distinct tests**. Their runtimes are single-host
-observations, not performance targets. The isolated environment used the same PC and
+The final regular suite contains **586 tests**. The earlier full run in this phase
+passed 591 tests, including all eight source-CAD checks; three additional regression
+cases and the final document-layout change were subsequently covered by the final
+regular run. Source geometry, the CAD compiler and dependency locks remain unchanged.
+Runtimes are single-host observations,
+not performance targets. The isolated environment used the same PC and
 permitted existing package caches; it is not a second-machine or cache-cold benchmark.
 The no-key review exercised the actual saved-project path rather than substituting
 model responses. It does not establish fresh conversational behavior.
@@ -45,6 +50,48 @@ normal viewer behavior; the 390 × 844 mobile check also passed. It is separate 
 the actual heavy package check.
 
 ## Video project's actual package
+
+The original package evidence below is retained. The **current pricing/instruction
+package check** is in the next section; it uses the same recorded project and adds
+the bound procurement snapshot and Markdown guide.
+
+## US catalogs, instructions and current package
+
+The [curated verification record](examples/procurement-instructions-verification.json)
+contains actual primary-source observations and the real Meta question/answer.
+The full recorded revision-9 project retrieved **8 fresh prices across 15 groups**:
+six candidate Jubilee kits and two selected cooling components, totaling **USD
+591.86**. Seven groups remain unpriced. This is a dated partial subtotal, including
+candidate offers for review, with shipping/tax/fabrication and other unknowns excluded.
+An independent smaller project returned six priced foundation candidates, USD 546.96.
+The supplier registry contains fifteen exact SKU/variants; a selected project uses
+only applicable entries. No unrestricted search, supplier login or purchase occurred.
+
+One real Contributor request through the app explained the current report and opened
+**Build instructions**. The response distinguished missing costs and unresolved
+interfaces; revision 9, confirmed state and all thirteen portable canonical fields
+remained unchanged. No additional model request was made. Token counters were not
+retained by this UI-only capture, so consumption is unknown rather than estimated.
+These observations are separate from the twelve earlier multimodal requests below.
+
+One actual full export produced an **80,351,596-byte ZIP**, SHA-256
+`2f6f1a809fa840f691f10d8e3e40a798fbbc2897fcbda8b2786df7c923b09047`, with **26
+manifest-listed files plus the manifest**, ten guide steps and nineteen canonical
+components. All file hashes, immediate/packaged guide JSON/HTML/Markdown, BOM CSV,
+procurement JSON, source STEP hash and lineage/revision matched. Its exported STEP
+reopened valid with **863 solids**, retained source bounds and original bed hierarchy.
+Simulation remains `not_run`. An initial status connection failed during native CAD;
+the check reconnected to the same job and completed without a second generation.
+The resumed verification took 263.88 s, excluding the initial attempt's elapsed time.
+
+The final visual pass replaced a cramped twelve-column procurement table with
+readable per-item cards. Desktop, phone and print views have no page overflow or
+browser error. The final standalone HTML was rendered and reviewed; JSON/Markdown
+remained byte-identical to the checked ZIP. The ZIP hash above precedes this HTML-only
+style change; unchanged CAD was not regenerated just for styling. The final regular
+suite and document/export tests cover the final source. See the [user flow and limits](procurement-and-instructions.md).
+
+## Earlier video-project package evidence
 
 The app reopened the third fresh journey's own saved project and generated a new
 package with no Meta credentials configured. Exactly one export request ran. It
@@ -153,41 +200,73 @@ a limited set of preserve/keep/retain/leave clauses, not universal language unde
 No Meta calls were made during the package/reconstruction checks. The separate October
 30 live browser rehearsal above accounts for its own 11 calls.
 
+## Multimodal completion and usability
+
+The account catalogue advertised Spark Contributor, Spark Standard, Wonder, Muse
+Voice Transcribe and Muse Image. Actual inference was checked separately. The
+[curated request record](examples/multimodal-verification.json) retains all twelve
+new calls: **6 text, 4 transcription and 2 image requests**, with no automatic
+provider retries. Text responses reported **61,249 tokens**; image responses
+reported **11,582 tokens** separately. The transcription endpoint exposes no token
+usage. These counts are not an invoice; remaining credit and actual charges were
+not inspected. Earlier core-journey totals remain historical and separate.
+
+| Live observation | Outcome and correction |
+| --- | --- |
+| Spark Standard selection and question about the saved project | Passed; actual reported model matched selection and project was unchanged |
+| Wonder saved-project question | Two responses failed strict source validation on ungrounded repeated values. Empty-update guidance was clarified; one subsequent live confirmation passed without changing the project. Validators remain strict; this is not a reliability benchmark |
+| Voice revision and silence probes | Correct 20 mm revision text; silence returned empty text. Neither transcription changed a project |
+| First browser voice-to-plan attempt | ASR preserved the quantities, but number words such as five and two invalidated the deterministic plan after Send. Added bounded English number/unit normalization with literal-source equivalence checks |
+| Final browser voice and explicit Send | Passed after visible removal of a duplicated phrase; plan ready, stock 200/100/20 µL, diluent 1800/1900/1980 µL, confirmed r9 and accepted geometry/arm unchanged; no engineering actions |
+| One image utility probe and one real app image | Both completed. App result downloaded byte-identically and retained its reference/revision. Small mechanical details differ, so images are presentation illustrations, not technical drawings |
+
+The final voice recording uses two declared segments: real synthetic microphone
+input through the actual AudioWorklet/ASR, then the actual transcript restored in
+a reopened copy of the same public r9 project, visibly corrected and sent once.
+The split was caused by the test script's narrow correction guard, not an app
+failure. There was no second ASR or hidden replacement of the failed earlier r10.
+The final ASR and Send observations took 4.297 s and 12.531 s respectively,
+including UI/checkpoint overhead. The real app image took 13.281 s. These are
+single-run observations, not latency guarantees or acoustic-recognition benchmarks.
+
+Agent usability walkthroughs and offline browser tests verified:
+
+- Failed reset retains work; successful reset provides undo.
+- The opening composer is in the first mobile viewport; a populated 390 px page
+  stays 390 px wide, with all tested controls inside its bounds.
+- Plan/file shortcuts reveal and focus their real sections, including a ready
+  draft reopened from the recorded project.
+- Keyboard orbit/zoom changes the actual view, visible focus is retained, and
+  source-loading/failure states settle correctly.
+- Dictation requires review/Send, handles cancellation and late permission,
+  preserves an overlong transcript and stops microphone tracks.
+- Illustration cancellation, stale revision and error paths preserve the project;
+  opening its section stops the sticky scene from obscuring the result.
+
+This is agent-driven usability testing, not external participant research. The
+full 539-test suite passed after quantity fixes. The last UI change was the scoped
+sticky-scene CSS rule; the full multimodal browser flow and production build passed
+again afterward. Other application source stayed unchanged during the final voice
+check. Source geometry and export logic are unchanged, so historical heavy-CAD
+checks were not repeated.
+
 ## Three-minute demo video
 
-The [MP4 and English captions](video/README.md) use actual captures from the third
-fresh journey and its own local reopen/export. The final file is **180.000 s**,
-**1920 × 1080**, **30 fps / 5,400 frames**, H.264 and **5,150,399 bytes**, with no
-audio stream. Its SHA256 is
-`b8963266bbb8ad5564878bceff34b87e5fee3485ab1a1da6bd430ce13f6eb234`.
-
-Full video decoding passed. Twelve frames distributed across the final MP4 were
-visually inspected; the chat, bed change and actual guide also received dedicated
-readability checks. All 11 source trims remain within their media duration, and
-19 caption cues cover 0–180 s contiguously. Shortened waits, the separate negative
-check shown out of recording order, and reopened results without new inference are
-identified on screen. A narration script is supplied for an optional voiced edition.
-
-The application code remains commit `81ef2ebf1581536505cbe8f71ac4b6d704614980`.
-These delivery changes add documentation, evidence and media; they do not change
-application code or its dependencies, so the earlier software checks were not rerun.
+The publicly published MP4 records the earlier core journey with English captions.
+Final-video work is deferred until the product improvements are complete. The
+current website and verification include later capabilities that the historical
+video does not demonstrate. No newer video is claimed published in this update.
 
 ## Remaining delivery work
 
-The published video captures the implemented core milestone. The planned finishing
-stage still includes an actual Spark/Wonder selector and Muse Voice Transcribe
-dictation into an editable message, with Muse Image illustrations conditional on
-access and useful results grounded in real project views. None of those three
-integrations is implemented or covered by the checks above. Runtime Spark inference
-and the separate existing photo-analysis workflow must not be confused with them.
-Complete and verify the selected additions, then update affected demo scenes before
-calling the full planned presentation final.
+The requested selector, dictation, optional image integration, US catalog retrieval,
+instruction generation and usability fixes are implemented and verified in the
+scope above. Final-video work remains deferred. The [adaptable submission text](submission-draft.md)
+is prepared without entering Cerebral Valley, as requested. Actual form fields,
+entrant/track eligibility, declarations and accepted video hosting still require
+the entrant's check. No event login or submission has occurred.
 
-Verify the authenticated submission fields, entrant/track eligibility, declarations
-and whether the organizer accepts the linked MP4 or requires a particular video host.
-An [adaptable submission draft](submission-draft.md) is ready; no event entry has
-been sent. Narration can be added after the entrant chooses a voice.
-Current Jubilee and OT-2 routes have no physics or hardware-control adapter. CAD validity,
-layout checks, kinematic inspection sweeps and dilution arithmetic do not establish
-mounting, collision clearance, camera coverage, cooling, liquid handling or laboratory
-performance. The final event submission is a separate action.
+Current Jubilee and OT-2 routes have no physics or hardware-control adapter. CAD
+validity, layout checks, kinematic sweeps and dilution arithmetic do not establish
+mounting, collision clearance, camera coverage, cooling, liquid handling or
+laboratory performance. The final event submission remains a separate action.
