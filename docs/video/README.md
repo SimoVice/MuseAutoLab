@@ -7,6 +7,9 @@
 
 This three-minute, 1920 × 1080 edition uses English on-screen captions without narration
 or music. The [narration script](../demo-video-script.md) is available for a voiced edition.
+It is a preview of the implemented core milestone. Model selection, Muse Voice
+Transcribe dictation and optional Muse Image illustrations remain unfinished;
+see the [remaining delivery work](../verification.md#remaining-delivery-work).
 It shows actual application captures from the October 30 synthetic Meta browser journey
 and a local reopen/export of that same project. Application code shown and tested is
 commit `81ef2ebf1581536505cbe8f71ac4b6d704614980`; subsequent delivery changes add evidence,

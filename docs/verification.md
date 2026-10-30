@@ -174,6 +174,15 @@ application code or its dependencies, so the earlier software checks were not re
 
 ## Remaining delivery work
 
+The published video captures the implemented core milestone. The planned finishing
+stage still includes an actual Spark/Wonder selector and Muse Voice Transcribe
+dictation into an editable message, with Muse Image illustrations conditional on
+access and useful results grounded in real project views. None of those three
+integrations is implemented or covered by the checks above. Runtime Spark inference
+and the separate existing photo-analysis workflow must not be confused with them.
+Complete and verify the selected additions, then update affected demo scenes before
+calling the full planned presentation final.
+
 Verify the authenticated submission fields, entrant/track eligibility, declarations
 and whether the organizer accepts the linked MP4 or requires a particular video host.
 An [adaptable submission draft](submission-draft.md) is ready; no event entry has

@@ -89,6 +89,11 @@ offline fixtures and live inference. No hosted demo is implied.
 
 ## Current limits and next step
 
+This draft and the linked video describe the implemented core milestone. UI model
+selection and Muse Voice Transcribe dictation are still unfinished; Muse Image
+illustrations remain conditional. Update the affected description and video after
+those finishing decisions and checks, before submitting the final entry.
+
 Neither current platform has physics or hardware control. Cooling, inspection
 sweeps and liquid-handling geometry are digital concepts; mounting, collision
 clearance, camera coverage and laboratory performance remain unverified. Supplier
