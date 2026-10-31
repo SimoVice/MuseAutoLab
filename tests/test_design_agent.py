@@ -171,6 +171,9 @@ def test_develop_design_accepts_first_valid_candidate(monkeypatch):
         seen["provenance"] = provenance
         updated = dict(project)
         updated["revision"] = project["revision"] + 1
+        updated["engineering_design"] = {
+            "schema_version": "1", "proposal": dict(raw), "provenance": dict(provenance)
+        }
         return updated
 
     monkeypatch.setattr(design_agent, "apply_candidate", fake_apply)
@@ -201,7 +204,12 @@ def test_develop_design_corrects_once_then_accepts(monkeypatch):
         lambda project, raw: list(FAILED_CHECKS) if calls["count"] == 1 else list(PASSED_CHECKS),
     )
     monkeypatch.setattr(
-        design_agent, "apply_candidate", lambda project, raw, provenance: dict(project)
+        design_agent, "apply_candidate", lambda project, raw, provenance: {
+            **project,
+            "engineering_design": {
+                "schema_version": "1", "proposal": dict(raw), "provenance": dict(provenance)
+            },
+        }
     )
     _, run = asyncio.run(develop_design(_project(), "Arrange the deck."))
     assert run["status"] == "accepted"

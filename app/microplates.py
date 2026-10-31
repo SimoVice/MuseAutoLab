@@ -459,6 +459,9 @@ def reapply_plate(project: dict, *, require_accepted: bool = True) -> dict:
     sample["size"] = deepcopy(compiled["size_mm"])
     sample["position"] = [x, base["position"][1] + base["size"][1] / 2 + sample["size"][1] / 2, z]
     sample["labware_module_id"] = COMPILER
+    from app.foundation_design import ensure_park_clearance
+
+    ensure_park_clearance(result)
     if result.get("inspection_extension"):
         from app.inspection import check_extension
 

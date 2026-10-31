@@ -78,7 +78,7 @@ class HistoryEntry(StrictModel):
 class Snapshot(StrictModel):
     format: Literal["museautolab-project"]
     schema_version: Annotated[int, Field(ge=1, le=1)]
-    compiler_version: Literal["1", "2", "3", "4", "5", "6", "7"]
+    compiler_version: Literal["1", "2", "3", "4", "5", "6", "7", "8"]
     saved_at: Annotated[str, Field(min_length=10, max_length=50)]
     project_id: Annotated[str, Field(min_length=36, max_length=36)]
     revision: Annotated[int, Field(ge=0, le=1000000)]
@@ -139,6 +139,7 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         "format": "museautolab-project",
         "schema_version": 1,
         "compiler_version": (
+            "8" if project.get("design", {}).get("foundation") else
             "7" if any(project.get(key) for key in (
                 "tip_rack", "tip_rack_request", "fabrication_capabilities"
             )) else
@@ -185,9 +186,9 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
     if payload["compiler_version"] == "4":
         payload.pop("labware_brief")
         payload.pop("labware_rack")
-    if payload["compiler_version"] not in ("6", "7"):
+    if payload["compiler_version"] not in ("6", "7", "8"):
         payload.pop("labware_plate")
-    if payload["compiler_version"] != "7":
+    if payload["compiler_version"] not in ("7", "8"):
         for key in ("tip_rack", "tip_rack_request", "fabrication_capabilities"):
             payload.pop(key)
     # Validate our own format before returning a file that cannot be reopened.
@@ -206,14 +207,14 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     except (ValidationError, ValueError) as exc:
         raise ValueError("Unsupported or invalid MuseAutoLab project file.") from exc
     inputs = saved.inputs
-    if (saved.compiler_version not in ("5", "6", "7")
+    if (saved.compiler_version not in ("5", "6", "7", "8")
             and (saved.labware_brief or saved.labware_rack)):
         raise ValueError("Only compiler-5 project files support measured labware inputs.")
-    if saved.labware_plate and saved.compiler_version not in ("6", "7"):
+    if saved.labware_plate and saved.compiler_version not in ("6", "7", "8"):
         raise ValueError("Only compiler-6 project files support the source-bound microplate.")
     if saved.labware_plate and saved.labware_rack:
         raise ValueError("Tube rack and microplate cannot both be active.")
-    if saved.compiler_version != "7" and any((
+    if saved.compiler_version not in ("7", "8") and any((
         saved.tip_rack, saved.tip_rack_request, saved.fabrication_capabilities
     )):
         raise ValueError("Tip-rack choices/printer declarations require compiler-7 project files.")
@@ -235,7 +236,7 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     if isinstance(proposal, CommercialProposal) != bool(saved.platform_id):
         if proposal is not None:
             raise ValueError("The layout does not match the selected commercial platform.")
-    if saved.compiler_version in ("3", "4", "5", "6", "7") and proposal is not None:
+    if saved.compiler_version in ("3", "4", "5", "6", "7", "8") and proposal is not None:
         source_proposal = isinstance(proposal, FoundationLayoutProposal)
         if source_proposal != (saved.foundation_id == ASSET_ID):
             raise ValueError("The saved layout does not match its CAD foundation.")
@@ -268,6 +269,8 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     if width is not None:
         project = apply_update(project, {"workspace_width_mm": width})
     upgraded = saved.compiler_version in ("1", "2")
+    clearance_upgrade = bool(saved.foundation_id and saved.engineering_design
+                             and saved.compiler_version in ("3", "4", "5", "6", "7"))
     if not upgraded and saved.platform_id:
         from app.platform_profiles import commercial_sourcing
 
@@ -317,14 +320,18 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         project["tip_rack_request"] = saved.tip_rack_request.model_dump(exclude_none=True)
     if saved.tip_rack is not None:
         project = restore_tip_rack(project, saved.tip_rack.model_dump(exclude_none=True))
+    if (saved.compiler_version == "8" and saved.foundation_id and saved.engineering_design
+            and abs(project["design"]["foundation"]["bed_drop_mm"]
+                    - saved.foundation_bed_drop_mm) > 1e-7):
+        raise ValueError("The saved bed position does not satisfy parked-tool clearance.")
     if saved.platform_id:
         from app.platform_profiles import commercial_sourcing
 
         project["sourcing"] = commercial_sourcing()
-    if saved.status == "confirmed" and not upgraded:
+    if saved.status == "confirmed" and not upgraded and not clearance_upgrade:
         project = confirm_project(project)
-    project["revision"] = saved.revision + int(upgraded)
-    project["status"] = "draft" if upgraded else saved.status
+    project["revision"] = saved.revision + int(upgraded or clearance_upgrade)
+    project["status"] = "draft" if upgraded or clearance_upgrade else saved.status
     project["lineage_id"] = saved.project_id
     project["restored_from"] = {
         "project_id": saved.project_id,
@@ -337,6 +344,13 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
             "This older project retains its inputs and conversation, but its previous design "
             "and inspection extension cannot be carried over to the new CAD foundation. "
             "Ask Meta in chat to develop a new workstation design and confirm it again."
+        )
+    elif clearance_upgrade:
+        drop = project["design"]["foundation"]["bed_drop_mm"]
+        project["rebuild_notice"] = (
+            f"The parked tool position was updated and the bed is now at {drop:g} mm drop "
+            "to leave at least 10 mm above deck components in this model. Review and "
+            "confirm the updated design. Physical travel and mounting are unverified."
         )
     from app.platform_profiles import engineering_guidance
 

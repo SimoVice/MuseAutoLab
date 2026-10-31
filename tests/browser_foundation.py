@@ -89,7 +89,7 @@ def run(url):
                 page.get_by_role("button", name="Save project", exact=True).click()
             saved = downloaded.value.path()
             data = json.loads(Path(saved).read_text(encoding="utf8"))
-            assert data["compiler_version"] == "4"
+            assert data["compiler_version"] == "8"
             assert data["foundation_id"] == "jubilee-v2.2.2-c877bd2"
             page.get_by_label("Open saved project").set_input_files(saved)
             expect(page.locator(".storage-notice")).to_contain_text("rebuilt")

@@ -126,7 +126,7 @@ def test_quantity_edit_and_portable_reopen_keep_custom_rack_and_other_geometry(c
     assert updated["design"] == project["design"]
     assert updated["labware_rack"] == project["labware_rack"]
     saved = client.get(url + "/snapshot", params={"revision": updated["revision"]})
-    assert saved.status_code == 200 and saved.json()["compiler_version"] == "5"
+    assert saved.status_code == 200 and saved.json()["compiler_version"] == "8"
     reopened = client.post(
         "/api/projects/open", content=saved.content, headers={"content-type": "application/json"}
     )

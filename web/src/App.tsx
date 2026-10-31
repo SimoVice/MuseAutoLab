@@ -8,6 +8,7 @@ import IllustrationPanel from './IllustrationPanel';
 import VoiceDictation from './VoiceDictation';
 import AgentActivity, { finishAgentReveal } from './AgentActivity';
 import ProjectResources from './ProjectResources';
+import CostSummary from './CostSummary';
 import LabwareRackPanel from './LabwareRackPanel';
 import MicroplatePanel from './MicroplatePanel';
 import TipRackOptions, { tipDimensions } from './TipRackOptions';
@@ -79,9 +80,7 @@ function formatVolumeUl(value: number) {
   return `${new Intl.NumberFormat('en', { maximumSignificantDigits: 6 }).format(value)} µL`;
 }
 
-function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat('en', { style: 'currency', currency }).format(amount);
-}
+
 
 function planStatusLabel(status: PreparationPlan['status']) {
   if (status === 'ready') return 'Ready';
@@ -520,14 +519,89 @@ export default function App() {
     { label: 'Available width', value: summary?.workspace_width_mm != null ? `${formatDimension(summary.workspace_width_mm)} mm` : null },
   ];
   const currentProcurement = procurementReport?.project_id === project?.id && procurementReport?.project_revision === project?.revision ? procurementReport : null;
-  const costText = currentProcurement?.coverage.fresh_priced_count
-    ? formatMoney(currentProcurement.known_partial_subtotal, 'USD') : currentProcurement ? 'No fresh prices' : 'Not refreshed';
   const isConfirmed = project?.status === 'confirmed';
   const headerLabel = hasBrief || hasEngineeringDesign ? 'Lab automation project' : 'New automation project';
   const showPhotoCheck = Boolean(project?.inspection_extension) || actionRuns.some((run) => run.kind === 'show_photo_check');
   const requestedSources = actionRuns.some((run) => run.kind === 'show_sources' && run.status === 'ready');
   const requestedPhoto = actionRuns.some((run) => run.kind === 'show_photo_check' && run.status === 'ready');
   const requestedBuildPlan = actionRuns.some((run) => run.kind === 'show_build_plan' && run.status === 'ready');
+
+  const preparationPanel = showLiquidParams && (
+              <details className="prep-plan" ref={preparationDetails} tabIndex={-1} aria-label="Preparation plan">
+                <summary><span>Preparation plan <small className="prep-plan-preview">{plan?.steps.length ? `${plan.steps.length} targets · ${plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Volume pending'} per ${project?.labware_plate ? 'well' : 'tube'}` : 'Add preparation details in chat'}</small></span><span className="prep-plan-status">{plan ? planStatusLabel(plan.status) : 'Awaiting details'}</span></summary>
+                <div className="summary-card">
+                  <div className="summary-heading"><div><h3>Preparation details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
+                  <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
+                  {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
+                  <p className="summary-note">{project?.status !== 'confirmed' && (!hasEngineeringDesign ? 'Choose a platform and request a design in chat before confirming. ' : plan?.status !== 'ready' ? 'Complete the missing preparation details in chat before confirming. ' : 'Ready to confirm these parameters. ')}The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
+                </div>
+                {project && plan == null && (
+                  <div className="plan-card" aria-live="polite">
+                    <div className="plan-heading">
+                      <div>
+                        <h3>Volumes per target</h3>
+                        <p>Direct dilution · one {project.labware_plate ? 'well' : 'tube'} per target</p>
+                      </div>
+                      <span className="plan-status plan-status-missing">Unavailable</span>
+                    </div>
+                    <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
+                  </div>
+                )}
+                {project && plan && (
+                  <div className="plan-card" aria-live="polite">
+                    <div className="plan-heading">
+                      <div>
+                        <h3>Volumes per target</h3>
+                        <p>Direct dilution · one {project?.labware_plate ? 'well' : 'tube'} per target · no serial dilutions</p>
+                      </div>
+                      <span className={`plan-status plan-status-${plan.status}`}>{planStatusLabel(plan.status)}</span>
+                    </div>
+                    <p className="plan-message">{plan.message}</p>
+                    <div className="plan-meta">
+                      <span><strong>Stock:</strong> {plan.stock ?? project.summary.stock_concentration ?? 'Not specified'}</span>
+                      <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : project.summary.final_volume ?? 'Not specified'}</span>
+                    </div>
+                    {plan.steps.length > 0 ? (
+                      <div className="plan-table-wrap">
+                        <table className="plan-table">
+                          <caption className="sr-only">{project.labware_plate ? 'Well assignments and preparation volumes in microlitres' : 'Per-target preparation volumes in microlitres'}</caption>
+                          <thead>
+                            <tr>
+                              <th scope="col">{project.labware_plate ? 'Well / target' : 'Target'}</th>
+                              <th scope="col">Stock</th>
+                              <th scope="col">Diluent</th>
+                              <th scope="col">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {plan.steps.map((step, index) => (
+                              <tr key={step.id}>
+                                <th scope="row">{project.labware_plate ? `${project.labware_plate.compatibility.occupied_wells[index] ?? 'Unassigned'} · ${step.target}` : step.target}</th>
+                                <td>{formatVolumeUl(step.stock_volume_ul)}</td>
+                                <td>{formatVolumeUl(step.diluent_volume_ul)}</td>
+                                <td>{formatVolumeUl(step.total_volume_ul)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="plan-empty">No per-target volumes to show yet.</p>
+                    )}
+                    {plan.assumptions.length > 0 && (
+                      <div>
+                        <p className="plan-assumptions-heading">Assumptions</p>
+                        <ul className="plan-assumptions">
+                          {plan.assumptions.map((assumption, index) => (
+                            <li key={index}>{assumption}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </details>
+  );
 
   return (
     <div className="app-shell">
@@ -550,9 +624,7 @@ export default function App() {
         <section className={`design-panel${isConfirmed && hasEngineeringDesign ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
-              <p className="kicker"><span className="kicker-dot" /> Design workspace</p>
               <h1 id="design-title">{headerLabel}</h1>
-              <p className="design-intro">Automation designed around your lab.</p>
               {storageNotice && <p className="storage-notice" role="status">{storageNotice}</p>}
             </div>
             <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{!isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
@@ -606,9 +678,10 @@ export default function App() {
               </PresentationStage>
 
               <div className="below-viewer">
-                <div className="cost-block"><span>Fresh listed parts subtotal · USD</span><strong>{costText}</strong><small>{currentProcurement ? `${currentProcurement.coverage.fresh_priced_count}/${currentProcurement.coverage.row_count} groups freshly priced · ${currentProcurement.coverage.unpriced_count} without fresh prices · Complete machine cost unknown. Excludes shipping and taxes.` : 'Open Parts & pricing to check US catalogs. Complete machine cost is unknown.'}</small></div>
-                <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${tipDimensions(part.size)} · ${part.id === 'tip-rack' && project?.tip_rack ? project.tip_rack.kind === 'commercial_reference' ? 'Pinned product reference; fit unverified' : 'Custom printable geometry; fit unverified' : 'schematic dimensions'}` : 'Select an item in the model or list.'}</small></div>
+                {project && <CostSummary project={project} report={currentProcurement} />}
+                {preparationPanel}
               </div>
+              {part && <p className="selected-component-note"><strong>{part.label}</strong> · {tipDimensions(part.size)} · {part.id === 'tip-rack' && project?.tip_rack ? project.tip_rack.kind === 'commercial_reference' ? 'Pinned product reference; fit unverified' : 'Custom printable geometry; fit unverified' : 'Schematic dimensions'}</p>}
 
               {project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
               {project && <MicroplatePanel plate={project.labware_plate} onSelect={handleVisionSelect} />}
@@ -677,6 +750,8 @@ export default function App() {
               </details>
             </>
           )}
+          {!hasEngineeringDesign && project && <CostSummary project={project} report={currentProcurement} />}
+          {!hasEngineeringDesign && preparationPanel}
           {!hasEngineeringDesign && project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
           {!hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
             <details className="project-details" ref={details}>
@@ -705,82 +780,7 @@ export default function App() {
             {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && !agentPhase && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
             {agentPhase && <AgentActivity phase={agentPhase} fillRef={revealRef} />}
             <div ref={lastMessage} />
-            {showLiquidParams && (
-              <details className="prep-plan" ref={preparationDetails} tabIndex={-1} aria-label="Preparation plan">
-                <summary>Preparation plan</summary>
-                <div className="summary-card">
-                  <div className="summary-heading"><div><h3>Experiment details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
-                  <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
-                  {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
-                  <p className="summary-note">{project?.status !== 'confirmed' && (!hasEngineeringDesign ? 'Choose a platform and request a design in chat before confirming. ' : plan?.status !== 'ready' ? 'Complete the missing preparation details in chat before confirming. ' : 'Ready to confirm these parameters. ')}The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
-                </div>
-                {project && plan == null && (
-                  <div className="plan-card" aria-live="polite">
-                    <div className="plan-heading">
-                      <div>
-                        <h3>Preparation plan</h3>
-                        <p>Direct dilution · one {project.labware_plate ? 'well' : 'tube'} per target</p>
-                      </div>
-                      <span className="plan-status plan-status-missing">Unavailable</span>
-                    </div>
-                    <p className="plan-message">The preparation plan is not available yet. It will appear here once the server provides it.</p>
-                  </div>
-                )}
-                {project && plan && (
-                  <div className="plan-card" aria-live="polite">
-                    <div className="plan-heading">
-                      <div>
-                        <h3>Preparation plan</h3>
-                        <p>Direct dilution · one {project?.labware_plate ? 'well' : 'tube'} per target · no serial dilutions</p>
-                      </div>
-                      <span className={`plan-status plan-status-${plan.status}`}>{planStatusLabel(plan.status)}</span>
-                    </div>
-                    <p className="plan-message">{plan.message}</p>
-                    <div className="plan-meta">
-                      <span><strong>Stock:</strong> {plan.stock ?? project.summary.stock_concentration ?? 'Not specified'}</span>
-                      <span><strong>Final volume:</strong> {plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : project.summary.final_volume ?? 'Not specified'}</span>
-                    </div>
-                    {plan.steps.length > 0 ? (
-                      <div className="plan-table-wrap">
-                        <table className="plan-table">
-                          <caption className="sr-only">{project.labware_plate ? 'Well assignments and preparation volumes in microlitres' : 'Per-target preparation volumes in microlitres'}</caption>
-                          <thead>
-                            <tr>
-                              <th scope="col">{project.labware_plate ? 'Well / target' : 'Target'}</th>
-                              <th scope="col">Stock</th>
-                              <th scope="col">Diluent</th>
-                              <th scope="col">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {plan.steps.map((step, index) => (
-                              <tr key={step.id}>
-                                <th scope="row">{project.labware_plate ? `${project.labware_plate.compatibility.occupied_wells[index] ?? 'Unassigned'} · ${step.target}` : step.target}</th>
-                                <td>{formatVolumeUl(step.stock_volume_ul)}</td>
-                                <td>{formatVolumeUl(step.diluent_volume_ul)}</td>
-                                <td>{formatVolumeUl(step.total_volume_ul)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="plan-empty">No per-target volumes to show yet.</p>
-                    )}
-                    {plan.assumptions.length > 0 && (
-                      <div>
-                        <p className="plan-assumptions-heading">Assumptions</p>
-                        <ul className="plan-assumptions">
-                          {plan.assumptions.map((assumption, index) => (
-                            <li key={index}>{assumption}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </details>
-            )}
+
           </div>
           <div className="composer-area">
             {error && <div className="error-message" role="alert"><span>{error}</span>{!project && <button type="button" onClick={() => setConnectionAttempt((value) => value + 1)}>Retry</button>}</div>}

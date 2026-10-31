@@ -145,7 +145,7 @@ def test_choice_develops_distinct_base_and_quantities_preserve_layout(
             assert old["position"] == new["position"] and old["size"] == new["size"]
         assert [s["stock_volume_ul"] for s in changed["plan"]["steps"]] == [100, 50, 10]
         saved = make_snapshot(changed, [])
-        assert saved["compiler_version"] == "4"
+        assert saved["compiler_version"] == ("8" if expected == "jubilee" else "4")
         rebuilt, _ = restore_snapshot(saved)
         assert rebuilt["design"] == changed["design"]
         assert state_for(rebuilt) == state_for(changed)

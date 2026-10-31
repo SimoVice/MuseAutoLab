@@ -51,6 +51,8 @@ export default function ModelSelector({ projectId, busy, onBusyChange, onVoiceCa
   }
   const active = catalog?.models.find((model) => model.id === catalog.active_model);
   return <div className="model-controls">
+    <details className="model-settings">
+      <summary>Model & settings <span>{active?.label ?? (error ? 'Unavailable' : 'Checking…')}</span></summary>
     <div className="model-selector-row">
       <label htmlFor="agent-model">Agent model</label>
       <select id="agent-model" value={catalog?.active_model ?? ''} disabled={!catalog || busy || changing}
@@ -60,11 +62,13 @@ export default function ModelSelector({ projectId, busy, onBusyChange, onVoiceCa
       </select>
       {changing && <span role="status">Changing…</span>}
     </div>
-    {active && <p className="model-data-note" id="model-data-note">{active.data_policy ?? (active.id.includes('contributor') ? 'Contributor: content may train Meta models. Use shareable inputs only.' : 'Standard mode: Meta states inputs are not used to train its models.')} {active.description}</p>}
+
     <details className="model-help"><summary>Model usage</summary><p id="model-session-note">This choice applies to this open session. Reopening a project uses the configured default. API usage follows the selected model; Wonder has a higher API cost than Spark.</p>
       {catalog?.models.filter((model) => !model.available).map((model) => <p key={model.id}>{model.label}: {model.unavailable_reason ?? 'Not advertised by this account. Check account access, then check models again.'}</p>)}
       <button type="button" onClick={() => setAttempt((value) => value + 1)} disabled={busy || changing}>Check models again</button>
     </details>
+    </details>
+    {active && <p className="model-data-note" id="model-data-note">{active.data_policy ?? (active.id.includes('contributor') ? 'Contributor: content may train Meta models. Use shareable inputs only.' : 'Standard mode: Meta states inputs are not used to train its models.')}</p>}
     {catalog && !catalog.models.some((model) => model.available) && <p className="model-error" role="status">No agent model is available for this account. Open Model usage for the reason and recheck access.</p>}
     {error && <p className="model-error" role="alert">{error} <button type="button" onClick={() => setAttempt((value) => value + 1)}>Check models again</button></p>}
   </div>;

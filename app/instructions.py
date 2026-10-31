@@ -140,6 +140,9 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         else "legacy-concept"
     )
     report = _procurement(project, procurement)
+    from app.price_estimation import estimate_for_project
+
+    cost_estimate = estimate_for_project(project, project.get("cost_estimate"), report)
     steps = []
 
     def add(
@@ -780,62 +783,100 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
             if profile:
                 facts = profile["source"]
                 add(
-                    "selected-tip-rack", "Verify and place the selected commercial tip rack",
+                    "selected-tip-rack",
+                    "Verify and place the selected commercial tip rack",
                     ["tip-rack"],
-                    [f"Selected product reference: {profile['display_name']}. Keep this profile "
-                     "identity when checking the supplier's exact package/SKU; a seller change "
-                     "for the same product does not change geometry.",
-                     "Compare the actual rack to the stated envelope and 96-position software "
-                     "pattern. The schematic recesses do not describe molded internal geometry.",
-                     "Place at the canonical tip-rack center below. Design its locating and "
-                     "retention interface on the custom Jubilee insert. Dry-check pipette pickup "
-                     "access and clearance with purchased tips before powered operation."],
-                    ["Actual product identity, package quantity and dimensions recorded.",
-                     "Attachment and pipette compatibility checked against real parts."],
+                    [
+                        f"Selected product reference: {profile['display_name']}. Keep this profile "
+                        "identity when checking the supplier's exact package/SKU; a seller change "
+                        "for the same product does not change geometry.",
+                        "Compare the actual rack to the stated envelope and 96-position software "
+                        "pattern. The schematic recesses do not describe molded internal geometry.",
+                        "Place at the canonical tip-rack center below. Design its locating and "
+                        "retention interface on the custom Jubilee insert. Dry-check pipette "
+                        "pickup "
+                        "access and clearance with purchased tips before powered operation.",
+                    ],
+                    [
+                        "Actual product identity, package quantity and dimensions recorded.",
+                        "Attachment and pipette compatibility checked against real parts.",
+                    ],
                     prerequisites=["frame"],
-                    sources=[_source("selected-tip-rack-profile", profile["display_name"],
-                                     facts["source_url"], facts["scope"], facts["revision"])],
-                    tasks=[(
-                        "Confirm the exact purchased tip/rack and engineer deck retention.",
-                        "Retain product identity, measured envelope and pickup/clearance records."
-                    )],
+                    sources=[
+                        _source(
+                            "selected-tip-rack-profile",
+                            profile["display_name"],
+                            facts["source_url"],
+                            facts["scope"],
+                            facts["revision"],
+                        )
+                    ],
+                    tasks=[
+                        (
+                            "Confirm the exact purchased tip/rack and engineer deck retention.",
+                            "Retain product identity, measured envelope and pickup/clearance "
+                            "records.",
+                        )
+                    ],
                 )
             else:
                 spec, derived = tip_rack["spec"], tip_rack["derived"]
                 add(
-                    "tip-rack-coupon", "Print and measure a tip-holder fit coupon first",
+                    "tip-rack-coupon",
+                    "Print and measure a tip-holder fit coupon first",
                     ["tip-rack"],
-                    ["This part is a holder for purchased disposable tips. Never print disposable "
-                     "tips from these files. Printer access was declared by the user; printer "
-                     "model, build envelope, material, settings and cleaning need review.",
-                     "Use tip-rack-fit-coupon.stl from this revision's CAD package before the full "
-                     "holder. Print the top face on the bed and inspect the slicer preview.",
-                     f"Declared body maximum {spec['body_diameter_max_mm']:g} mm; supporting rim "
-                     f"minimum {spec['rim_diameter_min_mm']:g} mm and maximum "
-                     f"{spec['rim_diameter_max_mm']:g} mm; below-rim height "
-                     f"{spec['below_rim_height_mm']:g} mm. Nominal volume was not used for fit.",
-                     f"Assumed bore {derived['bore_diameter_mm']:g} mm, pitch "
-                     f"{derived['pitch_mm']:g} mm. Verify coupon retention, clearance and bearing "
-                     "with the actual tip. Revise dimensions if it binds, falls through or rocks."],
-                    ["Coupon dimensions and tip fit recorded before printing the full holder.",
-                     "Printer/material/settings and cleaning requirements reviewed."],
+                    [
+                        "This part is a holder for purchased disposable tips. Never print "
+                        "disposable "
+                        "tips from these files. Printer access was declared by the user; printer "
+                        "model, build envelope, material, settings and cleaning need review.",
+                        "Use tip-rack-fit-coupon.stl from this revision's CAD package before "
+                        "the full "
+                        "holder. Print the top face on the bed and inspect the slicer preview.",
+                        f"Declared body maximum {spec['body_diameter_max_mm']:g} mm; "
+                        "supporting rim "
+                        f"minimum {spec['rim_diameter_min_mm']:g} mm and maximum "
+                        f"{spec['rim_diameter_max_mm']:g} mm; below-rim height "
+                        f"{spec['below_rim_height_mm']:g} mm. Nominal volume was not used for fit.",
+                        f"Assumed bore {derived['bore_diameter_mm']:g} mm, pitch "
+                        f"{derived['pitch_mm']:g} mm. Verify coupon retention, clearance and "
+                        "bearing "
+                        "with the actual tip. Revise dimensions if it binds, falls through or "
+                        "rocks.",
+                    ],
+                    [
+                        "Coupon dimensions and tip fit recorded before printing the full holder.",
+                        "Printer/material/settings and cleaning requirements reviewed.",
+                    ],
                     prerequisites=["design-review"],
-                    tasks=[("Check the coupon and record actual fit on the intended printer.",
-                            "A measured coupon, tip identity and fit record exist.")],
+                    tasks=[
+                        (
+                            "Check the coupon and record actual fit on the intended printer.",
+                            "A measured coupon, tip identity and fit record exist.",
+                        )
+                    ],
                 )
                 add(
-                    "printed-tip-rack", "Fabricate and dry-check the full tip holder", ["tip-rack"],
-                    ["After coupon acceptance, print tip-rack.stl with the same validated setup. "
-                     "Inspect all holes/supports; dry-fit bought tips in all positions.",
-                     "Use the canonical tip-rack placement below. Design locating/retention on "
-                     "the Jubilee insert; check actual pipette pickup, strength and clearances. "
-                     "This design does not verify sterility, fit or laboratory suitability."],
+                    "printed-tip-rack",
+                    "Fabricate and dry-check the full tip holder",
+                    ["tip-rack"],
+                    [
+                        "After coupon acceptance, print tip-rack.stl with the same validated "
+                        "setup. "
+                        "Inspect all holes/supports; dry-fit bought tips in all positions.",
+                        "Use the canonical tip-rack placement below. Design locating/retention on "
+                        "the Jubilee insert; check actual pipette pickup, strength and clearances. "
+                        "This design does not verify sterility, fit or laboratory suitability.",
+                    ],
                     ["All-position retention, deck attachment and tool access physically checked."],
                     prerequisites=["tip-rack-coupon", "frame"],
-                    tasks=[(
-                        "Verify the printed holder/deck interface with actual tips and pipette.",
-                        "Retain all-position dry-fit, attachment and pickup/clearance checks."
-                    )],
+                    tasks=[
+                        (
+                            "Verify the printed holder/deck interface with actual tips and "
+                            "pipette.",
+                            "Retain all-position dry-fit, attachment and pickup/clearance checks.",
+                        )
+                    ],
                 )
         rack_ids = [
             cid
@@ -1018,6 +1059,7 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         "physical validation record",
         "procurement_report_id": report["report_id"] if report else None,
         "procurement": report,
+        "cost_estimate": cost_estimate,
         "parts": parts,
         "steps": steps,
         "sources": list(sources.values()),
@@ -1101,11 +1143,86 @@ def step_details_html(step: dict) -> str:
     return "".join(sections)
 
 
+def cost_estimate_html(guide: dict) -> str:
+    """Show estimate ranges without relabelling them as observed supplier prices."""
+    estimate = guide.get("cost_estimate")
+    if not estimate:
+        return ""
+    def esc(value):
+        return html.escape(str(value if value is not None else "Unknown"), quote=True)
+    summary = estimate["summary"]
+    low, high = summary["project_total_low_usd"], summary["project_total_high_usd"]
+    label = (
+        "Estimated purchase scope total"
+        if summary["coverage_complete"]
+        else "Known + estimated partial range"
+    )
+    if low is None:
+        low, high = (
+            summary["known_plus_estimated_low_usd"],
+            summary["known_plus_estimated_high_usd"],
+        )
+    headline = f"USD {low:,.2f}–{high:,.2f}" if low is not None else "Range unavailable"
+    rows = []
+    for row in estimate["rows"]:
+        amount = (
+            f"USD {row['low_usd']:,.2f}–{row['high_usd']:,.2f}"
+            if row["low_usd"] is not None
+            else "Unknown"
+        )
+        rows.append(
+            '<article class="procurement-item"><h3>'
+            + esc(row["label"])
+            + "</h3><p>"
+            + esc(row["source_kind"].replace("_", " "))
+            + ": "
+            + esc(amount)
+            + " — group total for quantity "
+            + esc(row["quantity"])
+            + ".</p><p>"
+            + esc(row["scope"])
+            + "</p><p>"
+            + esc(row["rationale"])
+            + "</p><p>Assumptions: "
+            + esc("; ".join(row["assumptions"]) or "No model assumptions; see price status.")
+            + "</p>"
+            + (
+                "<p>Excluded groups: " + esc(", ".join(row["excluded_group_ids"])) + "</p>"
+                if row["excluded_group_ids"]
+                else ""
+            )
+            + "</article>"
+        )
+    return (
+        '<section class="card"><h2>Project cost planning range</h2><p>'
+        + esc(label)
+        + ": <strong>"
+        + esc(headline)
+        + "</strong></p><p>Status: "
+        + esc(estimate["status"])
+        + "; verified subtotal USD "
+        + esc(summary["verified_subtotal_usd"])
+        + "; groups still unknown: "
+        + esc(summary["missing_count"])
+        + ".</p><p>Model estimates are not supplier quotes. "
+        "A covered planning scope is not a verified complete-machine BOM.</p><p>Generated: "
+        + esc(estimate.get("generated_at"))
+        + "; model: "
+        + esc(estimate.get("model"))
+        + '.</p><div class="procurement-grid">'
+        + "".join(rows)
+        + "</div><p>"
+        + esc("; ".join(estimate["exclusions"]))
+        + "</p></section>"
+    )
+
+
 def procurement_html(guide: dict) -> str:
     """Display only the bound report's current prices, with gaps and dates visible."""
     report = guide.get("procurement")
+    cost_html = cost_estimate_html(guide)
     if not report:
-        return (
+        return cost_html + (
             '<section class="card"><h2>US procurement</h2><p>No current '
             "report is attached. Refresh prices for this "
             "revision.</p></section>"
@@ -1150,7 +1267,7 @@ def procurement_html(guide: dict) -> str:
             + f'</p><p class="procurement-source">{source}</p>'
             + f'<p class="meta">Fetched: {esc(row.get("fetched_at"))}</p></article>'
         )
-    return (
+    return cost_html + (
         '<section class="card"><h2>Bound US procurement snapshot</h2><p>Report '
         + esc(report.get("report_id"))
         + " · fetched "
@@ -1346,6 +1463,40 @@ def build_guide_markdown(guide: dict) -> bytes:
                 "",
             ]
         )
+    estimate = guide.get("cost_estimate")
+    if estimate:
+        summary = estimate["summary"]
+        low, high = (
+            summary["known_plus_estimated_low_usd"],
+            summary["known_plus_estimated_high_usd"],
+        )
+        amount = f"USD {low:,.2f}–{high:,.2f}" if low is not None else "Unavailable"
+        lines.extend(
+            [
+                "## Project cost planning range",
+                "",
+                f"Status: {plain(estimate['status'])}; known + estimated scope: {amount}; "
+                f"groups still unknown: {summary['missing_count']}.",
+                "Model estimates are not supplier quotes or a verified complete-machine BOM.",
+                "",
+            ]
+        )
+        for row in estimate["rows"]:
+            amount = (
+                f"USD {row['low_usd']:,.2f}–{row['high_usd']:,.2f}"
+                if row["low_usd"] is not None
+                else "Unknown"
+            )
+            lines.extend(
+                [
+                    f"- {plain(row['label'])}: {plain(row['source_kind'])}, {amount}; "
+                    f"group total for quantity {row['quantity']}.",
+                    "  Scope: " + plain(row["scope"]),
+                    "  Assumptions: " + plain("; ".join(row["assumptions"])),
+                    "  Basis: " + plain(row["rationale"]),
+                ]
+            )
+        lines.extend(["", "Exclusions: " + plain("; ".join(estimate["exclusions"])), ""])
     return "\n".join(lines).encode("utf-8")
 
 

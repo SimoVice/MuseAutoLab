@@ -248,7 +248,7 @@ def test_compiler5_roundtrip_keeps_rack_geometry_sources_and_twelve_slots():
         )
     )
     snapshot = make_snapshot(project, [])
-    assert snapshot["compiler_version"] == "5"
+    assert snapshot["compiler_version"] == "8"
     assert "geometry" not in snapshot["labware_rack"] and "derived" not in snapshot["labware_rack"]
     restored, _ = restore_snapshot(snapshot)
     assert restored["design"] == project["design"]
@@ -264,12 +264,12 @@ def test_partial_compiler5_and_older_compiler4_do_not_generate_rack_on_open():
         original, LabwareUpdate(count=6, source_count="6 tubes"), "Use 6 tubes"
     )
     snapshot = make_snapshot(partial, [])
-    assert snapshot["compiler_version"] == "5"
+    assert snapshot["compiler_version"] == "8"
     restored, _ = restore_snapshot(snapshot)
     assert restored["labware_brief"] == partial["labware_brief"]
     assert "labware_rack" not in restored and restored["design"] == original["design"]
     old = make_snapshot(original, [])
-    assert old["compiler_version"] == "4"
+    assert old["compiler_version"] == "8"
     restored, _ = restore_snapshot(old)
     assert "labware_brief" not in restored and "labware_rack" not in restored
     assert restored["design"] == original["design"]

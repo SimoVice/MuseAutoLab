@@ -610,6 +610,9 @@ def reapply_labware(project: dict, *, require_accepted: bool = True) -> dict:
     part["position"][1] = deck["position"][1] + deck["size"][1] / 2 + part["size"][1] / 2
     part["label"] = "Measured-input rim-supported tube rack"
     part["labware_module_id"] = COMPILER
+    from app.foundation_design import ensure_park_clearance
+
+    ensure_park_clearance(result)
     if result.get("inspection_extension"):
         from app.inspection import check_extension
 

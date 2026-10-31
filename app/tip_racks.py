@@ -66,6 +66,7 @@ class SavedTipRequest(StrictModel):
     alternatives_requested: bool = False
     awaiting_printer: bool = False
     awaiting_placement: bool = False
+    bed_position_locked: bool = False
     spec: TipRackSpec = Field(default_factory=TipRackSpec)
     spec_sources: dict[str, Annotated[str, Field(min_length=1, max_length=1000)]] = Field(
         default_factory=dict
@@ -382,10 +383,16 @@ def declared_printer(message: str, *, contextual: bool = False) -> str | None:
         return None
     has_printer = bool(re.search(r"\bprinter\b|stampante", text))
     if not has_printer:
-        if contextual and re.fullmatch(r"(?:no|nope|non ce l'ho|non ancora)[.! ]*", text):
+        if contextual and re.fullmatch(
+            r"(?:no|nope|no,? i (?:don't|do not)|i (?:don't|do not)|"
+            r"no,? (?:i |we )?(?:don't|do not) have (?:one|access)|"
+            r"non ce l'ho|non ancora)[.! ]*", text
+        ):
             return "no"
         if contextual and re.fullmatch(
-            r"(?:yes|yep|sì|si|certo|sì,? ne ho una|yes,? I have one)[.! ]*", text, re.I
+            r"(?:yes|yep|yes,? i do|i do|yes,? we do|we do|"
+            r"yes,? (?:i |we )have (?:one|access)|i have one|"
+            r"sì|si|certo|sì,? ne ho una)[.! ]*", text, re.I
         ):
             return "yes"
         return None
@@ -692,6 +699,24 @@ def reapply_tip_rack(project: dict, *, require_accepted: bool = True) -> dict:
         tip_rack_module_id=module["profile_id"],
     )
     part["position"] = [x, deck["position"][1] + deck["size"][1] / 2 + part["size"][1] / 2, z]
+    from app.foundation_design import ensure_park_clearance
+
+    old_drop = result["design"]["foundation"]["bed_drop_mm"]
+    ensure_park_clearance(result)
+    if (result.get("inspection_extension")
+            and result["design"]["foundation"]["bed_drop_mm"] != old_drop):
+        from app.inspection import check_extension
+
+        previous = result["inspection_extension"]
+        extension = check_extension(result, previous["proposal"])
+        extension["provenance"] = deepcopy(previous.get("provenance", {}))
+        result["inspection_extension"] = extension
+        by_id = {component["id"]: component for component in extension["components"]}
+        result["design"]["components"] = [
+            deepcopy(by_id.get(component["id"], component))
+            for component in result["design"]["components"]
+        ]
+        result["design"]["assembly_bounds"] = deepcopy(extension["assembly_bounds"])
     _sourcing(result)
     return add_geometry(result)
 
@@ -699,6 +724,7 @@ def reapply_tip_rack(project: dict, *, require_accepted: bool = True) -> dict:
 def select_tip_rack(
     project: dict, update: TipRackUpdate, message: str, *, accept_placement: bool = False
 ) -> tuple[dict, dict]:
+    from app.design_agent import _preservation_checks
     from app.tiprack_geometry import compile_tiprack
 
     _guard(project)
@@ -707,6 +733,13 @@ def select_tip_rack(
     if profile_id is None:
         raise ValueError("Choose an exact reviewed tip-rack profile or the printed holder.")
     result = deepcopy(project)
+    original_drop = result["design"]["foundation"]["bed_drop_mm"]
+    previous_checks = _preservation_checks(
+        project, project["engineering_design"]["proposal"], message
+    )
+    keep_bed = (bool(pending.get("bed_position_locked"))
+                or any(check["id"] == "preserve_bed_drop_mm" for check in previous_checks)
+                or bool(re.search(r"\b(?:do not|don't)\s+move\s+(?:the\s+)?bed\b", message, re.I)))
     if profile_id == PREVIOUS_ID:
         module = result.pop("tip_rack", None)
         if not module:
@@ -714,6 +747,8 @@ def select_tip_rack(
         part = next(p for p in result["design"]["components"] if p["id"] == TARGET)
         part.clear()
         part.update(deepcopy(module["previous_component"]))
+        deck = next(p for p in result["design"]["components"] if p["id"] == "base")
+        part["position"][1] = deck["position"][1] + deck["size"][1] / 2 + part["size"][1] / 2
         result.pop("tip_rack_request", None)
         from app.geometry import add_geometry
         from app.labware import _sourcing as refresh_sourcing
@@ -780,7 +815,8 @@ def select_tip_rack(
         preserve = bool(
             re.search(
                 r"keep.{0,30}(?:rack|position).{0,25}(?:fixed|unchanged)|"
-                r"do not move|don't move|non spostare|lascia.{0,30}posizione.{0,20}invariat",
+                r"(?:do not|don't) move(?!\s+(?:the\s+)?bed)|"
+                r"non spostare|lascia.{0,30}posizione.{0,20}invariat",
                 message,
                 re.I,
             )
@@ -803,6 +839,7 @@ def select_tip_rack(
                     profile_id=profile_id,
                     source=update.source or pending.get("source"),
                     awaiting_placement=True,
+                    bed_position_locked=keep_bed,
                 )
                 return result, {
                     "kind": "select_tip_rack",
@@ -815,15 +852,28 @@ def select_tip_rack(
         result["tip_rack"] = record
         result = reapply_tip_rack(result)
         result["tip_rack_request"] = {"alternatives_requested": True}
+    canonical = result["engineering_design"]["proposal"]
+    bed_checks = [check for check in _preservation_checks(project, canonical, message)
+                  if check["id"] == "preserve_bed_drop_mm"]
+    if (any(not check["passed"] for check in bed_checks)
+            or (keep_bed and result["design"]["foundation"]["bed_drop_mm"]
+                > original_drop + 1e-8)):
+        raise ValueError("This tip rack needs the bed lowered to keep the parked pipette clear. "
+                         "The requested bed position and previous project are preserved; "
+                         "allow the movement or choose a shorter rack.")
     result["revision"] += 1
     result["status"] = "draft"
     movement = result.get("tip_rack", {}).get("placement_proposal", {}).get("message", "")
+    new_drop = result["design"]["foundation"]["bed_drop_mm"]
+    bed_note = (f" Lowered the bed {new_drop - original_drop:.2f} mm to leave 10 mm "
+                "above the tallest deck component in this model; actual travel is unverified."
+                if new_drop > original_drop + 1e-8 else "")
     return result, {
         "kind": "select_tip_rack",
         "status": "accepted",
         "message": "Updated tip-rack geometry, component choice and instructions in this draft. "
         "The preparation recipe and other components are preserved. Physical fit, deck "
-        "attachment and pipette compatibility still require checking. " + movement,
+        "attachment and pipette compatibility still require checking. " + movement + bed_note,
     }
 
 

@@ -368,6 +368,28 @@ def _preservation_checks(project: dict, candidate: dict, instruction: str) -> li
     return checks
 
 
+def _explicit_bed_target_check(candidate: dict, instruction: str) -> list[dict]:
+    """Check a narrow explicit absolute bed-drop request against compiled geometry."""
+    if "bed_drop_mm" not in candidate:
+        return []
+    match = re.search(
+        r"\bbed(?:\s+(?:drop|position))?\s+(?:to|at|of|=)\s*"
+        r"(\d+(?:\.\d+)?)\s*mm\b",
+        instruction, re.I,
+    )
+    if not match:
+        return []
+    requested = float(match.group(1))
+    applied = candidate["bed_drop_mm"]
+    passed = math.isclose(applied, requested, rel_tol=0, abs_tol=1e-5)
+    return [{
+        "id": "requested_bed_target", "label": "Requested bed position", "passed": passed,
+        "detail": (f"Requested {requested:g} mm bed drop retained." if passed else
+                   f"Requested {requested:g} mm bed drop is incompatible with the compiled "
+                   f"{applied:g} mm position needed for parked-tool clearance."),
+    }]
+
+
 async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
     """Run at most two model attempts and compile the first valid candidate.
 
@@ -429,10 +451,34 @@ async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
                     "source_library_sha256": project_source_basis(source)["library_sha256"],
                 }
                 updated = apply_candidate(source, candidate, provenance)
-                message = (
-                    f"Meta layout accepted using {model} after {number} attempt(s). "
-                    f"All {len(checks)} geometry checks passed."
+                canonical = updated["engineering_design"]["proposal"]
+                canonical_checks = _preservation_checks(source, canonical, instruction)
+                canonical_checks.extend(_explicit_bed_target_check(canonical, instruction))
+                attempts[-1]["canonical_checks"] = deepcopy(canonical_checks)
+                if not all(check["passed"] for check in canonical_checks):
+                    checks = canonical_checks
+                    feedback = (
+                        f"Previous candidate: {json.dumps(candidate, ensure_ascii=False)} "
+                        f"Compiled layout: {json.dumps(canonical, ensure_ascii=False)} "
+                        f"Diagnostics: {_format_checks(canonical_checks)}"
+                    )
+                    continue
+                updated["engineering_design"]["provenance"]["attempts"] = deepcopy(attempts)
+                updated["engineering_design"]["provenance"]["canonical_checks"] = deepcopy(
+                    canonical_checks
                 )
+                message = "The workstation layout is updated. You can review it in the 3D view."
+                if "bed_drop_mm" in canonical:
+                    applied = canonical["bed_drop_mm"]
+                    proposed = candidate["bed_drop_mm"]
+                    if not math.isclose(applied, proposed, rel_tol=0, abs_tol=1e-5):
+                        message += (f" The proposed {proposed:g} mm bed drop was adjusted "
+                                    f"to {applied:g} mm.")
+                    else:
+                        message += f" The bed is set to a {applied:g} mm drop."
+                    message += (" This leaves at least 10 mm between the parked pipette and "
+                                "deck components in the model. Physical travel and mounting "
+                                "are unverified.")
                 run = {
                     "id": run_id,
                     "source_revision": source_revision,
@@ -447,6 +493,9 @@ async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
                 f"Previous candidate: {json.dumps(candidate, ensure_ascii=False)} "
                 f"Diagnostics: {_format_checks(checks)}"
             )
+    failure_details = (_format_checks(attempts[-1].get("canonical_checks")
+                                      or attempts[-1]["checks"])
+                       if attempts else "No attempt completed.")
     run = {
         "id": run_id,
         "source_revision": source_revision,
@@ -458,7 +507,7 @@ async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
         "attempts": attempts,
         "message": (
             f"Meta layout rejected after {len(attempts)} attempt(s). "
-            f"{_format_checks(attempts[-1]['checks']) if attempts else 'No attempt completed.'} "
+            f"{failure_details} "
             "The project was not changed."
         ),
     }

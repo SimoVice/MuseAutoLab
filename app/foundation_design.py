@@ -1,11 +1,49 @@
 """Adapt the pinned real platform with a custom, bounded liquid-preparation insert."""
 
 from copy import deepcopy
+from math import ceil
 
 from app.catalog import build_sourcing
 from app.upstream_cad import ASSET_ID, foundation_metadata
 
 REMOVED_TEMPLATE_IDS = {"column-left", "column-right", "crossbar", "cold-storage"}
+BED_PART_IDS = {"base", "source-rack", "sample-rack", "tip-rack", "tip-waste", "controller"}
+# The conceptual head is parked in the fixed frame, at its former pose at 100 mm drop.
+# The margin is a digital screening assumption, not a measured working clearance.
+HEAD_REFERENCE_DROP_MM = 100.0
+PARK_CLEARANCE_MM = 10.0
+MAX_LAYOUT_BED_DROP_MM = 150.0
+
+
+def ensure_park_clearance(project: dict) -> dict:
+    """Lower the proposed bed as needed for the fixed parked tool and deck envelopes.
+
+    This screens only vertical envelope separation during a conceptual traverse. It
+    does not check travel, tip pickup, actual mounting, or source CAD collisions.
+    """
+    if not is_source_based(project) or not project.get("engineering_design"):
+        return project
+    design = project["design"]
+    parts = {part["id"]: part for part in design["components"]}
+    nozzle_bottom = parts["pipette"]["position"][1] - parts["pipette"]["size"][1] / 2
+    highest = max(parts[cid]["position"][1] + parts[cid]["size"][1] / 2
+                  for cid in BED_PART_IDS - {"base"} if cid in parts)
+    old_drop = design["foundation"]["bed_drop_mm"]
+    new_drop = max(old_drop, old_drop + highest + PARK_CLEARANCE_MM - nozzle_bottom)
+    if new_drop > MAX_LAYOUT_BED_DROP_MM + 1e-8:
+        raise ValueError("Deck components exceed the proposed parked-tool clearance within the "
+                         "150 mm bed-drop limit. Choose shorter labware or revise the design; "
+                         "physical travel and mounting remain unverified.")
+    if new_drop > old_drop + 1e-8:
+        new_drop = min(MAX_LAYOUT_BED_DROP_MM, ceil(new_drop * 1_000_000 - 1e-8) / 1_000_000)
+        delta = new_drop - old_drop
+        design["foundation"] = foundation_metadata(new_drop)
+        for cid in BED_PART_IDS:
+            if cid in parts:
+                parts[cid]["position"][1] -= delta
+        project["engineering_design"]["proposal"]["bed_drop_mm"] = new_drop
+    design["assembly_bounds"] = assembly_bounds(project)
+    return project
 
 
 def is_source_based(project: dict) -> bool:
@@ -110,8 +148,9 @@ def adopt_foundation(project: dict, *, bed_drop_mm: float = 100) -> dict:
         part = index[cid]
         part["position"] = [origin[0] + x, deck_top + part["size"][1] / 2, origin[2] + z]
     index["controller"]["label"] = "Custom pipette interface enclosure"
-    index["pipette"]["position"] = [origin[0], deck_top + 140, origin[2]]
-    index["carriage"]["position"] = [origin[0], deck_top + 235, origin[2]]
+    fixed_deck_top = foundation_metadata(HEAD_REFERENCE_DROP_MM)["deck_origin_app_mm"][1] + 12
+    index["pipette"]["position"] = [origin[0], fixed_deck_top + 140, origin[2]]
+    index["carriage"]["position"] = [origin[0], fixed_deck_top + 235, origin[2]]
     index["carriage"]["label"] = "Custom pipette adapter concept"
     width = result["summary"].get("workspace_width_mm")
     design["constraint_status"] = (
@@ -169,4 +208,4 @@ def compile_source_layout(project: dict, proposal: dict, provenance: dict) -> di
     }
     from app.geometry import add_geometry
 
-    return add_geometry(result)
+    return add_geometry(ensure_park_clearance(result))

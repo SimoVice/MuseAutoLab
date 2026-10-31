@@ -1,5 +1,12 @@
 # Development guidance and software attribution
 
+The workspace usability revision consulted [Impeccable](https://github.com/pbakaus/impeccable),
+including its Operate, distill and craft-floor guidance, on 2026-10-31. It informed
+the fixed preparation-plan location, progressive disclosure and clearer cost
+hierarchy. No installer or runtime dependency was added; the code and rendered
+interface were checked separately. This is design guidance, not independent
+user-research evidence.
+
 MuseAutoLab's CAD export review used the `lab-hardware-cad` guidance from K-Dense Scientific Agent Skills, alongside the installed build123d version. That guidance informed geometry provenance, explicit unchecked interfaces and numeric/visual review. It is development tooling, not a product runtime dependency or evidence of hardware validation.
 
 Kassis, T., Agarwal, V., He, Y., Patel, D., & Brueckner, A. M. (2026). *Scientific Agent Skills: A Library of Procedural Knowledge for Research Agents*. [arXiv:2609.00065](https://doi.org/10.48550/arXiv.2609.00065). Bibliographic record rechecked on 2026-10-30; the consulted record was revised on 2026-09-02. The labware-adapter and fabrication guidance also informed the parametric tube rack's declared fit assumptions and actual-solid/visual checks. It does not supply measured tube dimensions or certify a printed part.

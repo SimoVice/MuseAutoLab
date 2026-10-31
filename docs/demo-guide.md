@@ -195,7 +195,7 @@ All numerical inputs below are synthetic test data, not measured labware or
 validated liquid-handling conditions. Answer the agent's missing-information
 questions before moving to the next step.
 
-1. **Describe the problem.** “For this synthetic demo, I prepare dilutions and
+1. **Describe the problem.** “I prepare dilutions and
    aliquots manually using a pipette and 1.5–2 mL tubes. Help me design a workstation.
    Use US suppliers and USD. Ask for the requirements you need.”
 2. **Choose the platform.** “Compare an assembled platform with an open-source
@@ -204,7 +204,7 @@ questions before moving to the next step.
 3. **Set the preparation.** “Use a stock concentration of 5 mg/mL, targets of
    0.5, 0.25 and 0.05 mg/mL, and a final volume of 200 µL per preparation.
    Keep the machine layout unchanged.” Expect three preparations.
-4. **Create the tube rack.** “Design a tube rack with these synthetic dimensions:
+4. **Create the tube rack.** “Design a tube rack with these dimensions:
    maximum body diameter 12 mm, minimum supporting rim diameter 15 mm, maximum
    closed cap envelope including the hinge 18 mm, length below the rim 40 mm,
    12 positions and 4 columns. Keep the recipe and other components unchanged.”

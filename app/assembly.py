@@ -10,6 +10,7 @@ from pprint import pformat
 
 CHECKED_LABEL = "not recorded"
 
+
 def _project_id(project: dict) -> str:
     return str(project.get("id", "unknown"))
 
@@ -181,7 +182,8 @@ def build_preparation_csv(project: dict) -> bytes:
         if not isinstance(step, dict):
             continue
         writer.writerow(
-            ([_csv_cell(wells[index] if index < len(wells) else "Unassigned")] if plate else []) + [
+            ([_csv_cell(wells[index] if index < len(wells) else "Unassigned")] if plate else [])
+            + [
                 _csv_cell(str(step.get("target", ""))),
                 _csv_cell(str(step.get("stock_volume_ul", ""))),
                 _csv_cell(str(step.get("diluent_volume_ul", ""))),
@@ -281,8 +283,9 @@ def _design_provenance_html(project: dict) -> str:
         '<div class="card"><h2>Meta layout decision</h2>'
         f"<p>Model: {model}. {passed}/{len(checks)} recorded geometry checks passed.</p>"
         f"<p>{rationale}</p>"
-        "<p>" + model_choices +
-        "The application checked and compiled the proposal; these checks do not establish "
+        "<p>"
+        + model_choices
+        + "The application checked and compiled the proposal; these checks do not establish "
         "hardware feasibility. The full accepted proposal and provenance are in "
         "project.json under engineering_design.</p></div>"
     )
@@ -294,33 +297,38 @@ def _source_basis_html(project: dict) -> str:
         return ""
     rows = []
     bindings = "".join(
-        f'<tr><td>{html.escape(item["component_id"])}</td>'
-        f'<td>{html.escape(item["basis"])}</td>'
-        f'<td>{html.escape(item["reference_id"] or "Custom concept")}</td>'
-        f'<td>{html.escape(item["detail"])}</td></tr>' for item in basis["bindings"]
+        f"<tr><td>{html.escape(item['component_id'])}</td>"
+        f"<td>{html.escape(item['basis'])}</td>"
+        f"<td>{html.escape(item['reference_id'] or 'Custom concept')}</td>"
+        f"<td>{html.escape(item['detail'])}</td></tr>"
+        for item in basis["bindings"]
     )
     for ref in basis["references"]:
         rows.append(
             f'<tr><td><a href="{html.escape(ref["url"], quote=True)}">'
-            f'{html.escape(ref["title"])}</a></td><td>{html.escape(ref["license"])}</td>'
-            f'<td>{html.escape(ref["use"])}</td><td>{html.escape(ref["limits"])}</td></tr>'
+            f"{html.escape(ref['title'])}</a></td><td>{html.escape(ref['license'])}</td>"
+            f"<td>{html.escape(ref['use'])}</td><td>{html.escape(ref['limits'])}</td></tr>"
         )
-    return ('<section class="card"><h2>Design sources and geometry basis</h2>'
-            '<p>' + html.escape(basis["architecture"]) + '. '
-            'Manufacturer envelopes and proposed custom interfaces have distinct bindings. '
-            'Imported CAD does not establish a validated adapter.</p>'
-            '<div class="table-scroll" role="region" aria-label="Component source bindings" '
-            'tabindex="0"><table><thead><tr><th>Part</th><th>Basis</th><th>Reference</th><th>Scope</th>'
-            '</tr></thead><tbody>' + bindings + '</tbody></table></div>'
-            '<div class="table-scroll" role="region" aria-label="Primary sources" tabindex="0">'
-            '<table><thead><tr><th>Primary reference</th><th>License / rights</th>'
-            '<th>Use</th><th>Scope</th></tr></thead><tbody>' + "".join(rows) +
-            '</tbody></table></div><p>Revision-pinned source records and component bindings are '
-            'in project.json and cad/geometry-report.json under design_basis.</p></section>')
+    return (
+        '<section class="card"><h2>Design sources and geometry basis</h2>'
+        "<p>" + html.escape(basis["architecture"]) + ". "
+        "Manufacturer envelopes and proposed custom interfaces have distinct bindings. "
+        "Imported CAD does not establish a validated adapter.</p>"
+        '<div class="table-scroll" role="region" aria-label="Component source bindings" '
+        'tabindex="0"><table><thead><tr><th>Part</th><th>Basis</th><th>Reference</th><th>Scope</th>'
+        "</tr></thead><tbody>" + bindings + "</tbody></table></div>"
+        '<div class="table-scroll" role="region" aria-label="Primary sources" tabindex="0">'
+        "<table><thead><tr><th>Primary reference</th><th>License / rights</th>"
+        "<th>Use</th><th>Scope</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table></div><p>Revision-pinned source records and component bindings are "
+        "in project.json and cad/geometry-report.json under design_basis.</p></section>"
+    )
 
 
 def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = None) -> bytes:
     from app.instructions import procurement_html, step_details_html
+
     pid = html.escape(_project_id(project))
     rev = _revision(project)
     fp = _footprint(project)
@@ -329,9 +337,8 @@ def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = N
     checked = html.escape(str(sourcing.get("checked_on", CHECKED_LABEL)))
     if guide is not None:
         dates = [source.get("checked_on", "") for source in guide.get("sources", [])]
-        checked = (
-            f"historical component snapshot {checked}; instruction references "
-            + html.escape(max(dates, default=CHECKED_LABEL))
+        checked = f"historical component snapshot {checked}; instruction references " + html.escape(
+            max(dates, default=CHECKED_LABEL)
         )
     limitations = [
         "Concept sequence only; mechanical, thermal, and electronic interfaces are unverified.",
@@ -461,12 +468,16 @@ STEPS
 </body>
 </html>"""
     page = page.replace("PROJECT_ID", pid).replace("rREV", f"r{rev}").replace("REV", str(rev))
-    page = page.replace("</main>", _design_provenance_html(project) + _source_basis_html(project)
-                        + "</main>")
+    page = page.replace(
+        "</main>", _design_provenance_html(project) + _source_basis_html(project) + "</main>"
+    )
     page = page.replace("LIMITATIONS", "</li><li>".join(html.escape(s) for s in limitations))
     page = page.replace(
-        "FP", html.escape(" × ".join(_display_mm(fp.get(axis)) for axis in
-                                     ("width_mm", "depth_mm", "height_mm")) + " mm")
+        "FP",
+        html.escape(
+            " × ".join(_display_mm(fp.get(axis)) for axis in ("width_mm", "depth_mm", "height_mm"))
+            + " mm"
+        ),
     )
     cooling_text = f"{cooling['variant_id']}, manual transfer" if cooling["enabled"] else "disabled"
     page = page.replace("COOLING", html.escape(cooling_text))
@@ -482,57 +493,76 @@ STEPS
             "The interactive model and workstation STEP use the same component primitive geometry.",
             "The interactive model uses simplified meshes of the pinned Jubilee STEP plus custom "
             "primitives. The exported workstation STEP retains the original source assembly "
-            "and the same bed pose and custom parts.")
-        page = page.replace("Physics uses conservative component envelopes.",
-                            "Jubilee physical simulation is not implemented.")
+            "and the same bed pose and custom parts.",
+        )
+        page = page.replace(
+            "Physics uses conservative component envelopes.",
+            "Jubilee physical simulation is not implemented.",
+        )
     if project.get("design", {}).get("platform"):
         page = page.replace("Concept assembly guide", "Instrument purchase and setup guide")
         page = page.replace(
             "Concept assembly sequence. Mounts, wiring and hardware performance remain "
             "to be engineered.",
-            "Configure and install an assembled instrument using the manufacturer's instructions.")
+            "Configure and install an assembled instrument using the manufacturer's instructions.",
+        )
         page = page.replace(
             "The custom sample insert follows the target count without changing its "
             "outside dimensions.",
-            "Rack proxies mark the chosen software slots; exact labware fit is unverified.")
-        page = page.replace("Physics uses conservative component envelopes.",
-                            "OT-2 physical simulation is not implemented.")
+            "Rack proxies mark the chosen software slots; exact labware fit is unverified.",
+        )
+        page = page.replace(
+            "Physics uses conservative component envelopes.",
+            "OT-2 physical simulation is not implemented.",
+        )
     if project.get("labware_rack"):
         page = page.replace(
             "The custom sample insert follows the target count without changing its "
             "outside dimensions.",
             "The custom sample rack uses its declared tube envelopes, count and columns. "
             "Its capacity is independent of the number of preparation targets; unused holes "
-            "remain free. The other labware fixtures and imported source frame are unchanged.")
+            "remain free. The other labware fixtures and imported source frame are unchanged.",
+        )
         page = page.replace(
             "Tube and tip consumables remain separate assumed proxies.",
             "Occupied sample positions show declared body envelopes and closed-cap outlines; "
-            "tip and source consumables remain separate assumed proxies.")
+            "tip and source consumables remain separate assumed proxies.",
+        )
     if project.get("labware_plate"):
         page = page.replace(
             "The custom sample insert follows the target count without changing its "
             "outside dimensions.",
             "The selected 96-well software profile has 8 rows and 12 columns. Only existing "
             "recipe targets are assigned; unused wells remain free. A1 orientation follows "
-            "the pinned definition, not a calibrated instrument pose.")
+            "the pinned definition, not a calibrated instrument pose.",
+        )
         page = page.replace(
             "Tube and tip consumables remain separate assumed proxies.",
             "The sample plate is schematic reference geometry, not vendor CAD. Colored wells "
-            "mark targets, not measured liquid. The printable item is its custom holder.")
+            "mark targets, not measured liquid. The printable item is its custom holder.",
+        )
         plan = project.get("plan") or {}
         wells = project["labware_plate"]["compatibility"]["occupied_wells"]
         rows = []
         for index, step in enumerate(plan.get("steps") or []):
-            values = [wells[index] if index < len(wells) else "Unassigned", step.get("target", ""),
-                      step.get("stock_volume_ul", ""), step.get("diluent_volume_ul", ""),
-                      step.get("total_volume_ul", "")]
-            rows.append("<tr>" + "".join(f"<td>{html.escape(str(v))}</td>" for v in values)
-                        + "</tr>")
-        table = ('<section class="card"><h2>Well assignments and preparation volumes</h2><p>'
-                 + html.escape(str(plan.get("message", "")))
-                 + '</p><div class="table-scroll"><table><thead><tr><th>Well</th><th>Target</th>'
-                   '<th>Stock (µL)</th><th>Diluent (µL)</th><th>Total (µL)</th></tr></thead><tbody>'
-                 + "".join(rows) + '</tbody></table></div></section>')
+            values = [
+                wells[index] if index < len(wells) else "Unassigned",
+                step.get("target", ""),
+                step.get("stock_volume_ul", ""),
+                step.get("diluent_volume_ul", ""),
+                step.get("total_volume_ul", ""),
+            ]
+            rows.append(
+                "<tr>" + "".join(f"<td>{html.escape(str(v))}</td>" for v in values) + "</tr>"
+            )
+        table = (
+            '<section class="card"><h2>Well assignments and preparation volumes</h2><p>'
+            + html.escape(str(plan.get("message", "")))
+            + '</p><div class="table-scroll"><table><thead><tr><th>Well</th><th>Target</th>'
+            "<th>Stock (µL)</th><th>Diluent (µL)</th><th>Total (µL)</th></tr></thead><tbody>"
+            + "".join(rows)
+            + "</tbody></table></div></section>"
+        )
         page = page.replace("</main>", table + "</main>")
     if guide is not None:
         page = page.replace("</main>", procurement_html(guide) + "</main>")
@@ -678,11 +708,16 @@ def build_readme(project: dict) -> bytes:
     if project.get("design", {}).get("foundation"):
         start = text.index("## Physical motion model")
         end = text.index("\n## ", start + 4)
-        text = text[:start] + (
-            "## Physical motion model\n\n"
-            "simulation/result.json records not_run: the imported Jubilee platform has no "
-            "physical simulation adapter. The legacy XYZ result cannot validate this assembly.\n"
-        ) + text[end:]
+        text = (
+            text[:start]
+            + (
+                "## Physical motion model\n\n"
+                "simulation/result.json records not_run: the imported Jubilee platform has no "
+                "physical simulation adapter. The legacy XYZ result cannot validate this "
+                "assembly.\n"
+            )
+            + text[end:]
+        )
         text += (
             "\n## Imported Jubilee CAD\n\n"
             "The original pinned STEP is included losslessly in cad/source with its license "
@@ -697,7 +732,8 @@ def build_readme(project: dict) -> bytes:
             "pipette mechanism, arm and mounts remain custom concepts. Jubilee and Science "
             "Jubilee are documented alternative foundations, not this machine's imported CAD.",
             "Jubilee is the imported source platform. The insert, pipette, racks, arm and mounts "
-            "are custom concepts; Science Jubilee controls are not installed.")
+            "are custom concepts; Science Jubilee controls are not installed.",
+        )
     if project.get("labware_rack"):
         rack = project["labware_rack"]
         text = text.replace(
@@ -709,7 +745,8 @@ def build_readme(project: dict) -> bytes:
             "  Its capacity and hole pattern follow the rack count/columns, independently of "
             "preparation target count.\n"
             "  Physical fit, strength and deck retention remain unverified; the original "
-            "source rack and imported frame are unchanged.\n")
+            "source rack and imported frame are unchanged.\n",
+        )
         text += (
             "\n## Parametric tube rack\n\n"
             f"One custom rim-supported rack, {rack['derived']['count']} positions in "
@@ -737,7 +774,8 @@ def build_readme(project: dict) -> bytes:
             "  Existing recipe targets map to wells; the switch never creates 96 targets or "
             "scales volumes.\n"
             "  Actual plate fit, working volume, attachment and pipette access "
-            "remain unverified.\n")
+            "remain unverified.\n",
+        )
         text += (
             "\n## Selected 96-well plate and holder\n\n"
             f"Profile: {plate['profile']['display_name']} ({plate['profile_id']}). "
@@ -762,14 +800,23 @@ def build_readme(project: dict) -> bytes:
 def build_extension_plan(project: dict) -> bytes:
     cooling = _cooling(project)
     if project.get("inspection_extension"):
-        return json.dumps({
-            "project_id": _project_id(project), "revision": _revision(project),
-            "status": "digital_concept", "installed": False,
-            "inspection_extension": project["inspection_extension"],
-            "physics_scope": ("not_run_imported_foundation" if project["design"].get("foundation")
-                              else "liquid_preparation_only"),
-            "cooling_transfer_mode": cooling["transfer_mode"],
-        }, indent=2, sort_keys=True).encode("utf-8")
+        return json.dumps(
+            {
+                "project_id": _project_id(project),
+                "revision": _revision(project),
+                "status": "digital_concept",
+                "installed": False,
+                "inspection_extension": project["inspection_extension"],
+                "physics_scope": (
+                    "not_run_imported_foundation"
+                    if project["design"].get("foundation")
+                    else "liquid_preparation_only"
+                ),
+                "cooling_transfer_mode": cooling["transfer_mode"],
+            },
+            indent=2,
+            sort_keys=True,
+        ).encode("utf-8")
     plan = {
         "project_id": _project_id(project),
         "revision": _revision(project),
@@ -831,7 +878,8 @@ def build_extensions_md(project: dict) -> bytes:
             "capture/upload, Meta analysis and human review are separate actions. MuJoCo "
             "covers liquid_preparation_only; the extension is excluded.\n\n"
             "## Open design items\n\n"
-            + "\n".join(f"- {v}" for v in extension["limitations"]) + "\n"
+            + "\n".join(f"- {v}" for v in extension["limitations"])
+            + "\n"
         )
         return text.encode("utf-8")
     text = (
@@ -870,6 +918,25 @@ def build_document_files(project: dict, procurement: dict | None = None) -> dict
         "extensions.md": build_extensions_md(project),
     }
     report = procurement if procurement is not None else project.get("procurement_report")
+    if project.get("cost_estimate"):
+        from app.price_estimation import estimate_csv, estimate_for_project
+
+        cost = estimate_for_project(project, project["cost_estimate"], report)
+        if cost is not None:
+            files["cost-estimate.json"] = json.dumps(cost, indent=2, allow_nan=False).encode(
+                "utf-8"
+            )
+            files["cost-estimate.csv"] = estimate_csv(cost)
+            files["README.md"] += (
+                "\n## Project cost planning range\n\n"
+                "cost-estimate.json and cost-estimate.csv preserve this revision's clearly "
+                "labelled "
+                "model planning ranges, assumptions, verified subtotals and unknown purchase "
+                "groups. "
+                "Group totals already include quantity and pack counts; do not multiply them "
+                "again. "
+                "They are not supplier quotes, verified compatibility or a complete-machine BOM.\n"
+            ).encode("utf-8")
     if report:
         from app.procurement import report_csv, report_json
 
@@ -877,7 +944,8 @@ def build_document_files(project: dict, procurement: dict | None = None) -> dict
         files["procurement-report.json"] = report_json(report)
         files["README.md"] = files["README.md"].replace(
             b"bill-of-materials.csv is an unpriced quotation checklist, not a custom motor BOM.",
-            b"bill-of-materials.csv is the bound US procurement snapshot, not a custom motor BOM.")
+            b"bill-of-materials.csv is the bound US procurement snapshot, not a custom motor BOM.",
+        )
         files["README.md"] += (
             "\n## Bound procurement report\n\n"
             f"Report {report['report_id']} belongs to this project revision. "
@@ -888,18 +956,41 @@ def build_document_files(project: dict, procurement: dict | None = None) -> dict
         ).encode("utf-8")
     extension = project.get("inspection_extension")
     if extension:
-        files["inspection-module.json"] = json.dumps({
-            "project_id": _project_id(project), "revision": _revision(project),
-            "module": extension,
-        }, indent=2, sort_keys=True).encode("utf-8")
+        files["inspection-module.json"] = json.dumps(
+            {
+                "project_id": _project_id(project),
+                "revision": _revision(project),
+                "module": extension,
+            },
+            indent=2,
+            sort_keys=True,
+        ).encode("utf-8")
         buffer = io.StringIO(newline="")
         writer = csv.writer(buffer)
-        writer.writerow(["time_s", "shoulder_deg", "elbow_deg", "camera_x_mm", "camera_y_mm",
-                         "camera_z_mm", "target_x_mm", "target_y_mm", "target_z_mm"])
+        writer.writerow(
+            [
+                "time_s",
+                "shoulder_deg",
+                "elbow_deg",
+                "camera_x_mm",
+                "camera_y_mm",
+                "camera_z_mm",
+                "target_x_mm",
+                "target_y_mm",
+                "target_z_mm",
+            ]
+        )
         for frame in extension["pose_frames"]:
             angles = frame["joint_angles_deg"]
-            writer.writerow([frame["time_s"], angles["shoulder"], angles["elbow"],
-                             *frame["camera_mm"], *frame["target_mm"]])
+            writer.writerow(
+                [
+                    frame["time_s"],
+                    angles["shoulder"],
+                    angles["elbow"],
+                    *frame["camera_mm"],
+                    *frame["target_mm"],
+                ]
+            )
         files["inspection-poses.csv"] = buffer.getvalue().encode("utf-8")
     from app.platform_profiles import engineering_guidance
 
@@ -916,7 +1007,9 @@ def build_document_files(project: dict, procurement: dict | None = None) -> dict
         directory = Path(__file__).parent / "data" / "ot2"
         for filename in ("deck.json", "LICENSE.txt", "provenance.json"):
             files[f"references/ot2-{filename}"] = (directory / filename).read_bytes()
-        files["extensions.md"] = (b"# Integration scope\n\nCustom inspection/cooling "
+        files["extensions.md"] = (
+            b"# Integration scope\n\nCustom inspection/cooling "
             b"integration on the assembled platform is not implemented. Discuss requirements "
-            b"in chat; no compatible mount or hardware control is claimed.\n")
+            b"in chat; no compatible mount or hardware control is claimed.\n"
+        )
     return files

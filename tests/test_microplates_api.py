@@ -154,7 +154,7 @@ def test_return_message_and_save_reopen_restore_exact_before_state(client, monke
     model_turn(monkeypatch, MESSAGE)
     selected = client.post(url + "/messages", json={"message": MESSAGE}).json()["project"]
     saved = client.get(url + "/snapshot", params={"revision": selected["revision"]})
-    assert saved.status_code == 200 and saved.json()["compiler_version"] == "6"
+    assert saved.status_code == 200 and saved.json()["compiler_version"] == "8"
     reopened = client.post(
         "/api/projects/open", content=saved.content, headers={"content-type": "application/json"}
     )

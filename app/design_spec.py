@@ -134,16 +134,24 @@ def check_candidate(project: dict, raw: object) -> list[dict]:
     checks.append(_check("envelopes", "Component envelopes", True,
                          "Fixed project component envelopes are retained."))
     if foundation:
+        from app.foundation_design import HEAD_REFERENCE_DROP_MM, PARK_CLEARANCE_MM
         from app.upstream_cad import foundation_metadata
 
         meta = foundation_metadata(proposal.bed_drop_mm)
-        deck_top = meta["deck_origin_app_mm"][1] + 12
+        deck_top = foundation_metadata(HEAD_REFERENCE_DROP_MM)["deck_origin_app_mm"][1] + 12
         head_top = max(deck_top + offset + components[cid]["size"][1] / 2
                        for cid, offset in (("carriage", 235), ("pipette", 140)))
         checks.append(_check("head_envelope", "Head height envelope",
                              head_top <= meta["bbox_mm"][1],
                              "Proposed head stays below the source frame envelope; "
                              "interior clearance and mounting remain unchecked."))
+        nozzle = deck_top + 140 - components["pipette"]["size"][1] / 2
+        lowest_deck = foundation_metadata(150)["deck_origin_app_mm"][1] + 12
+        tallest = max(components[cid]["size"][1] for cid in MOVABLE_IDS)
+        checks.append(_check("park_clearance", "Parked tool clearance",
+                             lowest_deck + tallest + PARK_CLEARANCE_MM <= nozzle + 1e-8,
+                             "The proposed bed range must allow 10 mm between the parked "
+                             "tool and deck components; physical travel is unverified."))
 
     for component_id, (xmin, xmax, zmin, zmax) in boxes.items():
         inside = (xmin >= -proposal.deck_width_mm / 2 + 10

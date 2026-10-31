@@ -177,7 +177,7 @@ def test_portable_rebuild_preserves_profile_binding_and_quantities_and_return_is
     original = before(arm=True)
     result = selected(original)
     snapshot = make_snapshot(result, [])
-    assert snapshot["compiler_version"] == "7"
+    assert snapshot["compiler_version"] == "8"
     assert "geometry" not in snapshot["tip_rack"]
     restored, _ = restore_snapshot(snapshot)
     assert restored["tip_rack"] == result["tip_rack"]

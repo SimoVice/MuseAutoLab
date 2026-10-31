@@ -187,14 +187,14 @@ def test_compiler6_roundtrip_rebuilds_profile_and_restores_exact_archived_tube_r
     original = before(arm=True)
     selected = select(original)
     snapshot = make_snapshot(selected, [])
-    assert snapshot["compiler_version"] == "6"
+    assert snapshot["compiler_version"] == "8"
     assert "geometry" not in snapshot["labware_plate"]
     assert snapshot["labware_rack"] is None
     restored, _ = restore_snapshot(snapshot)
     assert restored["design"] == selected["design"]
     assert restored["labware_plate"] == selected["labware_plate"]
     assert restore_previous_sample(restored)["design"] == original["design"]
-    assert make_snapshot(original, [])["compiler_version"] == "5"
+    assert make_snapshot(original, [])["compiler_version"] == "8"
 
 
 def test_compiler6_conflicted_draft_can_reopen_but_cannot_be_forged_confirmed():

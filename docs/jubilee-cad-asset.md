@@ -22,6 +22,24 @@ STEP remains the CAD source, and the preview may omit small features; neither
 view is evidence of a working machine. User-added fixtures and tools are
 separate concepts and their interfaces are unverified.
 
+## Parked tool and proposed bed position
+
+The conceptual pipette and carriage now park at a fixed height in the frame;
+they do not follow the bed. The compiler checks the vertical envelopes of the
+five deck components against the bottom of that parked pipette, with a proposed
+10 mm margin. It lowers the bed only as needed, within the layout's 95–150 mm
+drop range, and rejects a layout that cannot meet this screen at 150 mm. For the
+standard 80 mm waste bin, the minimum drop is 127.5 mm. The Opentrons 300 µL
+tip-rack software reference is 64.49 mm high, so it fits below that parked
+position in this envelope check. This checks neither moving tool paths nor
+actual travel, source CAD collisions, mounting, tips, pickup or operation.
+
+Jubilee projects now save with compiler version 8. Opening an older source-based
+project with an accepted layout rebuilds the bed and parked head, preserves the
+compatible layout and modules, and creates a new draft for review and
+reconfirmation. The original saved file is not changed. The screenshot above
+records an earlier version and does not show this change.
+
 ## Verified full export
 
 The synthetic integration fixture produced a 396,887,598-byte expanded workstation

@@ -1,5 +1,47 @@
 # Delivery verification — 2026-10-31
 
+## Latest correction: conversational workspace, clearance and cost estimates
+
+User-reported issues drove this revision: technical design summaries crowded chat,
+the parked pipette intersected taller deck labware, the contextual answer
+"Yes I do" failed, and preparation/cost information was difficult to find.
+
+- The preparation plan has one place on the left beside the cost summary. Desktop
+  checks at 1440 × 900 and 1440 × 1000 place both summaries in the initial viewport;
+  mobile 390/760 layouts have no horizontal overflow. Tests use labelled synthetic
+  prices and English conversation fixtures, not new live-model evidence.
+- Jubilee compiler 8 keeps the parked tool fixed to the frame, lowers the bed for
+  a proposed 10 mm vertical envelope gap, and rejects incompatible position locks.
+  Old layouts migrate to a draft and require reconfirmation. Source CAD is unchanged.
+  This is geometric screening, not validated travel, pickup or physical collision testing.
+- Natural contextual yes/no replies are source-validated within the pending
+  printer question. The real Spark call for "Yes I do" passed with unchanged
+  geometry and preparation values.
+- Missing hardware prices receive model planning ranges with declared scope and
+  assumptions, separate from supplier observations. The first real call estimated
+  only 9/17 groups; this quality failure was retained. After explicit allowance
+  scope was added, a bounded follow-up covered 17/17, and the actual local browser
+  request independently returned 17/17. These outputs vary and are not quotations.
+  Labour, engineering, tax, shipping and validation remain excluded.
+
+The final regular regression run passed **981 tests**. The command excluded
+`test_foundation_exports.py`, `test_tiprack_geometry.py`,
+`test_labware_geometry.py` and `test_microplate_geometry.py`; nine separate
+foundation-inspection/geometry/source-geometry checks passed. A heavier CAD group
+was interrupted without a final result and is not counted as passed. Full new
+package CAD regeneration was not rerun for this interface correction. Build and
+typecheck passed; the existing large-bundle advisory remains. Ruff passed.
+
+Four actual provider requests were made: contextual printer reply, initial partial
+costs, corrected costs and the reopened browser's cost request. Total reported
+usage was **54,153 tokens**. No autonomous retry was used. Historical failures and
+the first partial estimate remain in local evidence. This is developer regression
+and usability checking, not an independent human-use study or hardware validation.
+The updated local workspace reopened at revision 21; its actual JSON and HTML
+instructions were retrieved and contained the current model estimate separately
+from supplier pricing.
+
+
 ## Latest feature: supplier-specific tip racks
 
 The Jubilee project now supports two reviewed commercial rack references and a

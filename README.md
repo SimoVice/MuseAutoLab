@@ -1,5 +1,24 @@
 # MuseAutoLab
 
+### Workspace usability update — 2026-10-31
+
+The preparation plan has one stable place beside the cost summary below the 3D
+view. Model settings and technical details are progressively disclosed; ordinary
+chat describes results rather than compiler attempts or repeating the plan.
+Contextual printer answers such as **“Yes I do”** are supported.
+
+Once a design exists, the workspace requests one bounded Muse Spark estimate for
+missing hardware prices. USD supplier observations and broad model planning
+ranges are displayed separately, with assumptions, remaining gaps and exclusions.
+Prices are not purchase quotes. Details and estimates accompany the instructions
+and generated package. See [pricing and instructions](docs/procurement-and-instructions.md).
+
+Jubilee compiler 8 keeps the conceptual parked head fixed to the frame and lowers
+the bed as needed to leave a proposed 10 mm vertical gap above modeled deck
+components, within the supported proposal range. Actual travel, mounting and
+liquid handling are unverified. Older Jubilee layouts reopen as drafts with an
+explicit pose-update notice and require review and confirmation.
+
 Turn repetitive laboratory work into a sourced, editable automation proposal through an engineering conversation.
 
 Meta models interpret the researcher's request, propose checked layouts and design an optional inspection extension. The application retains the original source CAD and performs deterministic arithmetic, geometry compilation and checks. Coding assistants used to build MuseAutoLab are separate from its runtime Meta inference.
@@ -123,7 +142,7 @@ for exact scope, synthetic example inputs and checks.
 
 ## Save and export
 
-**Save project / Open project** use a portable JSON file, capped at 256 KB, and rebuild canonical geometry without a Meta call. Compiler 4 retains engineering requirements, platform choice, source pose and accepted proposals; compiler 5 adds declared tube-rack inputs, and compiler 6 adds the pinned plate profile and reversible previous-rack state. Old projects retain their supported geometry. Files accept no arbitrary mesh URLs, CAD paths or executable code. Version-3 Jubilee designs retain geometry and acquire their existing platform choice. Version-1/2 files preserve inputs/history, clear incompatible designs/extensions and require a new design. New openings get a fresh runtime ID and retain lineage; old jobs/results are not restored. Browser-local resume is convenience, not cloud storage or a backup.
+**Save project / Open project** use a portable JSON file, capped at 256 KB, and rebuild canonical geometry without an inference request. Compiler 8 upgrades earlier Jubilee layouts to the corrected fixed-head/bed relationship, preserves their inputs and modules, and reopens them as a draft with an explicit review notice. Exact positioning constraints are checked against the compiled result. Version-1/2 files preserve inputs/history but clear incompatible designs and extensions. Files accept no arbitrary mesh URLs, CAD paths or executable code. New openings receive a fresh runtime ID and retain lineage; old jobs/results are not restored. Browser-local resume is convenience, not cloud storage or a backup. The cost panel can request a new estimate for the reopened revision.
 
 After confirmation, **Project details → Generate project files** performs real CAD, document and archive work. The package contains the full workstation STEP, custom deck STEP/STL, standalone build123d regeneration source, original source STEP gzip, license/provenance, source bindings, preparation/BOM data, assembly guidance and file hashes. The viewer uses simplified source meshes; the original STEP is the geometric authority. The SVG is a custom-parts layout view and omits source geometry. Simulation records `not_run` for this imported foundation.
 

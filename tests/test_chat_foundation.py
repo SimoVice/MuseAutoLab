@@ -45,8 +45,11 @@ def test_source_revisions_keep_original_frame_and_move_real_bed_pose():
     b = {p["id"]: p for p in after["design"]["components"]}
     assert a["foundation-jubilee"] == b["foundation-jubilee"]
     assert "geometry" not in b["foundation-jubilee"]
-    assert b["base"]["position"][1] == a["base"]["position"][1] - 30
-    assert b["sample-rack"]["position"][1] == a["sample-rack"]["position"][1] - 30
+    delta = (after["design"]["foundation"]["bed_drop_mm"]
+             - before["design"]["foundation"]["bed_drop_mm"])
+    assert delta == pytest.approx(2.5)
+    assert b["base"]["position"][1] == pytest.approx(a["base"]["position"][1] - delta)
+    assert b["sample-rack"]["position"][1] == pytest.approx(a["sample-rack"]["position"][1] - delta)
     assert project_source_basis(after)["bindings"][0]["basis"] == "imported_open_hardware_cad"
 
 

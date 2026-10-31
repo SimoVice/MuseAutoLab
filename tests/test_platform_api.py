@@ -124,4 +124,4 @@ def test_liquid_route_calculation_still_works(client, monkeypatch):
         },
     ).json()
     assert body["project"]["plan"]["status"] == "ready"
-    assert "Calculated preparation" in body["assistant_message"]
+    assert "preparation plan is updated" in body["assistant_message"]

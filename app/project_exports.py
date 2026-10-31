@@ -66,6 +66,10 @@ def _check_coherence(project: dict, job: dict) -> None:
         raise ExportError(
             409, "Export procurement report is stale. Generate files with the current report."
         )
+    if _cost_sha256(project) != job.get("cost_estimate_sha256"):
+        raise ExportError(
+            409, "Export cost estimate is stale. Generate files with the current range."
+        )
     _ensure_supported(project)
 
 
@@ -88,6 +92,21 @@ def _procurement_sha256(project: dict) -> str | None:
     if report is None:
         return None
     canonical = json.dumps(report, sort_keys=True, allow_nan=False).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _cost_sha256(project: dict) -> str | None:
+    estimate = project.get("cost_estimate")
+    if estimate is None:
+        return None
+    if (
+        not isinstance(estimate, dict)
+        or estimate.get("project_id") != project.get("id")
+        or estimate.get("project_revision") != project.get("revision")
+        or not estimate.get("estimate_id")
+    ):
+        raise ExportError(409, "Cost estimate does not match the current project revision.")
+    canonical = json.dumps(estimate, sort_keys=True, allow_nan=False).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
 
@@ -143,6 +162,7 @@ def _public_metadata(job: dict) -> dict:
         "project_id": job["project_id"],
         "revision": job["revision"],
         "procurement_report_id": job.get("procurement_report_id"),
+        "cost_estimate_id": job.get("cost_estimate_id"),
         "status": job["status"],
         "stage": job["stage"],
         "completed_stages": job["completed_stages"],
@@ -274,6 +294,7 @@ async def _run_job(job_id: str) -> None:
                 "project_id": snapshot.get("id"),
                 "revision": snapshot.get("revision"),
                 "procurement_report_id": job.get("procurement_report_id"),
+                "cost_estimate_id": job.get("cost_estimate_id"),
                 "input_sha256": _input_sha256(snapshot),
                 "files": [
                     {
@@ -345,6 +366,7 @@ async def start_export(project: dict) -> dict:
     revision = project.get("revision")
     report_id = _procurement_id(project)
     report_sha256 = _procurement_sha256(project)
+    cost_sha256 = _cost_sha256(project)
     # Duplicate active job guard and same-revision cache.
     for job in _jobs.values():
         if job["project_id"] != project_id:
@@ -354,6 +376,7 @@ async def start_export(project: dict) -> dict:
                 job["revision"] == revision
                 and job.get("procurement_report_id") == report_id
                 and job.get("procurement_sha256") == report_sha256
+                and job.get("cost_estimate_sha256") == cost_sha256
             ):
                 return _public_metadata(job)
             raise ExportError(409, "Another export is already running for this project.")
@@ -363,6 +386,7 @@ async def start_export(project: dict) -> dict:
             and job["revision"] == revision
             and job.get("procurement_report_id") == report_id
             and job.get("procurement_sha256") == report_sha256
+            and job.get("cost_estimate_sha256") == cost_sha256
             and job["status"] == "ready"
         ):
             return _public_metadata(job)
@@ -379,6 +403,8 @@ async def start_export(project: dict) -> dict:
         "revision": revision,
         "procurement_report_id": report_id,
         "procurement_sha256": report_sha256,
+        "cost_estimate_id": project.get("cost_estimate", {}).get("estimate_id"),
+        "cost_estimate_sha256": cost_sha256,
         "status": "queued",
         "stage": "queued",
         "completed_stages": 0,

@@ -82,6 +82,36 @@ USD currency, variants and pack quantities. Failed or ambiguous pages stay unkno
 there is no unrestricted web crawling or model-generated supplier URL. See
 [verification](verification.md) for the actual software, supplier and browser checks.
 
+## Early project cost planning ranges
+
+When a design becomes available, the interface requests one revision-bound Spark
+cost estimate automatically. Default requests reuse that revision's estimate;
+an explicit manual refresh can force a new request. Each request makes at most
+one model call. Ranges expire after 24 hours, and stale or failed estimates remain
+explicit rather than turning missing costs into zero.
+
+The USD summary separates current verified supplier totals, model-estimated
+additions and groups still unknown. For understood hardware groups, missing SKUs,
+loads or fabrication details prompt broad planning allowances with stated
+assumptions. A tentative polymer/cut-stock or outsourced fabrication scenario is
+an estimate assumption, never recorded printer access or an adopted material.
+Jubilee's remaining-platform allowance excludes the candidate kits and all other
+separately budgeted groups. Every amount is a **group total**, already covering
+its quantity and whole packs; do not multiply it again.
+
+A supplier refresh replaces a model allowance with the current verified group
+total when available, preserving supplier identity, pack arithmetic and evidence.
+Model ranges never acquire invented supplier citations or become quotations.
+Preparation volume, target count and rack capacity do not become hardware purchase
+quantities: three preparations in a 96-well plate do not mean 96 plates.
+
+Immediate HTML, Markdown and JSON instructions show the same estimate and
+assumptions. The full package also contains separate `cost-estimate.json` and
+`cost-estimate.csv`; supplier reports retain their observation-only price fields.
+These are scoped purchase allowances, not proof of a complete compatible BOM or
+hardware validation. Shipping, tax, assembly labor, engineering, testing and
+support remain excluded; any assumed fabrication service is identified separately.
+
 ## Parametric tube rack
 
 The Jubilee sample rack can be replaced through ordinary chat by a rim-supported

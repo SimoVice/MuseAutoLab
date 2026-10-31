@@ -153,6 +153,8 @@ class ProjectSession:
     model: str = field(default_factory=configured_model)
     procurement_report: dict | None = None
     procurement_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    cost_estimate: dict | None = None
+    estimate_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     @asynccontextmanager
     async def model_lock(self):
@@ -352,6 +354,10 @@ class ProcurementRefreshRequest(BaseModel):
     project_revision: int = Field(strict=True, ge=0)
 
 
+class CostEstimateRequest(ProcurementRefreshRequest):
+    force: bool = Field(default=False, strict=True)
+
+
 def _check_procurement_revision(project: dict, revision: int) -> None:
     if revision != project["revision"]:
         raise HTTPException(
@@ -384,6 +390,58 @@ async def _refresh_procurement_connected(request: Request, operation) -> dict:
         if not task.done():
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
+
+
+@app.get("/api/projects/{project_id}/cost-estimate")
+async def get_cost_estimate(project_id: str, revision: int) -> dict:
+    from app.price_estimation import estimate_for_project, unestimated_cost
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        estimate = estimate_for_project(
+            session.project, session.cost_estimate, session.procurement_report
+        )
+        current = bool(estimate and estimate.get("status") != "stale")
+        return {"estimate": estimate or unestimated_cost(
+            session.project, session.procurement_report
+        ), "state": "current" if current else "not_estimated"}
+
+
+@app.post("/api/projects/{project_id}/cost-estimate")
+async def refresh_cost_estimate(
+    project_id: str, payload: CostEstimateRequest, request: Request
+) -> dict:
+    from app.price_estimation import estimate_for_project, estimate_project_prices
+
+    session = session_for(project_id)
+
+    async def operation():
+        async with session.estimate_lock:
+            async with session.model_lock():
+                _check_procurement_revision(session.project, payload.project_revision)
+                if not session.project.get("engineering_design"):
+                    raise HTTPException(
+                        status_code=409, detail="Develop a design before estimating its cost."
+                    )
+                cached = estimate_for_project(
+                    session.project, session.cost_estimate, session.procurement_report
+                )
+                if not payload.force and cached and cached.get("status") in ("ready", "partial"):
+                    return {"estimate": cached, "state": "current"}
+                project = deepcopy(session.project)
+                report = deepcopy(session.procurement_report)
+            estimate = await estimate_project_prices(project, report)
+            async with session.model_lock():
+                _check_procurement_revision(session.project, payload.project_revision)
+                if session.procurement_report != report:
+                    raise HTTPException(
+                        status_code=409, detail="Supplier prices changed. Refresh the estimate."
+                    )
+                session.cost_estimate = estimate
+                return {"estimate": deepcopy(estimate), "state": "current"}
+
+    return await _refresh_procurement_connected(request, operation())
 
 
 @app.post("/api/projects/{project_id}/procurement/refresh")
@@ -437,7 +495,9 @@ async def get_instructions(project_id: str, revision: int) -> dict:
     session = session_for(project_id)
     async with session.model_lock():
         _check_procurement_revision(session.project, revision)
-        current = project_with_report(session.project, session.procurement_report)
+        current = project_with_report(
+            session.project, session.procurement_report, session.cost_estimate
+        )
     return build_instruction_guide(current)
 
 
@@ -450,7 +510,9 @@ async def download_instructions(
     session = session_for(project_id)
     async with session.model_lock():
         _check_procurement_revision(session.project, revision)
-        current = project_with_report(session.project, session.procurement_report)
+        current = project_with_report(
+            session.project, session.procurement_report, session.cost_estimate
+        )
         if (report_id is not None
                 and current.get("procurement_report", {}).get("report_id") != report_id):
             raise HTTPException(
@@ -523,7 +585,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         current = session.project
         try:
             turn, usage = await generate_turn(
-                project_with_report(current, session.procurement_report),
+                project_with_report(current, session.procurement_report, session.cost_estimate),
                 request.message, list(session.history)
             )
             if turn.labware_selection.profile_id is not None:
@@ -629,12 +691,6 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         if action_runs:
             if canonical_reply is None:
                 reply += "\n\n" + "\n".join(run["message"] for run in action_runs)
-            if any(run["kind"] == "develop_layout" and run["status"] == "accepted"
-                   for run in action_runs):
-                proposal = updated.get("engineering_design", {}).get("proposal", {})
-                rationale = proposal.get("rationale")
-                if rationale:
-                    reply += "\n\nDesign reasoning: " + rationale[:600]
         recommendations = []
         for recommendation in turn.recommendations:
             ref = resolve_reference(recommendation.reference_id)
@@ -649,19 +705,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     if canonical_reply is None:
                         reply += f"\n\nThe preparation plan needs a correction: {plan['message']}"
                 elif plan["status"] == "ready":
-                    plate = updated.get("labware_plate")
-                    recipes = []
-                    for index, step in enumerate(plan["steps"]):
-                        label = (
-                            plate["compatibility"]["occupied_wells"][index] + " — " if plate else ""
-                        )
-                        recipes.append(
-                            f"{label}{step['target']}: {step['stock_volume_ul']:g} µL stock + "
-                            f"{step['diluent_volume_ul']:g} µL diluent"
-                        )
-                    container = "well" if plate else "tube"
-                    reply += f"\n\nCalculated preparation per {container}:\n" + "\n".join(recipes)
-                    reply += "\nReview the plan below before confirming."
+                    reply += "\n\nYour preparation plan is updated in the workspace."
             if "workspace_width_mm" in patch and not action_runs:
                 width = updated["summary"]["workspace_width_mm"]
                 if updated["design"]["constraint_status"] == "infeasible":
@@ -986,7 +1030,9 @@ class InspectionReviewRequest(BaseModel):
 async def create_export(project_id: str) -> dict:
     session = session_for(project_id)
     async with session.model_lock():
-        current = project_with_report(session.project, session.procurement_report)
+        current = project_with_report(
+            session.project, session.procurement_report, session.cost_estimate
+        )
     try:
         job = await start_export(current)
     except ExportError as exc:
@@ -998,7 +1044,9 @@ async def create_export(project_id: str) -> dict:
 async def get_export(project_id: str, job_id: str) -> dict:
     session = session_for(project_id)
     async with session.model_lock():
-        current = project_with_report(session.project, session.procurement_report)
+        current = project_with_report(
+            session.project, session.procurement_report, session.cost_estimate
+        )
     try:
         return await export_status(current, job_id)
     except ExportError as exc:
@@ -1009,7 +1057,9 @@ async def get_export(project_id: str, job_id: str) -> dict:
 async def download_export(project_id: str, job_id: str) -> Response:
     session = session_for(project_id)
     async with session.model_lock():
-        current = project_with_report(session.project, session.procurement_report)
+        current = project_with_report(
+            session.project, session.procurement_report, session.cost_estimate
+        )
     try:
         payload = await export_archive(current, job_id)
         meta = await export_status(current, job_id)
@@ -1150,7 +1200,9 @@ async def download_inspection_archive(
 async def download_export_file(project_id: str, job_id: str, name: str) -> Response:
     session = session_for(project_id)
     async with session.model_lock():
-        current = project_with_report(session.project, session.procurement_report)
+        current = project_with_report(
+            session.project, session.procurement_report, session.cost_estimate
+        )
     try:
         payload = await export_file(current, job_id, name)
     except ExportError as exc:

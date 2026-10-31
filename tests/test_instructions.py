@@ -55,7 +55,8 @@ def test_source_guide_keeps_geometry_variants_pose_and_upstream_separate():
     original = deepcopy(project)
     guide = build_instruction_guide(project)
     assert project == original
-    assert guide["platform"] == "jubilee" and guide["bed_pose"]["bed_drop_mm"] == 125
+    assert guide["platform"] == "jubilee"
+    assert guide["bed_pose"] == original["design"]["foundation"]
     canonical = {p["id"]: p for p in project["design"]["components"]}
     for step in guide["steps"]:
         assert set(step["component_ids"]) <= canonical.keys()

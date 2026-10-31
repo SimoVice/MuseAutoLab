@@ -133,7 +133,8 @@ def test_natural_quantity_updates_and_invalid_plan_feedback(client, monkeypatch)
     first = client.post(endpoint, json={"message": "Synthetic task"}).json()
     assert first["project"]["summary"]["stock_concentration"] == "10 mg/mL"
     assert first["project"]["plan"]["status"] == "ready"
-    assert "50 µL stock" in first["assistant_message"]
+    assert first["project"]["plan"]["steps"][0]["stock_volume_ul"] == 50
+    assert "preparation plan is updated" in first["assistant_message"]
     updated = client.post(endpoint, json={"message": "Make the volume 250ul"}).json()
     assert updated["project"]["plan"]["final_volume_ul"] == 250
     assert updated["project"]["summary"]["stock_concentration"] == "10 mg/mL"

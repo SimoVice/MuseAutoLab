@@ -93,11 +93,17 @@ def report_for_project(project: dict, report: dict | None, *, now: datetime | No
     return result
 
 
-def project_with_report(project: dict, report: dict | None) -> dict:
+def project_with_report(project: dict, report: dict | None, estimate: dict | None = None) -> dict:
     result = deepcopy(project)
     bound = report_for_project(project, report)
     if bound is not None:
         result["procurement_report"] = bound
+    if estimate is not None:
+        from app.price_estimation import estimate_for_project
+
+        cost = estimate_for_project(project, estimate, bound)
+        if cost is not None:
+            result["cost_estimate"] = cost
     return result
 
 
@@ -112,6 +118,11 @@ def procurement_groups(project: dict) -> list[dict]:
 
         groups.extend(upstream_candidate_groups())
     return groups
+
+
+def initial_procurement_rows(project: dict) -> list[dict]:
+    """Detached purchase scopes without fetching a supplier or inferring prices."""
+    return [_row(group) for group in procurement_groups(project)]
 
 
 def _row(group: dict) -> dict:

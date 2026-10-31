@@ -84,7 +84,7 @@ def test_recorded_round1_prose_is_replaced_by_post_action_facts(client, monkeypa
         assert record["response"]["assistant_message"] not in text
         if record["case_id"] == "S5_restore_rack":
             assert "Restored the previous tube rack" in text
-            assert "200 µL per tube" in text and "Calculated preparation per tube:" in text
+            assert "200 µL per tube" in text and "preparation plan is updated" in text
             assert "Calculated preparation per well" not in text
         elif record["case_id"] == "S3_volume_conflict":
             assert "2000 µL per well" in text
@@ -93,8 +93,8 @@ def test_recorded_round1_prose_is_replaced_by_post_action_facts(client, monkeypa
         else:
             assert "200 µL per well" in text
             assert "Assigned wells: A1, B1, C1 (3 of 96)" in text
-            assert "Calculated preparation per well:" in text
-            assert all(label + " — " in text for label in ("A1", "B1", "C1"))
+            assert "preparation plan is updated" in text
+            assert len(current["plan"]["steps"]) == 3
             assert "per tube" not in text and "blocked" not in text
             assert "2 mL" not in text and "2000" not in text
             assert current["plan"]["status"] == "ready"
@@ -141,7 +141,8 @@ def test_plate_volume_resolution_cannot_repeat_historical_blockage(client, monke
     text = body["assistant_message"]
     assert false_prose not in text and "200 µL per well" in text
     assert "blocked" not in text and "2 mL" not in text
-    assert "Calculated preparation per well:" in text and "A1 — " in text
+    assert "preparation plan is updated" in text
+    assert body["project"]["labware_plate"]["compatibility"]["occupied_wells"] == ["A1", "B1"]
     assert body["project"]["plan"]["status"] == "ready"
     assert body["assistant_message_origin"] == "canonical_labware_state"
 

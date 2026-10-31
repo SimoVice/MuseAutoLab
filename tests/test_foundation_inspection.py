@@ -16,7 +16,9 @@ def test_inspection_follows_source_deck_and_uses_external_sidecar():
     m1, m2 = ext_one["inspection_extension"], ext_two["inspection_extension"]
     y1 = m1["pose_frames"][0]["camera_mm"][1]
     y2 = m2["pose_frames"][0]["camera_mm"][1]
-    assert y1 - y2 == pytest.approx(30)
+    drop_one = one["design"]["foundation"]["bed_drop_mm"]
+    drop_two = two["design"]["foundation"]["bed_drop_mm"]
+    assert y1 - y2 == pytest.approx(drop_two - drop_one)
     assert m1["proposal"]["mast_height_mm"] == 450
     frame = next(p for p in one["design"]["components"] if p["id"] == "foundation-jubilee")
     front = frame["position"][2] + frame["size"][2] / 2
