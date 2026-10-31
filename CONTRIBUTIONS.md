@@ -2,6 +2,23 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-31: Interactive 3D presentation
+
+Added an expanded, keyboard-accessible 3D stage with component selection, restored
+focus and one retained Canvas. Revised local studio reflections, light balance,
+illustrative finishes, component framing and user-triggered focus transitions;
+reduced-motion settings are respected. Source normals are computed once on owned
+mesh copies instead of rebuilding geometry on selection. Original source vertices,
+canonical design, CAD generation and dependencies remain unchanged.
+
+GPT-6.1 Terra xhigh implemented scene rendering and camera behavior. GPT-6.1 Sol
+implemented the expanded interface and reproducible browser checks. Codex reviewed
+the integration and actual screenshots and curated the evidence. The new check
+and four existing browser regressions, production build and Ruff passed. Saved
+engineering state and reopened design hashes remain identical. No new Meta call,
+supplier refresh or physical experiment was performed. See
+[verification](docs/verification.md#latest-interface-expanded-3d-presentation).
+
 ## 2026-10-31: One-message labware switching and responsive CAD export
 
 Added a reversible chat-driven change from the saved Jubilee tube rack to a named

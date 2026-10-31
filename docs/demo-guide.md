@@ -23,6 +23,34 @@ they are not fresh model responses. A saved project rebuilds
 locally without inference but does not restore export jobs or authenticate imported
 historical model metadata.
 
+## Inspect the expanded 3D view
+
+Open either the [confirmed plate result](examples/microplate-project.json) or
+[synthetic tube setup](examples/microplate-tube-setup.json), then choose
+**Expand 3D view** above the model. The same interactive scene fills the workspace;
+selection, source geometry and saved design are retained.
+
+Use the **Component** menu to select the sample module, then choose **Selected part
+only** to inspect the wells or rack holes closely. **Working area only** retains
+the deck context. Drag to rotate, scroll to zoom, or use the labelled keyboard
+buttons. **Show full model** restores the complete workstation. **Exit expanded
+view** or Escape returns focus to the expand button and restores the chat workspace.
+Focus transitions respect the system's reduced-motion preference.
+
+![Actual workstation in the expanded view](images/presentation-workstation.png)
+
+The viewer uses local studio reflections, satin source surfaces, teal/ivory custom
+finishes and a quiet ground plane. It does not fetch an external environment image.
+These finishes are illustrative, not manufacturer material specifications. The
+original source mesh and canonical geometry are unchanged. The plate remains a
+software reference, and tubes remain envelopes based on the supplied dimensions;
+physical fit is still unverified.
+
+See the actual [rack detail](images/presentation-rack.png),
+[mobile plate view](images/presentation-plate-mobile.png) and
+[browser verification](verification.md#latest-interface-expanded-3d-presentation).
+The captures are direct browser screenshots, not generated illustrations.
+
 ## One-message labware change
 
 The Jubilee sample module can change from the stored tube rack to a named

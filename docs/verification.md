@@ -1,5 +1,46 @@
 # Delivery verification — 2026-10-31
 
+## Latest interface: expanded 3D presentation
+
+The viewer now offers an expanded workspace, locally generated studio reflections,
+revised finishes/lighting and closer component framing. The same mounted Canvas
+survives expansion and exit. Tab stays within the expanded view, Escape restores
+focus, and surrounding controls are inactive while it is open. Mobile occupancy
+and inspection controls no longer overlap. Original source assets, compiler/CAD,
+runtime model behavior and dependencies are unchanged.
+
+The new browser check uses the public confirmed r16 plate and synthetic r14 rack
+projects with the actual API/compiler, source meshes and Chrome. It checks camera
+controls, desktop/mobile layout, focus, motion preferences, idle rendering and
+the real Save download followed by reopening. Every portable field except the
+regenerated `saved_at` timestamp remains identical, and the rebuilt design hashes
+match. The frozen run recorded no browser errors, failed responses or external
+requests. All twenty plate-axis labels have no overlapping DOM bounds in the
+tested expanded desktop and mobile views. These are agent checks, not human
+usability research or a claim of subjective preference.
+
+The focus, accessibility/capture, microplate and resources browser regressions also
+passed. The production frontend build (including TypeScript checks) and Ruff passed.
+No new Meta inference, catalog refresh or heavy CAD run was needed for this
+presentation change; the earlier backend and CAD results below retain their own
+release scope. The build's existing large-bundle advisory remains.
+
+An initial test attempt failed while reading a Save response after the browser
+consumed its blob; the test now checks the actual downloaded file. A development
+pass overlapped visual edits and is not the frozen result. The
+[curated record](examples/visual-presentation-verification.json) retains those
+boundaries, source fingerprints, actual observations and screenshot hashes.
+
+Reproduce with the locked environment and local Chrome; the default command starts
+and stops its own local test servers with model/catalog transports offline:
+
+```powershell
+.venv/Scripts/python.exe tests/browser_presentation.py --output .local/presentation-review
+```
+
+Finishes do not specify construction materials or improve physical validation.
+See the [current viewer walkthrough](demo-guide.md#inspect-the-expanded-3d-view).
+
 ## Latest module: one-message 96-well plate switch
 
 The ordinary chat now switches the Jubilee sample module between its saved tube

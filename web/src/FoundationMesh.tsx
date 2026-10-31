@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useLoader, type ThreeEvent } from '@react-three/fiber';
+import { useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import { DoubleSide, Mesh, MeshStandardMaterial } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -9,35 +9,37 @@ export default function FoundationMesh({ selected = false, onSelect, bedDropMm =
   onSelect?: (id: string) => void;
   bedDropMm?: number;
 }) {
+  const invalidate = useThree((state) => state.invalidate);
   const [fixedGltf, bedGltf] = useLoader(GLTFLoader, [
     '/assets/jubilee-c877bd2-static.glb', '/assets/jubilee-c877bd2-bed.glb',
   ]);
+  const material = useMemo(() => new MeshStandardMaterial({
+    color: '#85989a', metalness: 0.65, roughness: 0.42, side: DoubleSide,
+  }), []);
   const scenes = useMemo(() => [fixedGltf, bedGltf].map((gltf) => {
     const cloned = gltf.scene.clone(true);
     cloned.traverse((child) => {
       if (!(child instanceof Mesh)) return;
+      // The source has no normals. Derive them once on an owned copy without changing its vertices.
       child.geometry = child.geometry.clone();
       child.geometry.computeVertexNormals();
-      child.material = new MeshStandardMaterial({
-        color: '#9aadb2', metalness: 0.55, roughness: 0.42,
-        emissive: selected ? '#0a6a71' : '#000000',
-        emissiveIntensity: selected ? 0.17 : 0,
-        side: DoubleSide,
-      });
+      child.material = material;
       child.castShadow = true;
       child.receiveShadow = true;
     });
     return cloned;
-  }), [fixedGltf, bedGltf, selected]);
+  }), [fixedGltf, bedGltf, material]);
+  useEffect(() => {
+    material.emissive.set(selected ? '#0a6a71' : '#000000');
+    material.emissiveIntensity = selected ? 0.17 : 0;
+    invalidate();
+  }, [material, selected, invalidate]);
   useEffect(() => () => {
     scenes.forEach((scene) => scene.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.geometry.dispose();
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-        materials.forEach((material) => material.dispose());
-      }
+      if (child instanceof Mesh) child.geometry.dispose();
     }));
-  }, [scenes]);
+    material.dispose();
+  }, [scenes, material]);
   if (!Number.isFinite(bedDropMm) || bedDropMm < 0 || bedDropMm > 150) {
     throw new Error('Invalid Jubilee bed position');
   }

@@ -1,0 +1,334 @@
+{
+  "schema_version": "1",
+  "date": "2026-10-31",
+  "scope": "Interactive presentation only; source assets, compiler/CAD, runtime inference and dependencies unchanged.",
+  "baseline_commit": "22766b6ad0735228d13c876988563f5f8703d908",
+  "frozen_browser_run": {
+    "started_at": "2026-10-31T10:08:13.296039+00:00",
+    "finished_at": "2026-10-31T10:08:39.932137+00:00",
+    "status": "passed",
+    "command": ".venv/Scripts/python.exe tests/browser_presentation.py --output .local/presentation-review",
+    "environment": "Native Windows, pinned project Python/Node dependencies, installed Chrome; actual API/compiler/meshes with offline model/catalog transports.",
+    "request_count": 66,
+    "external_requests": 0,
+    "browser_errors": 0,
+    "failed_http_responses": 0,
+    "desktop_viewport_px": [
+      1440,
+      1000
+    ],
+    "mobile_viewport_px": [
+      390,
+      844
+    ],
+    "idle_observation_ms": 600,
+    "projects": {
+      "plate": {
+        "input": "microplate-project.json",
+        "input_sha256": "579a116537524b9a5c00a54bd363c374b6c2861708e01d156c2a07b72b231e3a",
+        "label": "Confirmed digital r16 plate result",
+        "revision": 16,
+        "portable_before_raw_sha256": "cf3539ddedb4d5eecc7f374f58bf657e5b559170d4bee812d18eed3dcaf99f66",
+        "portable_after_raw_sha256": "ae50cc31bbcdbbd6d0821a8c2644be57da742867c1d9e131359cdb2bfcbd9a78",
+        "portable_before_stable_sha256": "112ff32586544def843b3ad8d9405fc8783ee41da623839f40797344a567d528",
+        "portable_after_stable_sha256": "112ff32586544def843b3ad8d9405fc8783ee41da623839f40797344a567d528",
+        "excluded_volatile_field": "saved_at",
+        "design_before_sha256": "992939ed71eb7caf0bc7eb9f95f2dbcf4a68a646893ea9bd43667c6c0acecd79",
+        "design_reopened_sha256": "992939ed71eb7caf0bc7eb9f95f2dbcf4a68a646893ea9bd43667c6c0acecd79",
+        "canvas_before_camera_sha256": "cc6b1bab1eec10cc4939d6437041fd089be89b7374d056b1552f38ade8549334",
+        "canvas_after_camera_sha256": "30d07380f95cafd368aba56914530b9caa0339025cdec71c766de90479925293",
+        "idle_draw_calls_start": 1678,
+        "idle_draw_calls_end": 1678,
+        "canvas_identity_preserved": true,
+        "focus_restored": true,
+        "workspace_inert_during_expansion": true,
+        "reduced_focus_draw_calls_per_frame": [
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634,
+          1634
+        ],
+        "normal_focus_draw_calls_per_frame": [
+          2429,
+          2451,
+          2473,
+          2495,
+          2517,
+          2539,
+          2561,
+          2583,
+          2605,
+          2627,
+          2649,
+          2671
+        ],
+        "labels": {
+          "expanded_desktop": {
+            "label_count": 20,
+            "overlapping_pairs": [],
+            "span_width_px": 672.4490966796875,
+            "canvas_width_px": 1440,
+            "canvas_height_px": 786
+          },
+          "expanded_mobile": {
+            "label_count": 20,
+            "overlapping_pairs": [],
+            "span_width_px": 246.0094223022461,
+            "canvas_width_px": 390,
+            "canvas_height_px": 595.5
+          },
+          "embedded_after_camera": {
+            "label_count": 20,
+            "overlapping_pairs": [],
+            "span_width_px": 262.5919494628906,
+            "canvas_width_px": 786,
+            "canvas_height_px": 300
+          }
+        }
+      },
+      "rack": {
+        "input": "microplate-tube-setup.json",
+        "input_sha256": "bf86c5a0708b7fd34f9058333674b0d50e0b156f1f0e7cd018d301a41ecaeaf1",
+        "label": "Synthetic r14 tube setup",
+        "revision": 14,
+        "portable_before_raw_sha256": "220af1169ffd564139ecc9b82c2b4cd985cea68f9cf620e01d35d943b9978af2",
+        "portable_after_raw_sha256": "3f5919490ee63e71604a254d986285565a779e02b4cf838f5b4f6a95762b93e3",
+        "portable_before_stable_sha256": "439c6b0b703c2c053a39d7b18886dbd45e9a3ad8fd5ef209aa10575a590af390",
+        "portable_after_stable_sha256": "439c6b0b703c2c053a39d7b18886dbd45e9a3ad8fd5ef209aa10575a590af390",
+        "excluded_volatile_field": "saved_at",
+        "design_before_sha256": "c04eac7de395a888ca9d71d54232273610b6a04625e66461be58158ade565b16",
+        "design_reopened_sha256": "c04eac7de395a888ca9d71d54232273610b6a04625e66461be58158ade565b16",
+        "canvas_before_camera_sha256": "c66737fb0bd40d8582bc3750d8b9af0feb8e9f394a3d88a8c1870dd6d97bc938",
+        "canvas_after_camera_sha256": "204ffeb2be8fb28107c5e19a4325c2c7e62324b8484c4178f664ecfa1d75f69a",
+        "idle_draw_calls_start": 4778,
+        "idle_draw_calls_end": 4778,
+        "canvas_identity_preserved": true,
+        "focus_restored": true,
+        "workspace_inert_during_expansion": true,
+        "reduced_focus_draw_calls_per_frame": [
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746,
+          4746
+        ],
+        "normal_focus_draw_calls_per_frame": null,
+        "labels": {
+          "expanded_desktop": {
+            "label_count": 0,
+            "overlapping_pairs": [],
+            "span_width_px": 0,
+            "canvas_width_px": 1440,
+            "canvas_height_px": 786
+          },
+          "expanded_mobile": {
+            "label_count": 0,
+            "overlapping_pairs": [],
+            "span_width_px": 0,
+            "canvas_width_px": 390,
+            "canvas_height_px": 595.5
+          },
+          "embedded_after_camera": {
+            "label_count": 0,
+            "overlapping_pairs": [],
+            "span_width_px": 0,
+            "canvas_width_px": 786,
+            "canvas_height_px": 300
+          }
+        }
+      }
+    }
+  },
+  "source_verification": {
+    "unchanged_during_browser_run": true,
+    "unchanged_through_production_build": true,
+    "tested_working_file_bytes_sha256": {
+      "web/src/AgentActivity.tsx": "e56ff2c59049b41fa3d7a394c656a24b0eee7d6993d2224b40dfa6e48986cbdd",
+      "web/src/App.tsx": "5c51e71cebafd4ef02e2039e9ad5ff60b2306c622b7760c48b68dde7399abfb3",
+      "web/src/CameraPanel.tsx": "3b54c1edf27938e318eb2868a21bb5a40a08d49430ffd9ca17d4af322c90bbe1",
+      "web/src/chat-workspace.css": "2171b20efdf0d36e0b7876b8a4a449027818b74b05e7ce83a749c87d907437e5",
+      "web/src/ComponentCatalog.tsx": "1b97e6b046e2de65d1dd6954ecdb949c15340ec51d601d1cee3d9be12a6c58d1",
+      "web/src/DesignAgentPanel.tsx": "890048a72ab4065038e943f6de08516c041cdc035d308e5b379f950548bb482a",
+      "web/src/DesignSources.tsx": "408125ec356cb33111fd696f43e82f52e8a4272021a3f922bb258c4ace614e84",
+      "web/src/FoundationMesh.tsx": "bf2ef6ccd837dbfaa5738f8f35a842ead68312b69349a9c98367c312063ff019",
+      "web/src/GeometryPart.tsx": "01d919bbed817bccde6c40835082d09dbcdec33fab3f5d9447bae3e847a83227",
+      "web/src/IllustrationPanel.tsx": "3c3b1d8168adf64c17509fe689da753602eced9d25aaca719a1f5175556ecc9f",
+      "web/src/InspectionPanel.tsx": "1a3dde7cd0d8f0a4970ee88b9ba59c91ee5802b5eefbcae284200d92802c5892",
+      "web/src/labware-rack.css": "16758e650cde05418d5d1c76008aef063efe9bdb2a7fd2d0a5a989b2ff6e7664",
+      "web/src/LabwareRackPanel.tsx": "4353b7efde05bd4dd0bb806224123f68ba2af8949d6ea34bba91ce31c255fced",
+      "web/src/main.tsx": "ab27a1bccd17d7e8bd9bfaac598fad2a208fd107f90565050ec7c507445a7718",
+      "web/src/MicroplatePanel.tsx": "c3c0b73fbbb74c8fd48ce6d0833aa1b463ae1e5c5c420e31f4f84fa99666307f",
+      "web/src/ModelSelector.tsx": "724621c941b0287f72737f70e62288b984a8818c2408b3ae9a2fecf7e0d6bb8b",
+      "web/src/operation.ts": "a1a4c1c6dccbb607fce587c905840a0c5b808607e22b5572426bc48416ede6aa",
+      "web/src/PhysicsPanel.tsx": "d77c06f1c348483c5455e518b05e7542c2b2b9c5a697ad87320b6d8f13b2a8ff",
+      "web/src/presentation-stage.css": "3a93bd75e0696c0e099b9dc57443981d107e3326cf1be3c5fb48cfc62adfe40a",
+      "web/src/PresentationStage.tsx": "39204470aa2f3b8c45e18f397332af98996394432f83cc27918a891e90fbf6e8",
+      "web/src/project-resources.css": "e139f4d0882cd38f8f812c6c71ffe963f7acd904ff42d7885d1a140cd5be4e6e",
+      "web/src/ProjectFiles.tsx": "02b3ada4ee46d5bdc6137bbf3c61c317684418231b421753397d1a4d2c95e29c",
+      "web/src/ProjectResources.tsx": "fbefd5c14f1a2a6bfb524c0cc2d6b853bb8815897c49976fe7747b6c872da068",
+      "web/src/scene-controls.css": "a9804160d18302518eeac253397878a801d295589d411b54c2137894232095e2",
+      "web/src/Scene.tsx": "60b1dfe5466c1954c228dbd7776112bbc4d1191592e6c29a037bcfaa8ff59bf1",
+      "web/src/style.css": "d3bea2a8784c463e31f224ec01cc9fee463d2a7c0286e3fd19b858280edcb14a",
+      "web/src/types.ts": "4b8ff3b35c55bf9a1bfc30dac5738a5e81c8b18e7e7145c6f1663e60e0dd2168",
+      "web/src/visionTypes.ts": "4471fd557f41f0304d55fa7aeb112195b60090f6cba2d312eba991327871abf5",
+      "web/src/voiceCapture.ts": "8ef271fe11d2b4d8301194a328e590a64d87f7a84e93e67a2e02c91eb7b2923b",
+      "web/src/VoiceDictation.tsx": "cd8b69239be856bf7bf730a0095dd26728caae88fcfdc8f953c0a37ebe0ef925",
+      "tests/browser_presentation.py": "28cff32a95893f6a93c17ebcb541a73ddcb77a9fc9c04de98f55ba2eab7b0ea9"
+    },
+    "normalized_lf_sha256": {
+      "web/src/AgentActivity.tsx": "e56ff2c59049b41fa3d7a394c656a24b0eee7d6993d2224b40dfa6e48986cbdd",
+      "web/src/App.tsx": "03b6bd1adfa5ee0bbbfd2a74d488d848b28f6f0b260056cab387f3002fc8f994",
+      "web/src/CameraPanel.tsx": "78c04b026b4b34bcfc7ce71557dfb34bf3afcd2c99c45a6bdd93cb43ac87da86",
+      "web/src/chat-workspace.css": "99de5229444390f4a5b77557326e955f4d498247d3aa599946c687a2dc75f813",
+      "web/src/ComponentCatalog.tsx": "1b97e6b046e2de65d1dd6954ecdb949c15340ec51d601d1cee3d9be12a6c58d1",
+      "web/src/DesignAgentPanel.tsx": "890048a72ab4065038e943f6de08516c041cdc035d308e5b379f950548bb482a",
+      "web/src/DesignSources.tsx": "408125ec356cb33111fd696f43e82f52e8a4272021a3f922bb258c4ace614e84",
+      "web/src/FoundationMesh.tsx": "bf2ef6ccd837dbfaa5738f8f35a842ead68312b69349a9c98367c312063ff019",
+      "web/src/GeometryPart.tsx": "6d604cbea444b6ba0be7c7b7b85b8daf698eb438b44246fcc47245ff41dae0fd",
+      "web/src/IllustrationPanel.tsx": "194f55bc77e0bc2f82bbcea9761d706dce207cde4204e49d7f4f9b928f1bba47",
+      "web/src/InspectionPanel.tsx": "1a3dde7cd0d8f0a4970ee88b9ba59c91ee5802b5eefbcae284200d92802c5892",
+      "web/src/labware-rack.css": "16758e650cde05418d5d1c76008aef063efe9bdb2a7fd2d0a5a989b2ff6e7664",
+      "web/src/LabwareRackPanel.tsx": "4353b7efde05bd4dd0bb806224123f68ba2af8949d6ea34bba91ce31c255fced",
+      "web/src/main.tsx": "ab27a1bccd17d7e8bd9bfaac598fad2a208fd107f90565050ec7c507445a7718",
+      "web/src/MicroplatePanel.tsx": "c3c0b73fbbb74c8fd48ce6d0833aa1b463ae1e5c5c420e31f4f84fa99666307f",
+      "web/src/ModelSelector.tsx": "0150fd05e390daa30c0d69c7348fb0a017986976d79ed678a23b3b51cb4aa665",
+      "web/src/operation.ts": "a1a4c1c6dccbb607fce587c905840a0c5b808607e22b5572426bc48416ede6aa",
+      "web/src/PhysicsPanel.tsx": "d77c06f1c348483c5455e518b05e7542c2b2b9c5a697ad87320b6d8f13b2a8ff",
+      "web/src/presentation-stage.css": "3a93bd75e0696c0e099b9dc57443981d107e3326cf1be3c5fb48cfc62adfe40a",
+      "web/src/PresentationStage.tsx": "39204470aa2f3b8c45e18f397332af98996394432f83cc27918a891e90fbf6e8",
+      "web/src/project-resources.css": "e139f4d0882cd38f8f812c6c71ffe963f7acd904ff42d7885d1a140cd5be4e6e",
+      "web/src/ProjectFiles.tsx": "02b3ada4ee46d5bdc6137bbf3c61c317684418231b421753397d1a4d2c95e29c",
+      "web/src/ProjectResources.tsx": "fbefd5c14f1a2a6bfb524c0cc2d6b853bb8815897c49976fe7747b6c872da068",
+      "web/src/scene-controls.css": "a9804160d18302518eeac253397878a801d295589d411b54c2137894232095e2",
+      "web/src/Scene.tsx": "3f4248d4f67de7c9a01d5db0b6a1c9bd589ac85e05d4384778bb10eb6827c2f0",
+      "web/src/style.css": "e3b3d7a8a045aad41c798389cc12f7d9a2e26cad9b5f460d4d6b2ad57861fe87",
+      "web/src/types.ts": "bfe1a7dd2c5a1fe71f5d18c676032979a9e4b158ef44ef8a8d2e0f829c627aa3",
+      "web/src/visionTypes.ts": "d173b381fed5b2e1389eb5d1eb1500324d70db04ad8c3d343175e5bca4c66467",
+      "web/src/voiceCapture.ts": "b922b65d7df9c48d6f1d5c276269c443a74053e11cd89cff09e0fa279e5abb3c",
+      "web/src/VoiceDictation.tsx": "c1f097e00d23032be82b388777d83e2f6d2410ac8324f192be1ee8239ebd4784",
+      "tests/browser_presentation.py": "28cff32a95893f6a93c17ebcb541a73ddcb77a9fc9c04de98f55ba2eab7b0ea9"
+    },
+    "hash_note": "Some local editor files contain CRLF; normalized LF hashes correspond to repository text attributes. No semantic source change occurs on commit."
+  },
+  "regressions": {
+    "status": "passed",
+    "commands": [
+      ".venv/Scripts/python.exe tests/browser_scene_focus.py",
+      ".venv/Scripts/python.exe tests/browser_scene_accessibility.py",
+      ".venv/Scripts/python.exe tests/browser_microplate.py",
+      ".venv/Scripts/python.exe tests/browser_resources.py"
+    ],
+    "logs": [
+      "browser-scene-focus.log",
+      "browser-scene-accessibility.log",
+      "browser-microplate.log",
+      "browser-resources.log"
+    ],
+    "scope": "Offline model/catalog fixtures; real local API/compiler/source meshes/browser. No Meta or supplier call and no heavy CAD job."
+  },
+  "frontend_build": {
+    "command": "npm.cmd run build",
+    "working_directory": "web",
+    "exit_code": 0,
+    "includes_typecheck": true,
+    "log": "frontend-build.log",
+    "source_hashes_match_browser_run": true
+  },
+  "lint": {
+    "scope": "New Python browser test only",
+    "ruff_check": "passed",
+    "ruff_format_check": "passed"
+  },
+  "screenshots": {
+    "docs/images/presentation-plate.png": {
+      "sha256": "c37a2535cbd84a483dc07eb8f3b40fff60cb465a15ea54d8f4e38b59b98995a2",
+      "source": "frozen-verification/screenshots/plate-expanded-focused.png",
+      "kind": "Unedited real-browser screenshot"
+    },
+    "docs/images/presentation-workstation.png": {
+      "sha256": "cb54e0bae041e867ce767ef85ac491c564204ba8ce704f2fee95303cdd66b176",
+      "source": "frozen-verification/screenshots/plate-expanded-workstation.png",
+      "kind": "Unedited real-browser screenshot"
+    },
+    "docs/images/presentation-rack.png": {
+      "sha256": "5244c79175869c2ef5042c032c5afa156cac6ee29b00e6c9d5a4dc5c7ebb01d1",
+      "source": "frozen-verification/screenshots/rack-expanded-focused.png",
+      "kind": "Unedited real-browser screenshot"
+    },
+    "docs/images/presentation-plate-mobile.png": {
+      "sha256": "e67541ebc74384d17755fb2deff9c80f58449b2393c62a2b107197c26872167a",
+      "source": "frozen-verification/screenshots/plate-expanded-mobile.png",
+      "kind": "Unedited real-browser screenshot"
+    }
+  },
+  "retained_original_evidence_sha256": {
+    ".local/visual-3d-20261031/frozen-verification/frontend-build.log": "45e464ed4b73e0b8e93410836c5cd0235c246e62b3ba1030fef55be061a16573",
+    ".local/visual-3d-20261031/frozen-verification/browser-presentation.log": "34bea00a26f4ef392ccb4b1dc571c189d5996b67a042e50226924602a49e857b",
+    ".local/visual-3d-20261031/frozen-verification/source-hashes-and-run.json": "11fac3c814aa7e6ab16238a65537ba9393fb4d5f3c494af2362a76ed9d0d3beb",
+    ".local/visual-3d-20261031/frozen-verification/screenshots/browser-presentation-result.json": "40b821473b1609dc9abefbdae0f65586d840bff3365074aab572c68b146dd6fa",
+    ".local/visual-3d-20261031/regressions/browser-microplate.log": "49249c611e9457984580037ac0523e0b36384757ddc3631025b0e8ad3bc4ffdd",
+    ".local/visual-3d-20261031/regressions/browser-resources.log": "6fb7c369498c1c23a6dc4473c596c87f3742963e8eb66d16936c2d5e8f5ac3b5",
+    ".local/visual-3d-20261031/regressions/browser-scene-accessibility.log": "3dfb4a72408f03a140de76826d52491b17281ef6b80aad0fad3b771df0717b9b",
+    ".local/visual-3d-20261031/regressions/browser-scene-focus.log": "8119881572690f72383a14602ae9d48a2cb2843de122446fb0a67380d1c91909"
+  },
+  "retained_attempts": [
+    {
+      "location": "before/",
+      "status": "captured",
+      "scope": "Isolated web copy at the published baseline commit; real source geometry and public examples."
+    },
+    {
+      "location": "before/initial-save-timestamp-check/",
+      "status": "preliminary-captures",
+      "scope": "Earlier baseline captures retained separately; final snapshot assertions exclude only saved_at and retain every engineering field."
+    },
+    {
+      "location": "after-attempt-1/",
+      "status": "test-failed",
+      "scope": "Test read a Save response after its blob was consumed. Corrected to inspect the actual downloaded file; original failure retained."
+    },
+    {
+      "location": "after-attempt-2/",
+      "status": "development-pass",
+      "scope": "Application rendering was edited during this run; not treated as frozen release evidence."
+    },
+    {
+      "location": "after/",
+      "status": "passed",
+      "scope": "Frozen application screenshots and interaction checks, preceding the additional frame-by-frame motion assertions."
+    },
+    {
+      "location": "frozen-verification/",
+      "status": "passed",
+      "scope": "Final test including reduced-motion and normal-transition draw-call observations; source hashes recorded before/after and after build."
+    }
+  ],
+  "usage": {
+    "new_meta_calls": 0,
+    "supplier_refreshes": 0,
+    "heavy_cad_exports": 0
+  },
+  "limits": [
+    "Agent-driven browser checks, not external-user research or a measured judging preference.",
+    "Visual finishes are illustrative and do not specify real construction materials.",
+    "The plate is schematic software-reference geometry; tubes are declared envelopes. Physical fit and laboratory operation remain unverified.",
+    "Idle draw calls and label bounds describe the recorded browser/viewport; they are not device-wide performance or accessibility certification.",
+    "A production chunk remains above Vite's 500 kB advisory threshold; build completed successfully.",
+    "No new backend/CAD/model reliability claim is inferred from presentation checks."
+  ]
+}

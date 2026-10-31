@@ -3,8 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode, RefObject } from 'react';
-import { DoubleSide, Spherical, Vector3 } from 'three';
+import { DoubleSide, PMREMGenerator, Spherical, Vector3 } from 'three';
 import type { Group, OrthographicCamera } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Component, InspectionExtension, LabwarePlate, LabwareRack, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
 import FoundationMesh from './FoundationMesh';
@@ -21,6 +22,29 @@ import type { OperationKeyframe, OperationSpec, Vec3 } from './operation';
 const SCALE = 100;
 const OPERATION_VISIT_ORDER = ['tip-rack', 'source-rack', 'sample-rack', 'tip-waste'] as const;
 const WORKING_AREA_IDS = ['base', 'carriage', 'pipette', 'source-rack', 'sample-rack', 'tip-rack', 'tip-waste', 'controller'];
+
+// A local studio environment supplies soft reflections without network assets.
+function StudioEnvironment() {
+  const { gl, scene, invalidate } = useThree();
+  useEffect(() => {
+    const generator = new PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    const texture = generator.fromScene(room, 0.04);
+    const previous = scene.environment;
+    const previousIntensity = scene.environmentIntensity;
+    scene.environment = texture.texture;
+    scene.environmentIntensity = 0.45;
+    invalidate();
+    return () => {
+      scene.environment = previous;
+      scene.environmentIntensity = previousIntensity;
+      texture.dispose();
+      room.dispose();
+      generator.dispose();
+    };
+  }, [gl, scene, invalidate]);
+  return null;
+}
 
 class SceneBoundary extends ReactComponent<{ children: ReactNode; onError: () => void }, { failed: boolean }> {
   state = { failed: false };
@@ -60,7 +84,7 @@ function SceneTools({ captureRef, actionRef, sourceReady, sourceRequired }: {
     actionRef.current = (action) => {
       if (action === 'in' || action === 'out') {
         const orthographic = camera as OrthographicCamera;
-        orthographic.zoom = Math.max(15, Math.min(400, orthographic.zoom * (action === 'in' ? 1.2 : 1 / 1.2)));
+        orthographic.zoom = Math.max(15, Math.min(700, orthographic.zoom * (action === 'in' ? 1.2 : 1 / 1.2)));
         orthographic.updateProjectionMatrix();
       } else {
         const spherical = new Spherical().setFromVector3(camera.position.clone().sub(controls.target));
@@ -110,21 +134,53 @@ type Isolation = FocusRequest & { id: string; ids: string[]; mode: 'part' | 'wor
 // Move only in response to an explicit inspection request; orbiting remains manual afterwards.
 function FocusCamera({ request }: { request: FocusRequest | null }) {
   const camera = useThree((state) => state.camera) as OrthographicCamera;
-  const controls = useThree((state) => state.controls) as { target: Vector3; update: () => void } | null;
+  const controls = useThree((state) => state.controls) as { target: Vector3; update: () => void; addEventListener: (type: 'start', callback: () => void) => void; removeEventListener: (type: 'start', callback: () => void) => void } | null;
   const viewport = useThree((state) => state.size);
   const invalidate = useThree((state) => state.invalidate);
+  const transition = useRef<{ fromPosition: Vector3; toPosition: Vector3; fromTarget: Vector3; toTarget: Vector3; fromZoom: number; toZoom: number; elapsed: number } | null>(null);
   useEffect(() => {
     if (!request || !controls) return;
     const target = new Vector3(...request.position);
     const direction = new Vector3(0.45, 1, -1).normalize();
     const distance = Math.max(4, Math.max(...request.size) * 3);
-    camera.position.copy(target).addScaledVector(direction, distance);
-    controls.target.copy(target);
-    camera.zoom = Math.min(400, Math.max(15, Math.min(viewport.width, viewport.height) / (Math.max(...request.size, 0.15) * 1.8)));
+    const [width, height, depth] = request.size;
+    const horizontal = Math.max(0.15, width * 0.91 + depth * 0.41);
+    const vertical = Math.max(0.15, width * 0.28 + height * 0.74 + depth * 0.61);
+    const zoom = Math.min(700, Math.max(15, Math.min(viewport.width * 0.78 / horizontal, viewport.height * 0.72 / vertical)));
+    const toPosition = target.clone().addScaledVector(direction, distance);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      transition.current = null;
+      camera.position.copy(toPosition);
+      controls.target.copy(target);
+      camera.zoom = zoom;
+      camera.updateProjectionMatrix();
+      controls.update();
+    } else {
+      transition.current = { fromPosition: camera.position.clone(), toPosition, fromTarget: controls.target.clone(), toTarget: target, fromZoom: camera.zoom, toZoom: zoom, elapsed: 0 };
+    }
+    invalidate();
+    return () => { transition.current = null; };
+  }, [request, camera, controls, invalidate, viewport.width, viewport.height]);
+  useEffect(() => {
+    if (!controls) return;
+    const cancel = () => { transition.current = null; };
+    controls.addEventListener('start', cancel);
+    return () => controls.removeEventListener('start', cancel);
+  }, [controls]);
+  useFrame((_, delta) => {
+    const motion = transition.current;
+    if (!motion || !controls) return;
+    motion.elapsed = Math.min(0.42, motion.elapsed + Math.min(delta, 0.05));
+    const progress = motion.elapsed / 0.42;
+    const eased = 1 - Math.pow(1 - progress, 3);
+    camera.position.lerpVectors(motion.fromPosition, motion.toPosition, eased);
+    controls.target.lerpVectors(motion.fromTarget, motion.toTarget, eased);
+    camera.zoom = motion.fromZoom + (motion.toZoom - motion.fromZoom) * eased;
     camera.updateProjectionMatrix();
     controls.update();
-    invalidate();
-  }, [request, camera, controls, invalidate]);
+    if (progress < 1) invalidate();
+    else transition.current = null;
+  });
   return null;
 }
 
@@ -648,17 +704,20 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     <SceneBoundary key={viewKey} onError={() => { sourceReady.current = false; setSourceLoading(false); }}>
       <Canvas
         orthographic
-        camera={{ position: project.design.foundation ? [5, 10, -15] : [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
+        camera={{ position: project.design.foundation ? [8, 9, -15] : [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
         dpr={[1, 1.5]}
         shadows="percentage"
         frameloop="demand"
         aria-label={physicsActive ? 'MuJoCo state replay in the interactive workstation view.' : 'Interactive schematic 3D workstation model. Drag to rotate and scroll to zoom.'}
       >
-        <color attach="background" args={['#eef4f4']} />
-        <ambientLight intensity={1.2} />
-        <directionalLight position={[8, 12, 7]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]}
+        <color attach="background" args={['#edf2ef']} />
+        <StudioEnvironment />
+        <ambientLight intensity={0.32} />
+        <directionalLight position={[7, 12, -8]} intensity={1.65} castShadow shadow-mapSize={[2048, 2048]}
+          shadow-bias={-0.00015} shadow-normalBias={0.003} shadow-radius={2}
           shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
-        <directionalLight position={[-6, 5, -5]} intensity={0.7} />
+        <directionalLight position={[-8, 6, -3]} intensity={0.38} color="#e2f1ee" />
+        <directionalLight position={[1, 8, 10]} intensity={0.6} color="#fff7e9" />
         <FitCamera enabled={!isolated} width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
         <FocusCamera request={isolated} />
         <group>
@@ -708,12 +767,11 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
           />
           </group>
         ) : null}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
-          <planeGeometry args={[18, 18]} />
-          <meshStandardMaterial color="#eef4f4" roughness={1} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, isolated ? isolated.position[1] - isolated.size[1] / 2 - 0.008 : -0.008, 0]} receiveShadow>
+          <planeGeometry args={[200, 200]} />
+          <meshStandardMaterial color="#e7eeea" roughness={1} />
         </mesh>
-        <gridHelper args={[18, 36, '#cfdddd', '#dbe7e7']} position={[0, -0.025, 0]} />
-        <OrbitControls makeDefault target={target} minZoom={15} maxZoom={400} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
+        <OrbitControls makeDefault target={target} minZoom={15} maxZoom={700} minPolarAngle={0.08} maxPolarAngle={Math.PI / 2 - 0.04} enablePan={false} />
         <SceneTools captureRef={captureRef} actionRef={actionRef} sourceReady={sourceReady} sourceRequired={Boolean(project.design.foundation)} />
       </Canvas>
     </SceneBoundary>

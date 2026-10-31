@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
+import PresentationStage from './PresentationStage';
 import ModelSelector from './ModelSelector';
 import type { ImageCapability, VoiceCapability } from './ModelSelector';
 import IllustrationPanel from './IllustrationPanel';
@@ -570,8 +571,9 @@ export default function App() {
             )
           ) : (
             <>
-              <div ref={viewer} className={`viewer-shell${isConfirmed ? ' viewer-compact' : ''}`}>
-                <div className="viewer-topline"><span><Icon name="cube" size={16} /> {hasFoundation ? 'Jubilee CAD · custom layout' : hasPlatform ? 'OT-2 · schematic setup' : 'Interactive 3D concept'}</span><span><span className="viewer-badge">Meta-proposed layout</span></span></div>
+              <PresentationStage viewerRef={viewer} compact={isConfirmed} title={hasFoundation ? 'Jubilee workstation' : hasPlatform ? 'OT-2 setup' : 'Interactive 3D concept'}
+                sourceNote={hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'}
+                components={project?.design.components ?? []} selectedPart={part} onSelect={setSelectedId}>
                 <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
                   {project ? <Scene captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
@@ -581,7 +583,7 @@ export default function App() {
                   <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
                   <div className="viewer-status"><span className={`status-indicator ${status === 'infeasible' ? 'warning' : ''}`} />{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</div>
                 </div>
-              </div>
+              </PresentationStage>
 
               <div className="below-viewer">
                 <div className="cost-block"><span>Fresh listed parts subtotal · USD</span><strong>{costText}</strong><small>{currentProcurement ? `${currentProcurement.coverage.fresh_priced_count}/${currentProcurement.coverage.row_count} groups freshly priced · ${currentProcurement.coverage.unpriced_count} without fresh prices · Complete machine cost unknown. Excludes shipping and taxes.` : 'Open Parts & pricing to check US catalogs. Complete machine cost is unknown.'}</small></div>

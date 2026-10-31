@@ -10,7 +10,14 @@ The current result is a **working digital prototype**: compare two reviewed plat
 
 The published 180-second video records the earlier core design journey with English captions. The product now also includes model selection, dictation, optional illustrations, US catalog pricing and immediate build instructions; the video will be updated after product verification. The guide includes the [recorded real-Meta project you can reopen without a key](docs/demo-guide.md#open-the-recorded-example-without-a-key), plus offline checks and the live product path, which requires your own Meta API access. The interactive product runs locally. Historical feature documents retain their original scope; use this README and the guide for the current flow.
 
-[![Watch the three-minute MuseAutoLab demo](docs/images/demo-video-poster.png)](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4)
+![Actual interactive 96-well model in the expanded 3D view](docs/images/presentation-plate.png)
+
+**Inspect the current 3D:** use **Expand 3D view**, choose a component and select
+**Selected part only** for a close view. Studio lighting, satin finishes and smooth
+focus transitions make the source machine and custom modules easier to inspect.
+Escape returns to chat. These are actual application renders; appearance does not
+change engineering dimensions or specify fabrication materials. See the
+[viewer walkthrough](docs/demo-guide.md#inspect-the-expanded-3d-view).
 
 ## Current demonstrator
 
@@ -272,6 +279,7 @@ npm.cmd --prefix web run build
 .\.venv\Scripts\python.exe tests/browser_resources.py
 .\.venv\Scripts\python.exe tests/browser_labware.py
 .\.venv\Scripts\python.exe tests/browser_microplate.py
+.\.venv\Scripts\python.exe tests/browser_presentation.py
 ```
 
 The first Python command runs the regular regression suite; the second runs the source-CAD checks, including a full export/reopen and standalone regeneration. That integration test reads expanded source geometry twice and requires substantial time and memory (several GiB on the verified Windows host). Run it separately from quick UI iteration. Both check sets are required for source/export changes.

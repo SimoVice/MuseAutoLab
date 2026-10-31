@@ -4,12 +4,13 @@
   bottom: 42px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 4px;
-  border: 1px solid #d6e5e3;
-  border-radius: 7px;
-  background: #f8fbfaf0;
-  color: #496e70;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid #d4e1dc;
+  border-radius: 9px;
+  background: #fbfdfbf2;
+  box-shadow: 0 3px 12px #294d4312;
+  color: #58726d;
   font-size: 11px;
 }
 .scene-controls span { padding: 0 5px; }
@@ -18,7 +19,7 @@
   height: 27px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: #315f61;
   font-size: 16px;
@@ -37,4 +38,8 @@
   color: #315f61;
   font-size: 12px;
   pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .scene-rack-occupancy.scene-rack-occupancy { top: 52px; }
 }
