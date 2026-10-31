@@ -1,8 +1,8 @@
 # Delivery verification — 2026-10-31
 
-## Reversible workspace refinement trial
+## Accepted workspace refinement
 
-The local trial refines the existing workspace using the installed
+The accepted refinement improves the existing workspace using the installed
 [Impeccable](https://github.com/pbakaus/impeccable) skill 4.8.0 and verified engine
 0.1.18. Its source detector was actually executed before and after the changes.
 Both scans report six raw findings; contextual review distinguishes functional
@@ -28,7 +28,8 @@ tests passed. The existing large JavaScript bundle advisory remains.
 These are developer browser checks with synthetic language/price responses and
 the real application/compiler, not new live Meta results, independent human-use
 measurements or hardware validation. No backend, geometry or pricing algorithm
-changed. The separate local trial retains its previous version for rollback.
+changed. The refinement was accepted after a separate local trial; the previous
+version is retained for rollback.
 
 ## Latest correction: conversational workspace, clearance and cost estimates
 
