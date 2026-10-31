@@ -20,20 +20,20 @@ working-volume recommendation. Container capacity and preparation volume are
 different: a 1.5 mL tube may contain a 200 µL preparation.
 
 1. Focus the sample rack in the model.
-2. Send **“Sostituisci le provette con una piastra da 96 pozzetti.”**
+2. Send **“Replace the sample tubes with a 96-well plate.”**
 3. Inspect the 8 × 12 array, marked A1 corner and assigned wells. Three existing
    preparations remain three preparations: A1, B1 and C1 in the reference's
    column-major order. The remaining wells stay unassigned.
 4. Open **Build instructions** for the selected profile, volume check, holder
    fabrication/fit and placement guidance. Review the revised project before
    confirming and generating the CAD package.
-5. Send **“Torna al portaprovette precedente.”** to recover its stored dimensions
+5. Send **“Restore the previous tube rack.”** to recover its stored dimensions
    and position. Explicit changes to the recipe are retained.
 
 If the old recipe contains 2 mL per target, a format-only change displays the plate
 as a draft with a volume conflict. Confirmation and confirmed-package generation
 remain blocked. Request a new volume explicitly, for example:
-**“Passa a una piastra da 96 pozzetti, con 200 µL per pozzetto.”** The application
+**“Switch to a 96-well plate with 200 µL per well.”** The application
 does not silently shrink a recipe to make it fit.
 
 ## Selected reference and geometry

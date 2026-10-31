@@ -81,15 +81,15 @@ records the initial failed live round, parser correction and successful regressi
 
 ### Switch from tubes to a 96-well plate
 
-With an accepted Jubilee project, send **“Sostituisci le provette con una piastra
-da 96 pozzetti.”** The sample module changes to the named Corning 360 µL flat
+With an accepted Jubilee project, send **“Replace the sample tubes with a
+96-well plate.”** The sample module changes to the named Corning 360 µL flat
 software reference and a custom holder. Existing preparations keep their volumes
 and gain well addresses; three targets remain three, with 93 free wells. An
 existing 200 µL preparation fits the reference maximum. A 2 mL preparation instead
 produces a visible volume conflict and blocks confirmation until explicitly revised.
 
 The model, source, part list, instructions and portable save change together.
-**“Torna al portaprovette precedente.”** restores the stored rack dimensions and
+**“Restore the previous tube rack.”** restores the stored rack dimensions and
 position. Separate holder STEP/STL files are fabrication proposals; the plate STEP
 is schematic reference geometry. Actual fit and liquid handling remain unverified.
 See the [one-message demonstration and source/fit scope](docs/microplate-switching.md).

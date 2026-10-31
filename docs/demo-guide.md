@@ -6,6 +6,12 @@ engineering demonstrator is dilution and aliquot preparation. The result is a
 digital project with consistent geometry, calculations, source attribution and
 revision-specific files. No laboratory performance or time saving has been measured.
 
+The product demonstration, prompts and narration are in English. Use US suppliers
+and USD prices. Start with **New project** for a clean English conversation; save
+the current project first if you want to retain it. Recorded test projects preserve
+their original conversation, which can include Italian messages. These historical
+records are not the script for the English demonstration.
+
 ## Choose how to review
 
 | Path | What you can inspect | Requirements |
@@ -69,10 +75,10 @@ and custom holder. Do not present this as arbitrary supplier CAD or validated fi
 
 The Jubilee sample module can change from the stored tube rack to a named
 96-well plate through the same chat. Start with a synthetic 200 µL preparation
-in tubes, focus the rack, and send **“Sostituisci le provette con una piastra da
-96 pozzetti.”** Inspect the new 8 × 12 array, A1 marking, occupied wells and updated
+in tubes, focus the rack, and send **“Replace the sample tubes with a
+96-well plate.”** Inspect the new 8 × 12 array, A1 marking, occupied wells and updated
 build instructions. Existing target count and liquid amounts are retained. Ask
-**“Torna al portaprovette precedente.”** to restore the prior rack.
+**“Restore the previous tube rack.”** to restore the prior rack.
 
 The named reference is based on pinned Opentrons software data, not manufacturer
 CAD or measured fit. A format-only switch from a 2 mL recipe stays a draft with
@@ -183,6 +189,44 @@ Their packages record simulation `not_run`. An operating animation, a kinematic 
 sweep, geometric checks and photo observations are distinct digital outputs.
 
 ## Rehearse the main journey
+
+For a first hands-on test of the latest features, use this English sequence.
+All numerical inputs below are synthetic test data, not measured labware or
+validated liquid-handling conditions. Answer the agent's missing-information
+questions before moving to the next step.
+
+1. **Describe the problem.** “For this synthetic demo, I prepare dilutions and
+   aliquots manually using a pipette and 1.5–2 mL tubes. Help me design a workstation.
+   Use US suppliers and USD. Ask for the requirements you need.”
+2. **Choose the platform.** “Compare an assembled platform with an open-source
+   buildable one.” After reviewing the choices: “Choose the Jubilee route and
+   proceed with the design.” The modules below are supported on this route.
+3. **Set the preparation.** “Use a stock concentration of 5 mg/mL, targets of
+   0.5, 0.25 and 0.05 mg/mL, and a final volume of 200 µL per preparation.
+   Keep the machine layout unchanged.” Expect three preparations.
+4. **Create the tube rack.** “Design a tube rack with these synthetic dimensions:
+   maximum body diameter 12 mm, minimum supporting rim diameter 15 mm, maximum
+   closed cap envelope including the hinge 18 mm, length below the rim 40 mm,
+   12 positions and 4 columns. Keep the recipe and other components unchanged.”
+5. **Switch format.** “Replace the sample tubes with a 96-well plate. Keep the
+   recipe and all other components unchanged.” Expect three assigned wells,
+   not 96 new preparations. “Restore the previous tube rack” reverses the format.
+6. **Compare supplier products.** “Compare tip racks from different US suppliers.
+   Keep the plate, recipe and other components unchanged.” Review the placement
+   proposal and use **Use this rack**. Select **Tip rack → Selected part only**
+   in the expanded viewer to compare TipOne and Opentrons openings. Their similar
+   footprints do not imply a dramatic change in the workstation silhouette.
+7. **Check the output.** Review US prices and explicitly missing prices, open
+   **Build instructions**, then **Save project** and reopen it. Confirm only after
+   reviewing the final design. Generate the full CAD package last; it can take
+   several minutes.
+
+For the optional printable-holder branch, answer the printer-access question
+truthfully, then follow the [holder measurement example](tip-rack-options.md#printing-a-holder-for-purchased-tips).
+The agent should ask before offering it and should request dimensions rather than
+inventing them from tip volume. No printer access is assumed from this script.
+
+The longer foundation/layout/inspection journey follows:
 
 Use the ordinary chat throughout. Prompts below are synthetic examples, not commands
 that force an outcome. Actual Meta wording, latency and choices vary.
