@@ -115,6 +115,7 @@ export default function App() {
   const [messages, setMessages] = useState<ConversationEntry[]>([{ id: 0, role: 'assistant', text: WELCOME }]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [mobileView, setMobileView] = useState<'design' | 'chat'>('design');
   const inputRef = useRef(input);
   inputRef.current = input;
   const [busy, setBusy] = useState(false);
@@ -233,7 +234,8 @@ export default function App() {
 
   const handleVisionSelect = useCallback((id: string) => {
     setSelectedId(id);
-    viewer.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    setMobileView('design');
+    requestAnimationFrame(() => viewer.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }));
   }, []);
 
   const handlePreviewComplete = useCallback(() => {
@@ -385,12 +387,16 @@ export default function App() {
   }, []);
 
   function reviewPreparationPlan() {
-    if (preparationDetails.current) preparationDetails.current.open = true;
-    preparationDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-    preparationDetails.current?.focus({ preventScroll: true });
+    setMobileView('design');
+    requestAnimationFrame(() => {
+      if (preparationDetails.current) preparationDetails.current.open = true;
+      preparationDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      preparationDetails.current?.focus({ preventScroll: true });
+    });
   }
 
   function showProjectFiles() {
+    setMobileView('design');
     if (details.current) details.current.open = true;
     requestAnimationFrame(() => {
       filesSection.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -403,6 +409,7 @@ export default function App() {
     const message = input.trim();
     if (!project || !message || uiBusy || voiceBusy) return;
     if (message.length > 4000) { setError('The message exceeds 4,000 characters. Shorten it before sending; your draft is kept.'); return; }
+    setMobileView('chat');
     const session = sessionRef.current;
     const base = projectRef.current;
     chatAbort.current?.abort();
@@ -620,8 +627,12 @@ export default function App() {
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
         </div>
       </header>
-      <main className={`workspace${!hasBrief && !hasEngineeringDesign ? ' workspace-start' : ''}`}>
-        <section className={`design-panel${isConfirmed && hasEngineeringDesign ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
+      <nav className="workspace-switch" aria-label="Workspace view">
+        <button type="button" aria-pressed={mobileView === 'design' && (hasBrief || hasEngineeringDesign)} aria-controls="design-workspace" disabled={!hasBrief && !hasEngineeringDesign} onClick={() => setMobileView('design')}>Design</button>
+        <button type="button" aria-pressed={mobileView === 'chat' || (!hasBrief && !hasEngineeringDesign)} aria-controls="chat-workspace" onClick={() => setMobileView('chat')}>Chat</button>
+      </nav>
+      <main className={`workspace mobile-view-${mobileView}${!hasBrief && !hasEngineeringDesign ? ' workspace-start' : ''}`}>
+        <section id="design-workspace" className={`design-panel${isConfirmed && hasEngineeringDesign ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
             <div>
               <h1 id="design-title">{headerLabel}</h1>
@@ -768,7 +779,7 @@ export default function App() {
           )}
         </section>
 
-        <aside className="conversation-panel" aria-labelledby="conversation-title">
+        <aside id="chat-workspace" className="conversation-panel" aria-labelledby="conversation-title">
           <div className="chat-heading"><div className="assistant-emblem"><Icon name="spark" size={19} /></div><div><h2 id="conversation-title">Design assistant</h2><p>Let’s make your workflow easier.</p></div><span className="chat-status">{project?.status === 'confirmed' ? 'Confirmed' : 'Draft'}</span></div>
           <div className="assistant-controls">{project && <ModelSelector key={project.id} projectId={project.id} busy={uiBusy || voiceBusy} onBusyChange={setModelBusy} onVoiceCapability={setVoiceCapability} onImageCapability={setImageCapability} />}</div>
           <div className="conversation-scroll" ref={conversation}>

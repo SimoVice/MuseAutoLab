@@ -1,5 +1,35 @@
 # Delivery verification — 2026-10-31
 
+## Reversible workspace refinement trial
+
+The local trial refines the existing workspace using the installed
+[Impeccable](https://github.com/pbakaus/impeccable) skill 4.8.0 and verified engine
+0.1.18. Its source detector was actually executed before and after the changes.
+Both scans report six raw findings; contextual review distinguishes functional
+warning cues and overridden CSS from potential decoration. The detector does not
+measure usability or evaluate the browser's final CSS cascade.
+
+A separate paired browser capture used the same synthetic project, costs, camera
+and viewports. At 1440 × 900, the complete cost block ends at 893.48 px, compared
+with 965.25 px before; the 3D canvas remains 360 px high. The collapsed tip-rack
+comparison is 32.24% shorter on desktop and 26.68% shorter at 390 × 844. Mobile
+Chat is one tap away, with the composer visible and the draft, history and canvas
+preserved. The mobile Design cost block remains below the first viewport; no
+improvement in its initial visibility is claimed.
+
+Final offline checks passed: `tests/browser_usability.py` and
+`tests/browser_tip_options.py`. They cover first-request continuity, mobile
+navigation and unsent text, cost freshness/refresh/expiry, actual tip-rack
+geometry, source links, explicit placement acceptance, failure rollback and
+Save/Open. The first-request check found a real navigation regression, which was
+fixed before the final pass. Typecheck/production build and Ruff on the changed
+tests passed. The existing large JavaScript bundle advisory remains.
+
+These are developer browser checks with synthetic language/price responses and
+the real application/compiler, not new live Meta results, independent human-use
+measurements or hardware validation. No backend, geometry or pricing algorithm
+changed. The separate local trial retains its previous version for rollback.
+
 ## Latest correction: conversational workspace, clearance and cost estimates
 
 User-reported issues drove this revision: technical design summaries crowded chat,

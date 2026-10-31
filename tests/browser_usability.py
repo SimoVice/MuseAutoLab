@@ -52,8 +52,39 @@ def run(url):
         page.route("**/cost-estimate*", cost)
         page.goto(url, wait_until="networkidle")
         expect(page.get_by_text("Workspace ready")).to_be_visible()
-        assert page.locator("#design-title").evaluate("e => getComputedStyle(e).fontSize") == "26px"
+        title_size = page.locator("#design-title").evaluate(
+            "e => parseFloat(getComputedStyle(e).fontSize)"
+        )
+        assert 23 <= title_size <= 28, title_size
         expect(page.get_by_text("Estimate appears with your design")).to_be_visible()
+        page.set_viewport_size({"width": 390, "height": 844})
+        chat_view = page.get_by_role("navigation", name="Workspace view")
+        expect(chat_view.get_by_role("button", name="Chat", exact=True)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+        expect(chat_view.get_by_role("button", name="Design", exact=True)).to_be_disabled()
+        composer = page.get_by_label("Describe your workflow or request a change")
+        expect(composer).to_be_visible()
+        composer_bounds = composer.bounding_box()
+        assert composer_bounds and composer_bounds["y"] + composer_bounds["height"] <= 844, (
+            composer_bounds
+        )
+        page.screenshot(path=str(OUTPUT / "blank-project-mobile.png"))
+        harness.send_chat(
+            page,
+            "I keep making dilutions manually and want to automate pipetting.",
+            "Which equipment",
+        )
+        expect(composer).to_be_enabled()
+        expect(composer).to_be_visible()
+        expect(chat_view.get_by_role("button", name="Chat", exact=True)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+        expect(page.locator(".conversation-scroll")).to_contain_text(
+            "I keep making dilutions manually and want to automate pipetting."
+        )
+        page.screenshot(path=str(OUTPUT / "first-request-mobile.png"))
+        page.set_viewport_size({"width": 1440, "height": 1000})
         fixture = json.loads((harness.ROOT / "docs/examples/microplate-project.json").read_text())
         fixture["history"] = [
             {
@@ -112,11 +143,22 @@ def run(url):
         plan.locator(":scope > summary").click()
         for width in [390, 760]:
             page.set_viewport_size({"width": width, "height": 844})
+            chat_view.get_by_role("button", name="Design", exact=True).click()
             page.locator(".prep-plan").scroll_into_view_if_needed()
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
                 "Horizontal page overflow"
             )
             page.screenshot(path=str(OUTPUT / f"workspace-mobile-{width}.png"))
+            chat_view.get_by_role("button", name="Chat", exact=True).click()
+            expect(composer).to_be_visible()
+            composer.fill("Keep this unsent revision while I inspect the design.")
+            history = page.locator(".message-row").all_text_contents()
+            chat_view.get_by_role("button", name="Design", exact=True).click()
+            expect(composer).not_to_be_visible()
+            chat_view.get_by_role("button", name="Chat", exact=True).click()
+            expect(composer).to_have_value("Keep this unsent revision while I inspect the design.")
+            assert page.locator(".message-row").all_text_contents() == history
+            chat_view.get_by_role("button", name="Design", exact=True).click()
         assert calls == ["GET", "POST"], calls
         assert not errors, errors
         (OUTPUT / "usability-result.json").write_text(

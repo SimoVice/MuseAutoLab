@@ -83,7 +83,9 @@ def run(url):
             page.get_by_label("Open saved project").set_input_files(
                 str(harness.ROOT / "docs/examples/demo-video-project.json")
             )
-            expect(page.locator(".storage-notice")).to_contain_text("rebuilt")
+            expect(page.locator(".storage-notice")).to_contain_text(
+                "The parked tool position was updated"
+            )
             expect(page.get_by_role("region", name="Tip rack alternatives")).to_have_count(0)
             base = send(ALTERNATIVES)
             panel = page.get_by_role("region", name="Tip rack alternatives")
@@ -94,7 +96,9 @@ def run(url):
                 "Do you have access to a 3D printer"
             )
             first = choose(panel.get_by_role("article").nth(0))
-            expect(page.locator(".selection-block")).to_contain_text("Pinned product reference")
+            expect(page.locator(".selected-component-note")).to_contain_text(
+                "Pinned product reference"
+            )
             page.get_by_label("Inspect component view").select_option("part")
             first_hash = screenshot("commercial-first.png")
             expect(panel.get_by_role("article").nth(0)).to_contain_text("In the model")
@@ -106,7 +110,9 @@ def run(url):
             )
             second = choose(panel.get_by_role("article").nth(1))
             expect(page.get_by_label("Inspect component view")).to_have_value("part")
-            expect(page.locator(".selection-block")).to_contain_text("Opentrons 96 Tip Rack 300")
+            expect(page.locator(".selected-component-note")).to_contain_text(
+                "Opentrons 96 Tip Rack 300"
+            )
             page.locator(".viewer-shell").screenshot(
                 path=str(output / "focus-after-product-change.png")
             )
@@ -177,7 +183,9 @@ def run(url):
             assert printed["tip_rack"]["kind"] == "rim_supported_tip_rack"
             assert printed["summary"] == base["summary"]
             page.get_by_role("button", name="Inspect tip rack", exact=True).click()
-            expect(page.locator(".selection-block")).to_contain_text("Custom printable geometry")
+            expect(page.locator(".selected-component-note")).to_contain_text(
+                "Custom printable geometry"
+            )
             screenshot("printed-holder.png")
             with page.expect_response(
                 lambda response: "/instructions?" in response.url
@@ -195,6 +203,20 @@ def run(url):
             assert restored_printed["tip_rack"]["spec"] == printed["tip_rack"]["spec"]
             assert restored_printed["fabrication_capabilities"]["printer_available"] == "yes"
             page.set_viewport_size({"width": 390, "height": 844})
+            page.get_by_role("navigation", name="Workspace view").get_by_role(
+                "button", name="Chat", exact=True
+            ).click()
+            composer.fill("Keep the selected rack and revise the layout later.")
+            history = page.locator(".message-row").all_text_contents()
+            page.get_by_role("navigation", name="Workspace view").get_by_role(
+                "button", name="Design", exact=True
+            ).click()
+            expect(composer).not_to_be_visible()
+            page.get_by_role("navigation", name="Workspace view").get_by_role(
+                "button", name="Chat", exact=True
+            ).click()
+            expect(composer).to_have_value("Keep the selected rack and revise the layout later.")
+            assert page.locator(".message-row").all_text_contents() == history
             panel.scroll_into_view_if_needed()
             assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
             page.screenshot(path=str(output / "options-mobile.png"), full_page=True)

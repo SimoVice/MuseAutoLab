@@ -7,6 +7,11 @@ view. Model settings and technical details are progressively disclosed; ordinary
 chat describes results rather than compiler attempts or repeating the plan.
 Contextual printer answers such as **“Yes I do”** are supported.
 
+On narrow screens, **Design / Chat** switches between the model and conversation
+without losing an unsent message. The first request stays in Chat. Tip-rack
+choices keep dimensions, placement changes, price status and selection visible;
+long geometry/source records open under **Geometry & source details**.
+
 Once a design exists, the workspace requests one bounded Muse Spark estimate for
 missing hardware prices. USD supplier observations and broad model planning
 ranges are displayed separately, with assumptions, remaining gaps and exclusions.

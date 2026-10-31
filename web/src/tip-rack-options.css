@@ -7,3 +7,30 @@
 .tip-option { padding: 12px 0; border-bottom: 1px solid #d8e6e5; }.tip-option.selected { border-left: 3px solid #087d7d; padding-left: 10px; }.tip-option h4 { margin: 0; font-size: 12px; color: #214a52; }.tip-option p { margin: 5px 0; }.tip-option-title > span { color: #087672; font-size: 11px; font-weight: 650; }.tip-option-dimensions { font-weight: 650; }.tip-option-dimensions small { font-weight: 400; display: block; }.tip-option-price small { display: block; font-size: 11px; color: #55757b; }
 .tip-option-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-top: 9px; }.tip-rack-options a { color: #087672; text-underline-offset: 3px; }.tip-rack-options button { min-height: 38px; border: 1px solid #b7d5ce; border-radius: 7px; padding: 7px 10px; background: #f3f9f7; color: #1f7671; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }.tip-rack-options button:disabled { opacity: .55; cursor: default; }.tip-rack-options button:focus-visible, .tip-rack-options a:focus-visible { outline: 3px solid #318f94; outline-offset: 3px; }.tip-printer-status { margin-bottom: 0; }
 @media (max-width: 600px) { .tip-rack-options { margin-left: 0; padding: 11px; }.tip-option-actions { align-items: stretch; }.tip-option-actions button { flex: 1; } }
+
+/* Show the decision first; detailed source records remain one disclosure away. */
+.tip-rack-options { padding: 12px; font-size: 12px; line-height: 1.45; }
+.tip-options-current { margin: 8px 0; padding-bottom: 8px; }
+.tip-options-current small { display: inline; }
+.tip-options-current button { margin-top: 0; margin-left: 8px; }
+.tip-options-note { margin: 6px 0; font-size: 12px; color: #42646d; }
+.tip-option { padding: 10px 0; }
+.tip-option.selected { border-left: 0; padding-left: 0; }
+.tip-option-title > span { font-size: 12px; }
+.tip-option h4 { font-size: 13px; }
+.tip-option p { margin: 4px 0; }
+.tip-option-dimensions small { display: inline; margin-left: 5px; font-size: 11px; }
+.tip-option-placement { padding: 6px 8px; border-left-width: 1px; }
+.tip-option-placement span { font-size: 12px; }
+.tip-option-placement:not(.requires_shift):not(.unavailable) span { display: none; }
+.tip-option-provenance { margin-top: 6px; font-size: 12px; color: #42646d; }
+.tip-option-provenance > summary { padding: 5px 0; width: fit-content; }
+.tip-option-provenance[open] { margin-bottom: 8px; }
+.tip-option-price { font-weight: 600; }
+.tip-option-price small { display: inline; margin-left: 5px; font-weight: 400; }
+.tip-option-actions { margin-top: 6px; }
+.tip-rack-options button { font-size: 12px; }
+@media (max-width: 600px) {
+  .tip-options-current button { margin: 6px 0 0; display: block; }
+  .tip-option-actions a { padding: 8px 0; }
+}

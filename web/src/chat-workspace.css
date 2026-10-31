@@ -130,3 +130,47 @@
 .prep-plan-preview { display: block; margin-top: 5px; color: #55757b; font-size: 11px; font-weight: 500; line-height: 1.5; }
 .selected-component-note { margin: 0 0 14px; font-size: 11px; color: #55757b; line-height: 1.5; }
 @media (max-width: 760px) { .workspace .below-viewer { grid-template-columns: 1fr; } }
+
+/* Keep the model dominant while making its planning context visible together. */
+.workspace-switch { display: none; }
+.workspace .design-panel { padding-top: 22px; }
+.workspace .design-heading { margin-bottom: 14px; }
+.workspace .design-heading h1 { font-weight: 600; font-size: 24px; }
+.workspace .revision { gap: 3px; }
+.workspace .revision > span { display: none; }
+.workspace .revision button { margin-top: 3px; }
+.presentation-stage:not(.presentation-stage-expanded) .stage-topline { min-height: 46px; padding: 5px 14px; }
+.presentation-stage:not(.presentation-stage-expanded) .viewer-bottomline { min-height: 48px; padding: 8px 14px; }
+.presentation-stage:not(.presentation-stage-expanded) .stage-source-note { padding: 6px 14px; font-size: 11px; color: #42646d; }
+.workspace .below-viewer { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; padding-top: 14px; }
+.cost-block > span, .footprint > span, .viewer-status { color: #55757b; }
+.cost-block > strong { font-size: 17px; line-height: 1.35; }
+.cost-breakdown { font-size: 12px; margin: 2px 0; }
+.cost-block > small { font-size: 12px; }
+.cost-estimate-details { font-size: 12px; }
+.chat-heading { padding-top: 18px; padding-bottom: 18px; }
+.chat-heading p, .message-author, .chat-date { color: #55757b; }
+@media (min-width: 761px) {
+  .presentation-stage:not(.presentation-stage-expanded) .viewer-canvas:not(.viewer-canvas-compact) { height: clamp(360px, 40vh, 460px); min-height: 360px; }
+}
+@media (max-width: 760px) {
+  .workspace-switch { display: flex; padding: 6px 18px; gap: 6px; background: #fff; border-bottom: 1px solid #dce8e7; }
+  .workspace-switch button { flex: 1; min-height: 44px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #42646d; font: inherit; font-size: 14px; font-weight: 650; }
+  .workspace-switch button[aria-pressed="true"] { border-color: #b7d5ce; background: #edf6f3; color: #1f6765; }
+  .workspace-switch button:hover:not(:disabled) { background: #f3f9f7; }
+  .workspace-switch button:disabled { color: #71858b; cursor: default; }
+  .workspace-switch button:focus-visible { outline: 3px solid #318f94; outline-offset: 1px; }
+  .workspace.mobile-view-chat > .design-panel { display: none; }
+  .workspace.mobile-view-design:not(.workspace-start) > .conversation-panel { display: none; }
+  .workspace .conversation-panel, .workspace-start .conversation-panel { height: calc(100dvh - 185px); min-height: 420px; border-top: 0; }
+  .workspace .design-panel { padding: 18px; }
+  .workspace .design-heading { gap: 10px; }
+  .workspace .below-viewer { grid-template-columns: 1fr; gap: 14px; }
+  .workspace .chat-heading { padding: 12px 18px; }
+  .workspace .conversation-scroll { padding-top: 14px; padding-bottom: 14px; }
+  .chat-date { margin-bottom: 16px; }
+  .composer textarea { font-size: 16px; }
+  .workspace .composer-area { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .workspace .stage-expand-button { min-height: 44px; font-size: 12px; }
+  .workspace .tip-rack-options button { min-height: 44px; }
+}
