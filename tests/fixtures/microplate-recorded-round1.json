@@ -1,0 +1,755 @@
+{
+  "scope": "Previously recorded synthetic responses from microplate live round 1, now offline regression material; replay makes zero new model requests and is not independent validation.",
+  "records": [
+    {
+      "case_id": "S1_italian_simple",
+      "prompt": "Sostituisci le provette con una piastra da 96 pozzetti.",
+      "response": {
+        "actions": [
+          {
+            "kind": "select_labware",
+            "source": "piastra da 96 pozzetti"
+          }
+        ],
+        "assistant_message": "Passo ai Corning 96 Well Plate 360 µL Flat come riferimento software, al posto del rack da 12 provette. I target restano assegnati in ordine A1,B1,...,H1,A2,... . Nota: 360 µL è il massimo del riferimento; la ricetta da 2 mL resta bozza/bloccata finché non riduci il volume, ad es. '200 µL per well'. Dimmi il nuovo volume per pozzetto.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": "corning_96_wellplate_360ul_flat",
+          "source": "piastra da 96 pozzetti"
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "200 uL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": false,
+      "usage": {
+        "completion_tokens": 793,
+        "prompt_tokens": 17900,
+        "total_tokens": 18693,
+        "completion_tokens_details": {
+          "reasoning_tokens": 196
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "S2_english_simple",
+      "prompt": "Switch from Eppendorf 1.5 mL tubes to a 96-well microplate.",
+      "response": {
+        "actions": [
+          {
+            "kind": "select_labware",
+            "source": "96-well microplate"
+          }
+        ],
+        "assistant_message": "Switching sample holder to the Corning 96 Well Plate 360 µL Flat software reference. This is pinned Opentrons data, not vendor machine CAD or a verified exact SKU. 360 µL is the reference maximum, not a validated working volume. Your existing targets are preserved in order A1,B1,... and prior rack inputs retained. Tell me your desired volume per well, e.g. 200 µL per well, to unblock the recipe.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": "corning_96_wellplate_360ul_flat",
+          "source": "96-well microplate"
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "200 uL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": false,
+      "usage": {
+        "completion_tokens": 1262,
+        "prompt_tokens": 17898,
+        "total_tokens": 19160,
+        "completion_tokens_details": {
+          "reasoning_tokens": 686
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "S3_volume_conflict",
+      "prompt": "Sostituisci le provette con una piastra da 96 pozzetti.",
+      "response": {
+        "actions": [
+          {
+            "kind": "select_labware",
+            "source": "piastra da 96 pozzetti"
+          }
+        ],
+        "assistant_message": "Passo ai campioni su Corning 96 Well Plate 360 µL Flat (riferimento software), al posto del rack da 12 provette. La ricetta da 2 mL resta invariata e quindi bloccata: 360 µL e il massimo del riferimento, dimmi il nuovo volume per pozzetto, es. '200 µL per pozzetto'.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": "corning_96_wellplate_360ul_flat",
+          "source": "piastra da 96 pozzetti"
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "2 mL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": false,
+      "usage": {
+        "completion_tokens": 981,
+        "prompt_tokens": 17903,
+        "total_tokens": 18884,
+        "completion_tokens_details": {
+          "reasoning_tokens": 412
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "S4_explicit_volume",
+      "prompt": "Passa a una piastra da 96 pozzetti, con 200 µL per pozzetto.",
+      "response": {
+        "actions": [
+          {
+            "kind": "select_labware",
+            "source": "piastra da 96 pozzetti"
+          }
+        ],
+        "assistant_message": "Passo alla piastra di riferimento Corning 96 Well Plate 360 µL Flat, con 200 µL per pozzetto. Le 3 preparazioni esistenti restano assegnate in ordine A1, B1, C1. 360 µL è il massimo del riferimento, non un volume di lavoro validato; accesso pipetta, calibrazione e controllo hardware restano da verificare.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": "200 µL",
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": "corning_96_wellplate_360ul_flat",
+          "source": "piastra da 96 pozzetti"
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": "200 µL per pozzetto",
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "2 mL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": false,
+      "usage": {
+        "completion_tokens": 776,
+        "prompt_tokens": 17909,
+        "total_tokens": 18685,
+        "completion_tokens_details": {
+          "reasoning_tokens": 183
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "S5_restore_rack",
+      "prompt": "Torna al portaprovette precedente.",
+      "response": {
+        "actions": [
+          {
+            "kind": "select_labware",
+            "source": "portaprovette precedente"
+          }
+        ],
+        "assistant_message": "Torno al portaprovette precedente. Ricetta, piattaforma, raffreddamento e braccio restano invariati.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": "previous_tube_rack",
+          "source": "portaprovette precedente"
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "200 uL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": true,
+      "usage": {
+        "completion_tokens": 627,
+        "prompt_tokens": 18008,
+        "total_tokens": 18635,
+        "completion_tokens_details": {
+          "reasoning_tokens": 137
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "S6_mixed_language",
+      "prompt": "Passa da eppendorf 1.5ml a 96 microwells plates.",
+      "response": {
+        "actions": [
+          {
+            "kind": "select_labware",
+            "source": "96 microwells plates"
+          }
+        ],
+        "assistant_message": "Passo a Corning 96 Well Plate 360 µL Flat reference per il modulo campioni, in ordine A1,B1... 360 µL è il massimo del reference, non il volume di lavoro. La ricetta resta a 2 mL per tubo quindi bloccata/draft finché non cambi il volume, es. 200 µL per well. Rack misurato precedente conservato, layout e freddo invariati. Pipetta, holder, accesso e controllo restano da verificare, animazione disabilitata.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": "corning_96_wellplate_360ul_flat",
+          "source": "96 microwells plates"
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "200 uL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": false,
+      "usage": {
+        "completion_tokens": 1062,
+        "prompt_tokens": 17902,
+        "total_tokens": 18964,
+        "completion_tokens_details": {
+          "reasoning_tokens": 466
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "N1_unsupported_384",
+      "prompt": "Sostituisci la piastra con una da 384 pozzetti.",
+      "response": {
+        "actions": [],
+        "assistant_message": "Una piastra da 384 pozzetti non è supportata: l'unico riferimento verificato è la Corning 96 Well Plate 360 µL Flat. Mantengo la piastra 96 attuale senza modifiche.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": null,
+          "source": null
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "200 uL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": true,
+      "usage": {
+        "completion_tokens": 739,
+        "prompt_tokens": 18010,
+        "total_tokens": 18749,
+        "completion_tokens_details": {
+          "reasoning_tokens": 244
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "case_id": "N2_specific_pcr",
+      "prompt": "Use a Bio-Rad 96-well PCR plate instead.",
+      "response": {
+        "actions": [],
+        "assistant_message": "Bio-Rad 96-well PCR plate isn't supported here — only the Corning 96 Well Plate 360 µL Flat software reference is available for this Jubilee sample module, and other formats/vendors have no adapter. Keeping your current 12-position tube rack, recipe, cooling and arm unchanged.",
+        "brief_constraints": null,
+        "brief_equipment": null,
+        "brief_materials": null,
+        "brief_objective": null,
+        "brief_process": null,
+        "cooling_enabled": null,
+        "cooling_target_c": null,
+        "engineering": {
+          "choice_source": null,
+          "options": [],
+          "platform_choice": null,
+          "requirements": []
+        },
+        "equipment": null,
+        "final_volume": null,
+        "labware": {
+          "below_rim_height_mm": null,
+          "body_diameter_max_mm": null,
+          "cap_diameter_max_mm": null,
+          "columns": null,
+          "count": null,
+          "max_depth_mm": null,
+          "max_height_mm": null,
+          "max_width_mm": null,
+          "pitch_mm": null,
+          "radial_clearance_mm": null,
+          "rim_diameter_min_mm": null,
+          "source_below_rim_height_mm": null,
+          "source_body_diameter_max_mm": null,
+          "source_cap_diameter_max_mm": null,
+          "source_columns": null,
+          "source_count": null,
+          "source_max_depth_mm": null,
+          "source_max_height_mm": null,
+          "source_max_width_mm": null,
+          "source_pitch_mm": null,
+          "source_radial_clearance_mm": null,
+          "source_rim_diameter_min_mm": null
+        },
+        "labware_selection": {
+          "profile_id": null,
+          "source": null
+        },
+        "recommendations": [],
+        "source_brief_constraints": null,
+        "source_brief_equipment": null,
+        "source_brief_materials": null,
+        "source_brief_objective": null,
+        "source_brief_process": null,
+        "source_cooling_enabled": null,
+        "source_cooling_target_c": null,
+        "source_equipment": null,
+        "source_final_volume": null,
+        "source_stock_concentration": null,
+        "source_target_concentrations": null,
+        "source_workflow_kind": null,
+        "source_workspace_width_mm": null,
+        "stock_concentration": null,
+        "target_concentrations": null,
+        "workflow_kind": null,
+        "workspace_width_mm": null
+      },
+      "baseline_summary": {
+        "stock_concentration": "5 mg/mL",
+        "target_concentrations": "0.5 mg/mL, 0.25 mg/mL, 0.05 mg/mL",
+        "final_volume": "200 uL",
+        "equipment": "manual pipette and microcentrifuge tubes",
+        "workspace_width_mm": 1250.0,
+        "cooling_enabled": true,
+        "cooling_target_c": 8.0
+      },
+      "baseline_plate": false,
+      "usage": {
+        "completion_tokens": 1368,
+        "prompt_tokens": 17892,
+        "total_tokens": 19260,
+        "completion_tokens_details": {
+          "reasoning_tokens": 866
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    }
+  ]
+}

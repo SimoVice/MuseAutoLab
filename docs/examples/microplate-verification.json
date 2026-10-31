@@ -1,0 +1,1068 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-10-31",
+  "scope": "Synthetic developer-defined tube-to-96-well digital integration and recorded live model responses. Not an independent held-out benchmark, physical fit, printed hardware or laboratory result.",
+  "dataset": "microplate-evaluation-cases.json",
+  "dataset_sha256": "44fbe28e391cff348f8080caca922fe5ae607458b62427ee98f9c372d5e820c3",
+  "model": "muse-spark-1.3-contributor",
+  "live_usage_totals": {
+    "provider_calls": 16,
+    "prompt_tokens": 287951,
+    "completion_tokens": 15682,
+    "total_tokens": 303633,
+    "calls_with_incomplete_usage": 0,
+    "scope": "Two fresh eight-call live rounds only; excludes replay."
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "mode": "fresh_live_model_responses",
+      "original_results": {
+        "record_id": "microplate-live-round-1-results",
+        "sha256": "c188fe32e5113cbf4e67eaf1e064542a01ed3770667921a686c1ebcbf5cbeca4",
+        "retention": "Original retained locally, without rewriting its recorded outcome."
+      },
+      "source_hash_before": "16e3482635fcd5b25ce3a089f243e6f04232c3c618cd4488e4cc031134b342a0",
+      "source_hash_after": "16e3482635fcd5b25ce3a089f243e6f04232c3c618cd4488e4cc031134b342a0",
+      "source_file_hashes": {
+        "app/__init__.py": "464183099e5bb44237949c81bfb4f94a3e022d516a60afda04dd4509b9439bb1",
+        "app/api.py": "eac1dd7a76ed49b540d32b764a6498850d92ba2c9241e094e25548264401f2d4",
+        "app/assembly.py": "4c3101ad40a439f390ef1eb5455bd0f1907514ccc81c372ec5c54387743b6b16",
+        "app/cad_exports.py": "cf76cd14bf093092a03a169a907f8377ef1504a649dea33c40e411e156f5cf51",
+        "app/catalog.py": "53d5946a523518e397744ac5400a4e12e7f57b1c15ff2fc884fa4ea708b8194b",
+        "app/chat_actions.py": "645d7ad1c4806cf79830b55e05daf0a8566e30b260ef99267f5dbd5f1453c89a",
+        "app/commercial_design.py": "9748bcbcd2ef8ce27125fb6475e1e3e41460a99fcf67b67119a772ffbf9afda7",
+        "app/design_agent.py": "cd31a5b14c846a0381b9fd95ab7f5b1b51e6becac18b6d3d77cadac21410d873",
+        "app/design_sources.py": "6a7850fefa6c72f281339c48d092ad448b186b98a4a5c3029fe6e6e9bc4f52ba",
+        "app/design_spec.py": "6cd1164d82feb4174cb5070ea28f79c4b2ac44356bbaa02fe90b2903da39037a",
+        "app/dilution.py": "d0fd610f5aff19ffcf4bab701f5f242615f768a16dda852d328e24d22f5c03c2",
+        "app/domain.py": "d43dd0f0be3b4c79025aa2d6d0b8285a468b3124070ac7a14d43ad8ad9d6e7d6",
+        "app/engineering.py": "d0b56b42d57f981b1c735d5e03f7d2b65840fac8abd95917482f36e6ede919c6",
+        "app/foundation_design.py": "c011128e01cd9de899df1bf01fd8e59da3a2600932868f255b9b4b537dec435f",
+        "app/geometry.py": "169a2a535f91ccf8fefc29cbf419aaa50cfd4941de64c6450dd258511a84a755",
+        "app/illustration.py": "2bd7c49fb0ae27da1037ff2b99db10683676deb017ccd0e71d05d1758301dc21",
+        "app/inspection.py": "feca370dc0976fc00b32e23b47ac11bf721c412dcf6bc5eda7e22ec3a3e1fcb8",
+        "app/inspection_geometry.py": "bb268128ed445156bfdb5a8565ac6ef5d111ec2fa9d77649b2cd50f80e5079f9",
+        "app/instructions.py": "04044789b8708e2dc689db3f0cfc0c4b7062b731db97524029624ceb1f4d9f7f",
+        "app/jubilee_procurement.py": "04f009676c4da800e0421b466ee676cc415e60102d67cbd1caa5b693e6fc1f9b",
+        "app/labware.py": "1774965c712b99470927fef8e8b9516dc6fec14401d3d0fffe6ffd6de9036f87",
+        "app/labware_geometry.py": "df964a72509269f68ec7894c226225212096f29cfd1b36e355b9d9f3b495c9cb",
+        "app/microplate_geometry.py": "cee95acf7801cd20d827d3d8c7aa258bc322dd0d15ecb00b4bebf5c15f5881f2",
+        "app/microplates.py": "8aa0f67c6d885c6944c66682c29b7e79d98f0744157f991abe68abf8b8029b85",
+        "app/model_catalog.py": "e3561b28b088ad584080e6e528503f4734172e96e22920f0018c5bc44ee6b5ab",
+        "app/model_client.py": "bcb0e87fe8940815c68ec0acf3a10fd1e4f727a6f2d7abfa3a51a1fdcae9da1b",
+        "app/physics.py": "8822fdbbb255b48ea22af3f4369ef521b02a3cfded399343cdb29b0144b30ec7",
+        "app/platform_profiles.py": "9aad75368bd3446dcabd102112a1cc9eecc5325b069514284c1e3c36ee61d891",
+        "app/procurement.py": "8a0e3ddc3e84012bc13278c99b7f1b0cf7f3be4383573cd949856ccfd5e7a0c4",
+        "app/project_exports.py": "8f4667adfb4ba900ea009c70a6b5bcfe82329312e1748ce676f28e031caf0e5b",
+        "app/project_storage.py": "4a337c524baead48f2dab0ea781b7715c44a8904606c7c58d0c547628e9bf1f8",
+        "app/quantities.py": "34922201bea961364053c1cdd711ffe5533936fd33d8e0f9c26c2eeb0165e78d",
+        "app/simulation_jobs.py": "bf40cb398d3dc481128df01b8016eb677e492316fad2dd51b86091a6ddf9f954",
+        "app/supplier_catalogs.py": "75988d8f4ed639a2371cd792e58490fa8b35db1033a78ce18738b82b6d792951",
+        "app/transcription.py": "56d29466e2e66317fe2ae2bb0f9151f8d9a17a47deb5fea1df0a5c67f0d39d6c",
+        "app/upstream_cad.py": "f608f069fcce125b7dd1df09281e64c50b83f12f56aea4745d24a31e4634326d",
+        "app/vision.py": "a14675350f178aac9fe9ea27676ca88f40140ad1424b860dec142cd6d31c8df4",
+        "app/vision_jobs.py": "8df5280f83c082e9e4c70cded873748f20614e4d1e6eb824f2a834e6d407b43c",
+        "app/workflows.py": "62f5b88bc41cb546c78869fcd94171e09509e81a05a34a9aa8a84f8646cac256",
+        "app/assets/jubilee-c877bd2.LICENSE.txt": "1236acdcd3cd0eaca49ee0ae0533d06c7637492b1ccbdea3e7fd68eece214018",
+        "app/assets/jubilee-c877bd2.provenance.json": "6a754814868ea5bba3d8230679c4aa45ddb6b01c27dc86b9ab267005c3d6a736",
+        "app/assets/jubilee-c877bd2.step.gz": "91fcc86d329d706d25d83b31e382daabfd2fe5f1697aac1ccec10eda5121096e",
+        "app/data/components-2026-10-27.json": "19a88269edac8f0de16c32054bc9cff6524258b536ccd2aaff41ddc6d0bb314c",
+        "app/data/design-references-2026-10-28.json": "3d522155746a04d52efb2ce0c309c7078c456c54e8c4444a231b43b4849ece7e",
+        "app/data/labware/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "app/data/labware/corning_96_wellplate_360ul_flat.json": "c13f112e52893e781c59ced9e6418ff10a5e2cc4b4877fd9559045f2f475558d",
+        "app/data/labware/provenance.json": "bc48d236817568f6790d068ad4e9fec49c2ebab4f1f7179abcd8b1024a874d61",
+        "app/data/ot2/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "app/data/ot2/deck.json": "f9bde02d43314e42c64d12f1a0d6d4f4aceb448371d37def27de76ff8a308e90",
+        "app/data/ot2/provenance.json": "9c4574528ce8ee43f589b8e4067b97c60cfee8ca3748f7314887ca42ff2219df",
+        "web/.npmrc": "b587435b99959dc1d8b13d2f2342f64a26c687f2a7e8e5b6ed92dc1c5199a58d",
+        "web/index.html": "6dd053456b821cd693bb901b990b4cb2d18338ff9a6b5cdb34d7119e7dd536e3",
+        "web/package-lock.json": "aa38df3bb5d641af5caa19277c9a5b08d10dc379fd007f356bef2d2fe4448d3b",
+        "web/package.json": "32017323e7e1ce15229d05001ff4c8c0b0e305be8dc831af60e2445add9ff804",
+        "web/tsconfig.json": "3b43ac26fc184326fee9b342fa04d0954badb0fd9ae4edfd7523f10d7a523cc9",
+        "web/vite.config.ts": "9c1f29b4d1383b712ff7af4031c4372117f8a26d568d0302b062876a6d52f509",
+        "web/public/assets/jubilee-c877bd2-bed.glb": "bf53a9f357ceb7e79b6998010e6868703da4441eaecca7c693936c8811452a6e",
+        "web/public/assets/jubilee-c877bd2-static.glb": "b6ccc45b055344b356dd86139d9018708ffb907fac8de9cddbd22b5dd8451697",
+        "web/public/examples/README.md": "787643bfe565f2d33d191bab5314ea057cf0caeb56ab455830c04414236a8d78",
+        "web/public/examples/labware.jpg": "0552537c0f9aebce96a6e5e842e7f5a2d31f5eca24a7c3353c2cfafab1c11484",
+        "web/scripts/check-environment.mjs": "590545cfb1cc4c07c33d20a4a01ce326c32d2caebc45c7d498244fe4e9e8eae6",
+        "web/src/AgentActivity.tsx": "e56ff2c59049b41fa3d7a394c656a24b0eee7d6993d2224b40dfa6e48986cbdd",
+        "web/src/App.tsx": "66e9a82c676db0f2edc3cb0e175ee354542658eeb1f61f1df2d43b84f1b06fd4",
+        "web/src/CameraPanel.tsx": "3b54c1edf27938e318eb2868a21bb5a40a08d49430ffd9ca17d4af322c90bbe1",
+        "web/src/ComponentCatalog.tsx": "1b97e6b046e2de65d1dd6954ecdb949c15340ec51d601d1cee3d9be12a6c58d1",
+        "web/src/DesignAgentPanel.tsx": "890048a72ab4065038e943f6de08516c041cdc035d308e5b379f950548bb482a",
+        "web/src/DesignSources.tsx": "408125ec356cb33111fd696f43e82f52e8a4272021a3f922bb258c4ace614e84",
+        "web/src/FoundationMesh.tsx": "34a807d3f92b6cf117a9bd5087e54d0f4dacaecfa5a0a0308663f96e36748dd2",
+        "web/src/GeometryPart.tsx": "c78959834a9be2acbdb4e60716f5e2bc3a1f7b47ae392cdc9c08145da3c21b2f",
+        "web/src/IllustrationPanel.tsx": "3c3b1d8168adf64c17509fe689da753602eced9d25aaca719a1f5175556ecc9f",
+        "web/src/InspectionPanel.tsx": "1a3dde7cd0d8f0a4970ee88b9ba59c91ee5802b5eefbcae284200d92802c5892",
+        "web/src/LabwareRackPanel.tsx": "4353b7efde05bd4dd0bb806224123f68ba2af8949d6ea34bba91ce31c255fced",
+        "web/src/MicroplatePanel.tsx": "c3c0b73fbbb74c8fd48ce6d0833aa1b463ae1e5c5c420e31f4f84fa99666307f",
+        "web/src/ModelSelector.tsx": "724621c941b0287f72737f70e62288b984a8818c2408b3ae9a2fecf7e0d6bb8b",
+        "web/src/PhysicsPanel.tsx": "d77c06f1c348483c5455e518b05e7542c2b2b9c5a697ad87320b6d8f13b2a8ff",
+        "web/src/ProjectFiles.tsx": "02b3ada4ee46d5bdc6137bbf3c61c317684418231b421753397d1a4d2c95e29c",
+        "web/src/ProjectResources.tsx": "fbefd5c14f1a2a6bfb524c0cc2d6b853bb8815897c49976fe7747b6c872da068",
+        "web/src/Scene.tsx": "d9be74994bc1014774a4397836945b62323a4427518d103856ce945e773c7af0",
+        "web/src/VoiceDictation.tsx": "cd8b69239be856bf7bf730a0095dd26728caae88fcfdc8f953c0a37ebe0ef925",
+        "web/src/chat-workspace.css": "2171b20efdf0d36e0b7876b8a4a449027818b74b05e7ce83a749c87d907437e5",
+        "web/src/labware-rack.css": "16758e650cde05418d5d1c76008aef063efe9bdb2a7fd2d0a5a989b2ff6e7664",
+        "web/src/main.tsx": "ab27a1bccd17d7e8bd9bfaac598fad2a208fd107f90565050ec7c507445a7718",
+        "web/src/operation.ts": "a1a4c1c6dccbb607fce587c905840a0c5b808607e22b5572426bc48416ede6aa",
+        "web/src/project-resources.css": "e139f4d0882cd38f8f812c6c71ffe963f7acd904ff42d7885d1a140cd5be4e6e",
+        "web/src/scene-controls.css": "e70b0d3681a54d803cb3539e09917eaefa2a2a00c2142dfcc2132675c6435395",
+        "web/src/style.css": "d3bea2a8784c463e31f224ec01cc9fee463d2a7c0286e3fd19b858280edcb14a",
+        "web/src/types.ts": "4b8ff3b35c55bf9a1bfc30dac5738a5e81c8b18e7e7145c6f1663e60e0dd2168",
+        "web/src/visionTypes.ts": "4471fd557f41f0304d55fa7aeb112195b60090f6cba2d312eba991327871abf5",
+        "web/src/voiceCapture.ts": "8ef271fe11d2b4d8301194a328e590a64d87f7a84e93e67a2e02c91eb7b2923b"
+      },
+      "harness_hash_before": "8eca2d748747714082c6ad76913a60cc4c75371092c4a6779ced07861dbca0d2",
+      "harness_hash_after": "8eca2d748747714082c6ad76913a60cc4c75371092c4a6779ced07861dbca0d2",
+      "harness_and_helper_hashes": {
+        "scripts/evaluate_microplates.py": "8eca2d748747714082c6ad76913a60cc4c75371092c4a6779ced07861dbca0d2",
+        "scripts/evaluate_labware.py": "b768664bee8d4968265bedd5b6618c6fcb1b8902e7c6ee1e741d58dc4b997466"
+      },
+      "fixture_hashes_by_name": {
+        "plate_200ul.json": "9ac891c8e49d212b0006f689e97db714d76ba6455624daab133045eb62212165",
+        "rack_200ul.json": "bf86c5a0708b7fd34f9058333674b0d50e0b156f1f0e7cd018d301a41ecaeaf1",
+        "rack_2ml.json": "64621bb021bfdec27edc7904cdfdc254b4d7c75869cff744a037a1ce35f40247"
+      },
+      "provider_calls": 8,
+      "usage": {
+        "prompt_tokens": 143422,
+        "completion_tokens": 7608,
+        "total_tokens": 151030,
+        "calls_with_incomplete_usage": 0
+      },
+      "recorded_elapsed_seconds": 85.719,
+      "automatic_passes": 8,
+      "automatic_total": 8,
+      "cases": [
+        {
+          "id": "S1_italian_simple",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 8.078,
+              "user_prompt": "Sostituisci le provette con una piastra da 96 pozzetti.",
+              "final_reply_utf8_sha256": "11aba571ca56a638b0ee720950fd8e88823054a1bf30d00953726af3dec8b32d"
+            }
+          ]
+        },
+        {
+          "id": "S2_english_simple",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 11.375,
+              "user_prompt": "Switch from Eppendorf 1.5 mL tubes to a 96-well microplate.",
+              "final_reply_utf8_sha256": "4cd5977d9e4cf92c6208e79a123c9d507f85e7824711686fdf7a24f5ee3d945d"
+            }
+          ]
+        },
+        {
+          "id": "S3_volume_conflict",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 8.235,
+              "user_prompt": "Sostituisci le provette con una piastra da 96 pozzetti.",
+              "final_reply_utf8_sha256": "b847503f7e80eadd07e94cff88c95dbde0d0eec9224d7afa510ca17eb15307f0"
+            }
+          ]
+        },
+        {
+          "id": "S4_explicit_volume",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 7.937,
+              "user_prompt": "Passa a una piastra da 96 pozzetti, con 200 ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµL per pozzetto.",
+              "final_reply_utf8_sha256": "6a64cceb152ba5d6322b2f517c9c2e8e199dedfa0612ed680df053ac7d1bfaf9"
+            }
+          ]
+        },
+        {
+          "id": "S5_restore_rack",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 6.828,
+              "user_prompt": "Torna al portaprovette precedente.",
+              "final_reply_utf8_sha256": "fd32e7c56e014d72010537b4abf42c566761b7a0a3916a2b197f8a76794cd507"
+            }
+          ]
+        },
+        {
+          "id": "S6_mixed_language",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 11.141,
+              "user_prompt": "Passa da eppendorf 1.5ml a 96 microwells plates.",
+              "final_reply_utf8_sha256": "0e0a3525153b1b2aab1e5b978311b70c2e439b3410f686d401d7fb55f013260c"
+            }
+          ]
+        },
+        {
+          "id": "N1_unsupported_384",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 9.203,
+              "user_prompt": "Sostituisci la piastra con una da 384 pozzetti.",
+              "final_reply_utf8_sha256": "044e913e7caed88ba90fea107a0d63e7d31e517c6fa4caa46bb91001479a4e80"
+            }
+          ]
+        },
+        {
+          "id": "N2_specific_pcr",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 15.031,
+              "user_prompt": "Use a Bio-Rad 96-well PCR plate instead.",
+              "final_reply_utf8_sha256": "f70219a68ead402e45ed3e10325abae9e9404e6c44f74c430f67df2236108b97"
+            }
+          ]
+        }
+      ],
+      "original_provider_response_digests": [
+        {
+          "call": 1,
+          "case_id": "S1_italian_simple",
+          "response_body_sha256": "fa57754bdda7568abb9cd256a3ba9f8e6f8fdb9c1fb8964d4a69c9bbd1717247",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 2,
+          "case_id": "S2_english_simple",
+          "response_body_sha256": "e7a8e9390ebe140ffd3afb4078817f7810ccf65ac9a4a9e1e51b1a8d27e35565",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 3,
+          "case_id": "S3_volume_conflict",
+          "response_body_sha256": "0bda7cce2371d35e620cca4fa7ad64bac075f46a30f900729ab05619caa22fbb",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 4,
+          "case_id": "S4_explicit_volume",
+          "response_body_sha256": "3c0f87a4af1cc0112fba42ba06a2e913a356900ca34775567e05dbbcbb7029ce",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 5,
+          "case_id": "S5_restore_rack",
+          "response_body_sha256": "ad760337be576fe1352a8c3498f26edc6ced1f874577ec532456509aad2730a6",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 6,
+          "case_id": "S6_mixed_language",
+          "response_body_sha256": "f90411356b8668bf1b4868ad7701f56ba97326714e91ee3414f370cf5754077f",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 7,
+          "case_id": "N1_unsupported_384",
+          "response_body_sha256": "ba71a86a4af1f955997c0a58401c70fdb97660c7b7ee4b83313e728a53c50612",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 8,
+          "case_id": "N2_specific_pcr",
+          "response_body_sha256": "f26249bedc3a6dd435c3335392fa2242d7fc75b8d95c13c6716f4c190035e2a0",
+          "recorded_http_status": 200
+        }
+      ],
+      "manual_review": {
+        "record": {
+          "record_id": "round-1-manual-stale-prose-review",
+          "sha256": "d48bf6c1e8f920b2f7efbd948f3cd8c3c54f5e0475de4de844c85f835e721dbf",
+          "retention": "Original retained locally, without rewriting its recorded outcome."
+        },
+        "reviewed_at": "2026-10-31T01:45:48.398817+00:00",
+        "accepted": false,
+        "finding": "Not accepted: user-visible reply contradicts canonical state in S1/S2/S6 and plate recipe labels are wrong.",
+        "cases": [
+          {
+            "id": "S1_italian_simple",
+            "reply_sha256": "11aba571ca56a638b0ee720950fd8e88823054a1bf30d00953726af3dec8b32d",
+            "findings": [
+              "Final reply claims the obsolete 2 mL recipe is blocked and asks for volume, while canonical plate is ready at 200 uL.",
+              "Deterministic recipe appendix incorrectly says per tube for the active plate."
+            ]
+          },
+          {
+            "id": "S2_english_simple",
+            "reply_sha256": "4cd5977d9e4cf92c6208e79a123c9d507f85e7824711686fdf7a24f5ee3d945d",
+            "findings": [
+              "Final reply asks to choose a volume to unblock a recipe already ready at 200 uL.",
+              "Deterministic recipe appendix incorrectly says per tube for the active plate."
+            ]
+          },
+          {
+            "id": "S3_volume_conflict",
+            "reply_sha256": "b847503f7e80eadd07e94cff88c95dbde0d0eec9224d7afa510ca17eb15307f0",
+            "findings": [
+              "Volume conflict is accurately described; the new complete reply audit also requires explicit current count and occupied addresses."
+            ]
+          },
+          {
+            "id": "S4_explicit_volume",
+            "reply_sha256": "6a64cceb152ba5d6322b2f517c9c2e8e199dedfa0612ed680df053ac7d1bfaf9",
+            "findings": [
+              "Freeform state is consistent; deterministic recipe appendix incorrectly says per tube for the active plate."
+            ]
+          },
+          {
+            "id": "S5_restore_rack",
+            "reply_sha256": "fd32e7c56e014d72010537b4abf42c566761b7a0a3916a2b197f8a76794cd507",
+            "findings": []
+          },
+          {
+            "id": "S6_mixed_language",
+            "reply_sha256": "0e0a3525153b1b2aab1e5b978311b70c2e439b3410f686d401d7fb55f013260c",
+            "findings": [
+              "Final reply claims the obsolete 2 mL recipe is blocked/draft while canonical plate is ready at 200 uL.",
+              "Deterministic recipe appendix incorrectly says per tube for the active plate."
+            ]
+          },
+          {
+            "id": "N1_unsupported_384",
+            "reply_sha256": "044e913e7caed88ba90fea107a0d63e7d31e517c6fa4caa46bb91001479a4e80",
+            "findings": []
+          },
+          {
+            "id": "N2_specific_pcr",
+            "reply_sha256": "f70219a68ead402e45ed3e10325abae9e9404e6c44f74c430f67df2236108b97",
+            "findings": []
+          }
+        ],
+        "interpretation": "8/8 describes the original narrower structural audit only. It did not establish coherent user-visible prose; the retained S1/S2/S6 replies contradicted the canonical 200 uL state and per-tube labels were wrong."
+      }
+    },
+    {
+      "round": 2,
+      "mode": "fresh_live_model_responses",
+      "original_results": {
+        "record_id": "microplate-live-round-2-results",
+        "sha256": "2eee6868187763dc5433355c79465f25bfa4e56138f24cb509e42418eca72dc4",
+        "retention": "Original retained locally, without rewriting its recorded outcome."
+      },
+      "source_hash_before": "e404d9f21bf006a1458464857c1b52ee8be99a440fe21e05ccf53ceaf3654a19",
+      "source_hash_after": "e404d9f21bf006a1458464857c1b52ee8be99a440fe21e05ccf53ceaf3654a19",
+      "source_file_hashes": {
+        "app/__init__.py": "464183099e5bb44237949c81bfb4f94a3e022d516a60afda04dd4509b9439bb1",
+        "app/api.py": "3587ed77d3973437054e33ccd2e6b6ff5fca062cab30af40ad85f0b52b45e022",
+        "app/assembly.py": "4c3101ad40a439f390ef1eb5455bd0f1907514ccc81c372ec5c54387743b6b16",
+        "app/cad_exports.py": "cf76cd14bf093092a03a169a907f8377ef1504a649dea33c40e411e156f5cf51",
+        "app/catalog.py": "53d5946a523518e397744ac5400a4e12e7f57b1c15ff2fc884fa4ea708b8194b",
+        "app/chat_actions.py": "645d7ad1c4806cf79830b55e05daf0a8566e30b260ef99267f5dbd5f1453c89a",
+        "app/commercial_design.py": "9748bcbcd2ef8ce27125fb6475e1e3e41460a99fcf67b67119a772ffbf9afda7",
+        "app/design_agent.py": "cd31a5b14c846a0381b9fd95ab7f5b1b51e6becac18b6d3d77cadac21410d873",
+        "app/design_sources.py": "6a7850fefa6c72f281339c48d092ad448b186b98a4a5c3029fe6e6e9bc4f52ba",
+        "app/design_spec.py": "6cd1164d82feb4174cb5070ea28f79c4b2ac44356bbaa02fe90b2903da39037a",
+        "app/dilution.py": "d0fd610f5aff19ffcf4bab701f5f242615f768a16dda852d328e24d22f5c03c2",
+        "app/domain.py": "d43dd0f0be3b4c79025aa2d6d0b8285a468b3124070ac7a14d43ad8ad9d6e7d6",
+        "app/engineering.py": "d0b56b42d57f981b1c735d5e03f7d2b65840fac8abd95917482f36e6ede919c6",
+        "app/foundation_design.py": "c011128e01cd9de899df1bf01fd8e59da3a2600932868f255b9b4b537dec435f",
+        "app/geometry.py": "169a2a535f91ccf8fefc29cbf419aaa50cfd4941de64c6450dd258511a84a755",
+        "app/illustration.py": "2bd7c49fb0ae27da1037ff2b99db10683676deb017ccd0e71d05d1758301dc21",
+        "app/inspection.py": "feca370dc0976fc00b32e23b47ac11bf721c412dcf6bc5eda7e22ec3a3e1fcb8",
+        "app/inspection_geometry.py": "bb268128ed445156bfdb5a8565ac6ef5d111ec2fa9d77649b2cd50f80e5079f9",
+        "app/instructions.py": "04044789b8708e2dc689db3f0cfc0c4b7062b731db97524029624ceb1f4d9f7f",
+        "app/jubilee_procurement.py": "04f009676c4da800e0421b466ee676cc415e60102d67cbd1caa5b693e6fc1f9b",
+        "app/labware.py": "1774965c712b99470927fef8e8b9516dc6fec14401d3d0fffe6ffd6de9036f87",
+        "app/labware_geometry.py": "df964a72509269f68ec7894c226225212096f29cfd1b36e355b9d9f3b495c9cb",
+        "app/microplate_geometry.py": "cee95acf7801cd20d827d3d8c7aa258bc322dd0d15ecb00b4bebf5c15f5881f2",
+        "app/microplates.py": "1ec853fc48f66cbf1b476e9a58c4e60604d0cb3fe40fd3cc3a056717c7829c6a",
+        "app/model_catalog.py": "e3561b28b088ad584080e6e528503f4734172e96e22920f0018c5bc44ee6b5ab",
+        "app/model_client.py": "5e5df72ef8234e2840364dd143cc00ede266fdfa5fb2fac712b8d23aec748bd4",
+        "app/physics.py": "8822fdbbb255b48ea22af3f4369ef521b02a3cfded399343cdb29b0144b30ec7",
+        "app/platform_profiles.py": "9aad75368bd3446dcabd102112a1cc9eecc5325b069514284c1e3c36ee61d891",
+        "app/procurement.py": "8a0e3ddc3e84012bc13278c99b7f1b0cf7f3be4383573cd949856ccfd5e7a0c4",
+        "app/project_exports.py": "8f4667adfb4ba900ea009c70a6b5bcfe82329312e1748ce676f28e031caf0e5b",
+        "app/project_storage.py": "4a337c524baead48f2dab0ea781b7715c44a8904606c7c58d0c547628e9bf1f8",
+        "app/quantities.py": "34922201bea961364053c1cdd711ffe5533936fd33d8e0f9c26c2eeb0165e78d",
+        "app/simulation_jobs.py": "bf40cb398d3dc481128df01b8016eb677e492316fad2dd51b86091a6ddf9f954",
+        "app/supplier_catalogs.py": "75988d8f4ed639a2371cd792e58490fa8b35db1033a78ce18738b82b6d792951",
+        "app/transcription.py": "56d29466e2e66317fe2ae2bb0f9151f8d9a17a47deb5fea1df0a5c67f0d39d6c",
+        "app/upstream_cad.py": "f608f069fcce125b7dd1df09281e64c50b83f12f56aea4745d24a31e4634326d",
+        "app/vision.py": "a14675350f178aac9fe9ea27676ca88f40140ad1424b860dec142cd6d31c8df4",
+        "app/vision_jobs.py": "8df5280f83c082e9e4c70cded873748f20614e4d1e6eb824f2a834e6d407b43c",
+        "app/workflows.py": "62f5b88bc41cb546c78869fcd94171e09509e81a05a34a9aa8a84f8646cac256",
+        "app/assets/jubilee-c877bd2.LICENSE.txt": "1236acdcd3cd0eaca49ee0ae0533d06c7637492b1ccbdea3e7fd68eece214018",
+        "app/assets/jubilee-c877bd2.provenance.json": "6a754814868ea5bba3d8230679c4aa45ddb6b01c27dc86b9ab267005c3d6a736",
+        "app/assets/jubilee-c877bd2.step.gz": "91fcc86d329d706d25d83b31e382daabfd2fe5f1697aac1ccec10eda5121096e",
+        "app/data/components-2026-10-27.json": "19a88269edac8f0de16c32054bc9cff6524258b536ccd2aaff41ddc6d0bb314c",
+        "app/data/design-references-2026-10-28.json": "3d522155746a04d52efb2ce0c309c7078c456c54e8c4444a231b43b4849ece7e",
+        "app/data/labware/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "app/data/labware/corning_96_wellplate_360ul_flat.json": "c13f112e52893e781c59ced9e6418ff10a5e2cc4b4877fd9559045f2f475558d",
+        "app/data/labware/provenance.json": "bc48d236817568f6790d068ad4e9fec49c2ebab4f1f7179abcd8b1024a874d61",
+        "app/data/ot2/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "app/data/ot2/deck.json": "f9bde02d43314e42c64d12f1a0d6d4f4aceb448371d37def27de76ff8a308e90",
+        "app/data/ot2/provenance.json": "9c4574528ce8ee43f589b8e4067b97c60cfee8ca3748f7314887ca42ff2219df",
+        "web/.npmrc": "b587435b99959dc1d8b13d2f2342f64a26c687f2a7e8e5b6ed92dc1c5199a58d",
+        "web/index.html": "6dd053456b821cd693bb901b990b4cb2d18338ff9a6b5cdb34d7119e7dd536e3",
+        "web/package-lock.json": "aa38df3bb5d641af5caa19277c9a5b08d10dc379fd007f356bef2d2fe4448d3b",
+        "web/package.json": "32017323e7e1ce15229d05001ff4c8c0b0e305be8dc831af60e2445add9ff804",
+        "web/tsconfig.json": "3b43ac26fc184326fee9b342fa04d0954badb0fd9ae4edfd7523f10d7a523cc9",
+        "web/vite.config.ts": "9c1f29b4d1383b712ff7af4031c4372117f8a26d568d0302b062876a6d52f509",
+        "web/public/assets/jubilee-c877bd2-bed.glb": "bf53a9f357ceb7e79b6998010e6868703da4441eaecca7c693936c8811452a6e",
+        "web/public/assets/jubilee-c877bd2-static.glb": "b6ccc45b055344b356dd86139d9018708ffb907fac8de9cddbd22b5dd8451697",
+        "web/public/examples/README.md": "787643bfe565f2d33d191bab5314ea057cf0caeb56ab455830c04414236a8d78",
+        "web/public/examples/labware.jpg": "0552537c0f9aebce96a6e5e842e7f5a2d31f5eca24a7c3353c2cfafab1c11484",
+        "web/scripts/check-environment.mjs": "590545cfb1cc4c07c33d20a4a01ce326c32d2caebc45c7d498244fe4e9e8eae6",
+        "web/src/AgentActivity.tsx": "e56ff2c59049b41fa3d7a394c656a24b0eee7d6993d2224b40dfa6e48986cbdd",
+        "web/src/App.tsx": "66e9a82c676db0f2edc3cb0e175ee354542658eeb1f61f1df2d43b84f1b06fd4",
+        "web/src/CameraPanel.tsx": "3b54c1edf27938e318eb2868a21bb5a40a08d49430ffd9ca17d4af322c90bbe1",
+        "web/src/ComponentCatalog.tsx": "1b97e6b046e2de65d1dd6954ecdb949c15340ec51d601d1cee3d9be12a6c58d1",
+        "web/src/DesignAgentPanel.tsx": "890048a72ab4065038e943f6de08516c041cdc035d308e5b379f950548bb482a",
+        "web/src/DesignSources.tsx": "408125ec356cb33111fd696f43e82f52e8a4272021a3f922bb258c4ace614e84",
+        "web/src/FoundationMesh.tsx": "34a807d3f92b6cf117a9bd5087e54d0f4dacaecfa5a0a0308663f96e36748dd2",
+        "web/src/GeometryPart.tsx": "c78959834a9be2acbdb4e60716f5e2bc3a1f7b47ae392cdc9c08145da3c21b2f",
+        "web/src/IllustrationPanel.tsx": "3c3b1d8168adf64c17509fe689da753602eced9d25aaca719a1f5175556ecc9f",
+        "web/src/InspectionPanel.tsx": "1a3dde7cd0d8f0a4970ee88b9ba59c91ee5802b5eefbcae284200d92802c5892",
+        "web/src/LabwareRackPanel.tsx": "4353b7efde05bd4dd0bb806224123f68ba2af8949d6ea34bba91ce31c255fced",
+        "web/src/MicroplatePanel.tsx": "c3c0b73fbbb74c8fd48ce6d0833aa1b463ae1e5c5c420e31f4f84fa99666307f",
+        "web/src/ModelSelector.tsx": "724621c941b0287f72737f70e62288b984a8818c2408b3ae9a2fecf7e0d6bb8b",
+        "web/src/PhysicsPanel.tsx": "d77c06f1c348483c5455e518b05e7542c2b2b9c5a697ad87320b6d8f13b2a8ff",
+        "web/src/ProjectFiles.tsx": "02b3ada4ee46d5bdc6137bbf3c61c317684418231b421753397d1a4d2c95e29c",
+        "web/src/ProjectResources.tsx": "fbefd5c14f1a2a6bfb524c0cc2d6b853bb8815897c49976fe7747b6c872da068",
+        "web/src/Scene.tsx": "d9be74994bc1014774a4397836945b62323a4427518d103856ce945e773c7af0",
+        "web/src/VoiceDictation.tsx": "cd8b69239be856bf7bf730a0095dd26728caae88fcfdc8f953c0a37ebe0ef925",
+        "web/src/chat-workspace.css": "2171b20efdf0d36e0b7876b8a4a449027818b74b05e7ce83a749c87d907437e5",
+        "web/src/labware-rack.css": "16758e650cde05418d5d1c76008aef063efe9bdb2a7fd2d0a5a989b2ff6e7664",
+        "web/src/main.tsx": "ab27a1bccd17d7e8bd9bfaac598fad2a208fd107f90565050ec7c507445a7718",
+        "web/src/operation.ts": "a1a4c1c6dccbb607fce587c905840a0c5b808607e22b5572426bc48416ede6aa",
+        "web/src/project-resources.css": "e139f4d0882cd38f8f812c6c71ffe963f7acd904ff42d7885d1a140cd5be4e6e",
+        "web/src/scene-controls.css": "e70b0d3681a54d803cb3539e09917eaefa2a2a00c2142dfcc2132675c6435395",
+        "web/src/style.css": "d3bea2a8784c463e31f224ec01cc9fee463d2a7c0286e3fd19b858280edcb14a",
+        "web/src/types.ts": "4b8ff3b35c55bf9a1bfc30dac5738a5e81c8b18e7e7145c6f1663e60e0dd2168",
+        "web/src/visionTypes.ts": "4471fd557f41f0304d55fa7aeb112195b60090f6cba2d312eba991327871abf5",
+        "web/src/voiceCapture.ts": "8ef271fe11d2b4d8301194a328e590a64d87f7a84e93e67a2e02c91eb7b2923b"
+      },
+      "harness_hash_before": "3a6bdee3a38933a4a70814cb2d3f62b3ef41d07521527c3d43490a948aebe81a",
+      "harness_hash_after": "3a6bdee3a38933a4a70814cb2d3f62b3ef41d07521527c3d43490a948aebe81a",
+      "harness_and_helper_hashes": {
+        "scripts/evaluate_microplates.py": "3a6bdee3a38933a4a70814cb2d3f62b3ef41d07521527c3d43490a948aebe81a",
+        "scripts/evaluate_labware.py": "b768664bee8d4968265bedd5b6618c6fcb1b8902e7c6ee1e741d58dc4b997466"
+      },
+      "fixture_hashes_by_name": {
+        "plate_200ul.json": "9ac891c8e49d212b0006f689e97db714d76ba6455624daab133045eb62212165",
+        "rack_200ul.json": "bf86c5a0708b7fd34f9058333674b0d50e0b156f1f0e7cd018d301a41ecaeaf1",
+        "rack_2ml.json": "64621bb021bfdec27edc7904cdfdc254b4d7c75869cff744a037a1ce35f40247"
+      },
+      "provider_calls": 8,
+      "usage": {
+        "prompt_tokens": 144529,
+        "completion_tokens": 8074,
+        "total_tokens": 152603,
+        "calls_with_incomplete_usage": 0
+      },
+      "recorded_elapsed_seconds": 84.469,
+      "automatic_passes": 7,
+      "automatic_total": 8,
+      "cases": [
+        {
+          "id": "S1_italian_simple",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 7.766,
+              "user_prompt": "Sostituisci le provette con una piastra da 96 pozzetti.",
+              "final_reply_utf8_sha256": "0858c8d661736fd11814ab93a586ae94a13ae2481a6b4be1e3f54c75e1416238"
+            }
+          ]
+        },
+        {
+          "id": "S2_english_simple",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 9.578,
+              "user_prompt": "Switch from Eppendorf 1.5 mL tubes to a 96-well microplate.",
+              "final_reply_utf8_sha256": "0858c8d661736fd11814ab93a586ae94a13ae2481a6b4be1e3f54c75e1416238"
+            }
+          ]
+        },
+        {
+          "id": "S3_volume_conflict",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 8.875,
+              "user_prompt": "Sostituisci le provette con una piastra da 96 pozzetti.",
+              "final_reply_utf8_sha256": "14e9a08961b1cd18962768d80d74c4f93ae8d15edbb7b5381d37e8e3e5afc392"
+            }
+          ]
+        },
+        {
+          "id": "S4_explicit_volume",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 10.75,
+              "user_prompt": "Passa a una piastra da 96 pozzetti, con 200 ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµL per pozzetto.",
+              "final_reply_utf8_sha256": "0858c8d661736fd11814ab93a586ae94a13ae2481a6b4be1e3f54c75e1416238"
+            }
+          ]
+        },
+        {
+          "id": "S5_restore_rack",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 7.969,
+              "user_prompt": "Torna al portaprovette precedente.",
+              "final_reply_utf8_sha256": "04582c114dae7eccd1dd0744196a28a6ab6a327d88deb740705bebb47847a965"
+            }
+          ]
+        },
+        {
+          "id": "S6_mixed_language",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 7.953,
+              "user_prompt": "Passa da eppendorf 1.5ml a 96 microwells plates.",
+              "final_reply_utf8_sha256": "0858c8d661736fd11814ab93a586ae94a13ae2481a6b4be1e3f54c75e1416238"
+            }
+          ]
+        },
+        {
+          "id": "N1_unsupported_384",
+          "recorded_automatic_status": "passed",
+          "recorded_error": null,
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 8.984,
+              "user_prompt": "Sostituisci la piastra con una da 384 pozzetti.",
+              "final_reply_utf8_sha256": "222eb1b8babbcc57f9770857cd9a3ddd5093834bb16245ca1a6911e2f0eda66d"
+            }
+          ]
+        },
+        {
+          "id": "N2_specific_pcr",
+          "recorded_automatic_status": "failed",
+          "recorded_error": "Unsupported reply does not say the existing state was preserved",
+          "turns": [
+            {
+              "http_status": 200,
+              "recorded_product_turn_seconds": 11.531,
+              "user_prompt": "Use a Bio-Rad 96-well PCR plate instead.",
+              "final_reply_utf8_sha256": "1435d67bb90753fcb26c52bb27281f627c7a95c2d2846fb16c74aea7e597a3b1"
+            }
+          ]
+        }
+      ],
+      "original_provider_response_digests": [
+        {
+          "call": 1,
+          "case_id": "S1_italian_simple",
+          "response_body_sha256": "dfc91405c6f31a0d7b8023ebccfd601b106d420d344508602bdca56df4a17e5a",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 2,
+          "case_id": "S2_english_simple",
+          "response_body_sha256": "cc30e15123607a45cc907411ab7526445f6f8f54a97dd8fe9dc697de6d42d88e",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 3,
+          "case_id": "S3_volume_conflict",
+          "response_body_sha256": "37841ba2fa999ffdee2884cbb4c63426f66c4d00d21dd9bdb0bf5c5552998ade",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 4,
+          "case_id": "S4_explicit_volume",
+          "response_body_sha256": "aa06ea5a40338ccd1da9bb38ccfe4f41770c49ac105f994fe025eee2b5acbcdb",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 5,
+          "case_id": "S5_restore_rack",
+          "response_body_sha256": "8a1da5f60a0dd57fb4e308b787b028bb7ec004ef6b2e1dd99614cceea4ecae60",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 6,
+          "case_id": "S6_mixed_language",
+          "response_body_sha256": "5491b468c65c4fe25748d7c4d81ae756c6399f4c1441bc4a058aee7d3beb1ceb",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 7,
+          "case_id": "N1_unsupported_384",
+          "response_body_sha256": "aead6473177ee0cecffe95f7fb6bcd3a79c7e384a696e81dde56e53af3b43fb8",
+          "recorded_http_status": 200
+        },
+        {
+          "call": 8,
+          "case_id": "N2_specific_pcr",
+          "response_body_sha256": "507bf7bde68bc69bfc51a359534169047307ec773e6d800b58626de6f8f2d8d2",
+          "recorded_http_status": 200
+        }
+      ],
+      "manual_review": {
+        "record": {
+          "record_id": "round-2-evaluator-false-negative-review",
+          "sha256": "85129e980604f70b25083b13c0f7679f5bee4bb1077486808b7256e478e08234",
+          "retention": "Original retained locally, without rewriting its recorded outcome."
+        },
+        "reviewed_at": "2026-10-31T01:55:26.840599+00:00",
+        "manually_accepted": 8,
+        "total": 8,
+        "case_id": "N2_specific_pcr",
+        "original_failure": "Unsupported reply does not say the existing state was preserved",
+        "actual_final_reply": "I can't switch to a Bio-Rad 96-well PCR plate - the only reviewed plate reference for this Jubilee sample module is the Corning 96 Well Plate 360 ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµL Flat. There's no adapter for other plate formats, named vendor SKUs, or arbitrary URLs. Your measured 12-position rack stays as-is. If you want the supported option, ask for the Corning 96 Well Plate 360 ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµL Flat.",
+        "canonical_whole_project_equal": true,
+        "unsupported_destination_not_adopted": true,
+        "finding": "The final sentence explicitly preserves the measured rack using stays as-is. The evaluator only recognized a narrower synonym set. This was an evaluator false negative, not a product state failure.",
+        "evaluator_change": "Recognize stays as-is / remains as is and equivalent stay/remain forms; retain whole-state equality, explicit rejection and no-substitution checks, and reject negated preservation.",
+        "interpretation": "The immutable raw automatic result remains 7/8. Manual review found all eight outputs correct; strict replay below checks the repaired evaluator against those same recorded responses, without a new live round."
+      }
+    }
+  ],
+  "strict_replay": {
+    "mode": "recorded_response_replay",
+    "original_results": {
+      "record_id": "round-2-strict-replay",
+      "sha256": "347d3318a443eecfec1324a13f52829ab38e0585ec61861d2f1d60488adec748",
+      "retention": "Original retained locally, without rewriting its recorded outcome."
+    },
+    "passed": 8,
+    "total": 8,
+    "new_provider_calls": 0,
+    "replayed_responses": 8,
+    "historical_usage_only": {
+      "prompt_tokens": 144529,
+      "completion_tokens": 8074,
+      "total_tokens": 152603,
+      "calls_with_incomplete_usage": 0
+    },
+    "new_token_consumption": 0,
+    "source_hash_before": "e404d9f21bf006a1458464857c1b52ee8be99a440fe21e05ccf53ceaf3654a19",
+    "source_hash_after": "e404d9f21bf006a1458464857c1b52ee8be99a440fe21e05ccf53ceaf3654a19",
+    "harness_hash_before": "5d8e7d013a9acbb63f58ec15eb1e4179fbcdec19e144bdcb90dc84bdc82e2bd7",
+    "harness_hash_after": "5d8e7d013a9acbb63f58ec15eb1e4179fbcdec19e144bdcb90dc84bdc82e2bd7",
+    "harness_and_helper_hashes": {
+      "scripts/evaluate_microplates.py": "5d8e7d013a9acbb63f58ec15eb1e4179fbcdec19e144bdcb90dc84bdc82e2bd7",
+      "scripts/evaluate_labware.py": "b768664bee8d4968265bedd5b6618c6fcb1b8902e7c6ee1e741d58dc4b997466"
+    },
+    "recorded_elapsed_seconds": 14.875,
+    "interpretation": "Regression replay of known outputs, not independent generalization evidence. Historical replay usage is not added to the 16 live-call total."
+  },
+  "paired_projects": {
+    "before": {
+      "path": "microplate-tube-setup.json",
+      "bytes": 27964,
+      "sha256": "bf86c5a0708b7fd34f9058333674b0d50e0b156f1f0e7cd018d301a41ecaeaf1",
+      "classification": "Synthetic 200 uL-per-tube setup, not a fresh model result.",
+      "copy_method": "Byte-identical copy of the recorded round-2 fixture."
+    },
+    "after": {
+      "path": "microplate-project.json",
+      "bytes": 28473,
+      "sha256": "579a116537524b9a5c00a54bd363c374b6c2861708e01d156c2a07b72b231e3a",
+      "classification": "Actual round-2 S1 result, subsequently confirmed at revision 16.",
+      "copy_method": "Byte-identical copy of the recorded final confirmed snapshot."
+    },
+    "expected": {
+      "profile_id": "corning_96_wellplate_360ul_flat",
+      "well_count": 96,
+      "occupied_wells": [
+        "A1",
+        "B1",
+        "C1"
+      ],
+      "per_well_volume_ul": 200,
+      "target_count": 3,
+      "plate_reference_is_manufacturer_cad": false
+    }
+  },
+  "original_full_package": {
+    "verification_record": {
+      "record_id": "original-full-package-verification",
+      "sha256": "5fc26e366a8bead4348efeb68b86d90a7cb723217c3e0449b76dd8075b375ce5",
+      "retention": "Original retained locally, without rewriting its recorded outcome."
+    },
+    "status": "passed",
+    "revision": 16,
+    "recorded_verification_elapsed_seconds": 415.86,
+    "elapsed_scope": "Whole recorded export/download/reopen/probe verification, not model response latency or a measured CAD-only duration.",
+    "source_hash_before": "e404d9f21bf006a1458464857c1b52ee8be99a440fe21e05ccf53ceaf3654a19",
+    "source_hash_after": "e404d9f21bf006a1458464857c1b52ee8be99a440fe21e05ccf53ceaf3654a19",
+    "verification_harness_hash_before": "1703f9530216b5b828f857c9b4beab9787066f26662de5294cc63d5dcdd8455a",
+    "verification_harness_hash_after": "1703f9530216b5b828f857c9b4beab9787066f26662de5294cc63d5dcdd8455a",
+    "source_original_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+    "archive_bytes": 80502312,
+    "archive_sha256": "77d3eda1c8329069a08804209f2c507789b98b6c49b52399af19590ca853a516",
+    "archive_published": false,
+    "publication_scope": "Only the small artifact subset listed below.",
+    "manifest_files": 31,
+    "manifest_hashes_match": true,
+    "guide_matches_current_preview": true,
+    "bom_matches_current_project": true,
+    "plate_and_holder_group_quantity": 1,
+    "plate_and_holder_unpriced": true,
+    "plate_source_hash_matches": true,
+    "full_step_reopened_valid": true,
+    "full_step_solid_count": 861,
+    "source_solids": 809,
+    "full_step_part_ids_and_bounds_match": true,
+    "source_bed_hierarchy_retained": true,
+    "sample_module_separate_solids": 2,
+    "holder_one_fused_solid": true,
+    "reference_one_schematic_solid": true,
+    "digital_well_count": 96,
+    "all_digital_wells_probed": true,
+    "occupied_preparations": 3,
+    "occupied_wells": [
+      "A1",
+      "B1",
+      "C1"
+    ],
+    "new_model_calls": 0,
+    "supplier_refreshes": 0,
+    "earlier_attempt": {
+      "verification_record": {
+        "record_id": "earlier-package-attempt-timeout",
+        "sha256": "754718a8f9f1491d0df1a89cdee5dfc5a2c961568c849ec64d97e68f0ac6ffd7",
+        "retention": "Original retained locally, without rewriting its recorded outcome."
+      },
+      "recorded_status": "failed",
+      "recorded_error": "Package exceeded thirty minutes",
+      "recorded_elapsed_seconds": 21432.47,
+      "interpretation": "The first package attempt timed out during an interrupted verification session. Root later verified the original server was alive and its CAD job ready. No CAD generation failure or server death is inferred from restricted process inspection or elapsed time.",
+      "cad_generation_failure_inferred": false
+    }
+  },
+  "real_ui_capture": {
+    "metadata_original_sha256": "a185c07c076218d00576ee6d2607f41b9b06524f0f383e11f78d116cb0301874",
+    "status": "passed",
+    "revision": 16,
+    "project_status": "confirmed",
+    "actual_reply_utf8_sha256": "0858c8d661736fd11814ab93a586ae94a13ae2481a6b4be1e3f54c75e1416238",
+    "actual_reply_scope": "Actual history rendered unchanged; plate identity, expected fragments and known contradiction patterns checked. This is not general semantic proof.",
+    "attempts": [
+      {
+        "attempt": 1,
+        "original_sha256": "962fe74496802ecd25bdb07db4614f8874c4e77849ae5502fa19e51c66bc0a3a",
+        "status": "failed",
+        "post_count": 1,
+        "error": "TimeoutError: Page.goto: Timeout 60000ms exceeded.",
+        "page_error_count": 0,
+        "blocked_request_count": 0,
+        "interpretation": "Initial network-idle capture timeout during concurrent CAD. Not an inference or CAD-result failure."
+      },
+      {
+        "attempt": 2,
+        "original_sha256": "a185c07c076218d00576ee6d2607f41b9b06524f0f383e11f78d116cb0301874",
+        "status": "passed",
+        "post_count": 3,
+        "error": null,
+        "page_error_count": 0,
+        "blocked_request_count": 0,
+        "interpretation": "Actual reopened result, source geometry and guide captured successfully."
+      }
+    ],
+    "post_count_successful_attempt": 3,
+    "post_count_all_attempts": 4,
+    "post_scope": "Project creation and file opening only; includes one synthetic before fixture.",
+    "model_inference_calls": 0,
+    "supplier_refreshes": 0,
+    "cad_jobs_started": 0,
+    "model_catalog_metadata_gets": 3,
+    "page_errors": [],
+    "console_errors": [],
+    "blocked_requests": [],
+    "failed_responses": [],
+    "responsiveness_scope": "The initial timeout during concurrent CAD is preserved. Successful capture does not establish responsiveness during heavy CAD generation.",
+    "screenshots": [
+      {
+        "path": "../images/microplate-switch.png",
+        "bytes": 158303,
+        "sha256": "4621a94deadb31e0e1eb720f86017aed8598b2f4af9b7dd7ac2770fbcc1bdc7a"
+      },
+      {
+        "path": "../images/microplate-instructions.png",
+        "bytes": 139857,
+        "sha256": "6ff665f0394ba7fd7fb1a496cb8172e0f92ba358dd5590ddf4121415c17d34b3"
+      }
+    ]
+  },
+  "public_artifacts": [
+    {
+      "path": "microplate-tube-setup.json",
+      "bytes": 27964,
+      "sha256": "bf86c5a0708b7fd34f9058333674b0d50e0b156f1f0e7cd018d301a41ecaeaf1"
+    },
+    {
+      "path": "microplate-project.json",
+      "bytes": 28473,
+      "sha256": "579a116537524b9a5c00a54bd363c374b6c2861708e01d156c2a07b72b231e3a"
+    },
+    {
+      "path": "microplate/plate-holder.step",
+      "bytes": 30500,
+      "sha256": "cac551eccd34e86ff0a42d07baa5eeafa98d33c458b504756f5bb87f92886fa2"
+    },
+    {
+      "path": "microplate/plate-holder.stl",
+      "bytes": 1484,
+      "sha256": "02176ba912cc1046dd20a36705cc3a79f07d6b7a7447859e02249ba9347ef668"
+    },
+    {
+      "path": "microplate/plate-reference.step",
+      "bytes": 420837,
+      "sha256": "907f3fc0abe2c86166953986e30d4fe51dd99df02d03f0b72f3d0605cb6bb2ff"
+    },
+    {
+      "path": "microplate/geometry-report.json",
+      "bytes": 82346,
+      "sha256": "434e57f0d1bbb0135049e272fb384c6faad151d26ec01156198955a1ae2aa182"
+    },
+    {
+      "path": "microplate/package-manifest.json",
+      "bytes": 4356,
+      "sha256": "b6e5015ce15f81b16b2f2ba33e9089aec64604ca8aa30e9a93411a5b3d1d85be"
+    },
+    {
+      "path": "../images/microplate-switch.png",
+      "bytes": 158303,
+      "sha256": "4621a94deadb31e0e1eb720f86017aed8598b2f4af9b7dd7ac2770fbcc1bdc7a"
+    },
+    {
+      "path": "../images/microplate-instructions.png",
+      "bytes": 139857,
+      "sha256": "6ff665f0394ba7fd7fb1a496cb8172e0f92ba358dd5590ddf4121415c17d34b3"
+    }
+  ],
+  "limitations": [
+    "No physical plate/holder fit, printing, pipette calibration, control or liquid accuracy result.",
+    "360 uL is the software definition maximum, not a validated working volume.",
+    "The plate reference STEP is not a fabricable laboratory plate.",
+    "Plate, holder material/printing and interfaces are unpriced; no purchase occurred.",
+    "Both live rounds reused developer-defined cases; repairs and replay do not establish held-out generalization.",
+    "Small CAD files remain from the original recorded package, before the isolated-export follow-up."
+  ],
+  "isolated_cad_full_run": {
+    "status": "passed",
+    "revision": 16,
+    "archive_bytes": 80502338,
+    "archive_sha256": "35a711fbe28c9d1aab46cfb743425218dc645162dc49e0bc3a4ee3fb350a4b43",
+    "manifest_files": 31,
+    "manifest_hashes_match": true,
+    "guide_matches_current_preview": true,
+    "bom_matches_current_project": true,
+    "source_original_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+    "plate_source_hash_matches": true,
+    "full_step_reopened_valid": true,
+    "full_step_solid_count": 861,
+    "source_solids": 809,
+    "full_step_part_ids_and_bounds_match": true,
+    "source_bed_hierarchy_retained": true,
+    "sample_module_separate_solids": 2,
+    "holder_one_fused_solid": true,
+    "reference_one_schematic_solid": true,
+    "standalone_volume_matches_full_step": true,
+    "independent_holder_and_reference_volumes": true,
+    "digital_well_count": 96,
+    "all_digital_wells_probed": true,
+    "occupied_preparations": 3,
+    "occupied_wells": [
+      "A1",
+      "B1",
+      "C1"
+    ],
+    "model_calls": 0,
+    "supplier_refreshes": 0,
+    "independent_cad_regenerations": 0,
+    "confirmed_snapshot_sha256": "9a3b61d065f82ad59fb78db2d25ce43abda250932b972d6ad21c017c9cc2921b",
+    "elapsed_seconds": 519.36,
+    "verification_record_sha256": "ac143e758d667caa44b202739b084abf2f0075a2b1f136423809361a45e3badf",
+    "source_hash_before": "83a8fdde7813915ca7cebdf5eba9881d0f7a04f3a5e21f5c55044eef046493d6",
+    "source_hash_after": "83a8fdde7813915ca7cebdf5eba9881d0f7a04f3a5e21f5c55044eef046493d6",
+    "verification_harness_sha256": "4f3acd19f49319e4d618e1335d4f4d69d749cf8887c5d62c8a01e870200c415f",
+    "elapsed_scope": "One real isolated-process export, download and actual STEP/96-well verification together; not CAD generation time alone.",
+    "archive_published": false,
+    "public_small_artifacts_scope": "Small public artifacts retain the earlier package provenance; this is a separate successful isolation regression with the same source geometry.",
+    "responsiveness": {
+      "status": "passed",
+      "stop_reason": "export_ready",
+      "probe_count": 555,
+      "cad_stage_probe_count": 513,
+      "all_reads_below_2_seconds": true,
+      "all_reads_http_200": true,
+      "endpoints": {
+        "health": {
+          "count": 185,
+          "max_elapsed_seconds": 0.25,
+          "failures": 0
+        },
+        "current_revision_brief": {
+          "count": 185,
+          "max_elapsed_seconds": 0.32900000002700835,
+          "failures": 0
+        },
+        "export_status": {
+          "count": 185,
+          "max_elapsed_seconds": 0.23399999999674037,
+          "failures": 0
+        }
+      },
+      "violations": [],
+      "stopped_before_step_inspection": true,
+      "working_criterion": "Every independent health, current-revision brief and export-status read returns HTTP 200 in less than 2 seconds; at least one CAD-stage sample for each. Criterion fixed before the run.",
+      "sampling": "Three independent threads, approximately one read per endpoint per second, 2-second request timeout; stopped at terminal export status before native STEP inspection.",
+      "record_sha256": "a2a1b6b27cef92607730968525ba781f62bd200a7b3ffc4f5953c26ab2a0af45",
+      "probe_log_sha256": "85b636fca1b9d6f2731b70bb82f7ce0e7c5cfb713fba664b4ad2e7c9e50dbd40",
+      "scope": "Single local Windows host observation; not a latency guarantee, load test or hosted-service benchmark."
+    }
+  },
+  "late_quantity_intent_correction": {
+    "status": "verified_by_final_regular_suite_and_strict_recorded_replay",
+    "problem": "The nominal-tube guard could erase an explicit requested preparation volume when equal to an old tube capacity.",
+    "reproduction": "Switch from Eppendorf 1.5 mL tubes to a 96-well plate and set the volume to 1.5 mL.",
+    "required_result": "Preserve the explicitly requested 1500 uL and expose the plate volume conflict; do not silently retain the old 200 uL.",
+    "correction": "Classify literal quantity occurrences by container/request/negation/future role; require an existing literal citation and preserve explicit preparation intent. Nominal tube capacity alone remains excluded.",
+    "focused_tests_passed": 89,
+    "focused_test_elapsed_seconds": 4.52,
+    "new_provider_calls": 0,
+    "prompt_changes": false,
+    "geometry_changes": false,
+    "code_changes_since_full_package": [
+      {
+        "file": "app/model_client.py",
+        "before": "5e5df72ef8234e2840364dd143cc00ede266fdfa5fb2fac712b8d23aec748bd4",
+        "after": "1b7301db1ead358eb98ecd2826dc5a4922003c35fa69e71f549fabd650ff2340"
+      }
+    ],
+    "scope": "English/Italian bounded role regressions and the existing recorded cases; not universal language understanding. Final regular suite and strict replay are recorded separately."
+  },
+  "software_checks": {
+    "regular_suite": {
+      "status": "passed",
+      "tests_passed": 850,
+      "warnings": 1,
+      "warning_scope": "Existing Starlette httpx deprecation; dependency locks unchanged.",
+      "elapsed_seconds": 143.49,
+      "excluded_source_suite": "tests/test_foundation_exports.py, run separately",
+      "log": {
+        "file": "final-release-suite.log",
+        "sha256": "d602991ff3a5b15956c246475e0898ee91a027d71d9dafb28be4e16f862ccce2"
+      },
+      "source_sha256": "77cfba782bc0b6043dd5099036b99d3da02f44b177b164db1edea551a293f3ce"
+    },
+    "earlier_regular_checks": [
+      {
+        "status": "passed",
+        "tests_passed": 823,
+        "elapsed_seconds": 144.93,
+        "scope": "After worker isolation, before the late quantity-role correction",
+        "log": {
+          "file": "final-isolated-suite.log",
+          "sha256": "475b61afd2b4bcaa7fdda3f64bb61a8a6da4a3f33c3bfc7a6ea7163fcd4b617c"
+        }
+      },
+      {
+        "status": "failed",
+        "tests_passed": 849,
+        "tests_failed": 1,
+        "elapsed_seconds": 143.18,
+        "log": {
+          "file": "final-volume-suite.log",
+          "sha256": "72d8631d4bda696f1ac9a136dbcdcf756f9eceaf48671abff6073c1b634f4cf1"
+        },
+        "cause": "A timeout test kept its artificial 0.2-second deadline while launching a subsequent normal process on Windows. The initial forced timeout and process cleanup passed; the normal startup exceeded the test-only deadline.",
+        "correction": "Restore the original deadline before the next-job assertion, preserving forced timeout/termination/reaping/cleanup assertions. Only the test changed; production code is unchanged.",
+        "corrected_worker_module_tests_passed": 11,
+        "corrected_worker_module_elapsed_seconds": 8.6
+      }
+    ],
+    "ruff": {
+      "status": "passed",
+      "scope": "app tests scripts after final production fix"
+    },
+    "production_frontend_build": {
+      "status": "passed",
+      "scope": "Earlier feature verification; frontend source unchanged during final backend/export/quantity repairs."
+    },
+    "offline_browser_flows": {
+      "status": "passed",
+      "flows": [
+        "microplate",
+        "labware",
+        "scene_focus",
+        "resources"
+      ],
+      "scope": "Actual browser/compiler with declared offline model fixtures; no live inference is counted here. Frontend source unchanged during the final backend repairs."
+    },
+    "foundation_suite": {
+      "status": "passed",
+      "tests_passed": 8,
+      "elapsed_seconds": 903.56,
+      "log": {
+        "file": "final-foundation-suite.log",
+        "sha256": "9804f334455c15c6c0b508c2ef186f376b4992b53bb786c2e058de44fbbaad5b"
+      },
+      "scope": "Seven source-spoof rejections plus real export/reopen, independent generated-script reconstruction/reopen and rejection of a tampered source hash. Separate from both plate packages."
+    },
+    "final_recorded_replay": {
+      "status": "passed",
+      "mode": "recorded_response_replay",
+      "cases_passed": 8,
+      "cases_total": 8,
+      "new_provider_calls": 0,
+      "new_token_consumption": 0,
+      "source_hash_before": "77cfba782bc0b6043dd5099036b99d3da02f44b177b164db1edea551a293f3ce",
+      "source_hash_after": "77cfba782bc0b6043dd5099036b99d3da02f44b177b164db1edea551a293f3ce",
+      "harness_sha256": "5d8e7d013a9acbb63f58ec15eb1e4179fbcdec19e144bdcb90dc84bdc82e2bd7",
+      "request_differences": [],
+      "raw_responses_byte_identical_to_live_round_2": true,
+      "elapsed_seconds": 18.688,
+      "original_results_sha256": "5695905b7ffa37ec8b65b218b78c171f0d4c0c0ee0eea1429f04bcee9fd45a18",
+      "scope": "The final production code reuses the recorded round-2 replies; requests match after transient UUID normalization. No new live model acceptance claim."
+    }
+  },
+  "publication_integrity": {
+    "recorded_json_preservation": "Four exact .gitattributes -text rules preserve both recorded project snapshots, geometry report and package manifest against their evidence hashes.",
+    "staged_artifact_hashes_matched": 9,
+    "scope": "Checked Git index bytes, not only working files. Public screenshots and small CAD are byte-identical to their recorded originals. Private scratch, credentials and deferred video edits are excluded."
+  },
+  "final_application_working_tree_sha256": "77cfba782bc0b6043dd5099036b99d3da02f44b177b164db1edea551a293f3ce"
+}

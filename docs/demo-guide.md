@@ -1,6 +1,6 @@
 # Reviewer and demo guide
 
-Current product path, updated **2026-10-30**. MuseAutoLab helps a researcher turn
+Current product path, updated **2026-10-31**. MuseAutoLab helps a researcher turn
 repetitive laboratory work into a sourced, editable automation proposal. The first
 engineering demonstrator is dilution and aliquot preparation. The result is a
 digital project with consistent geometry, calculations, source attribution and
@@ -12,6 +12,7 @@ revision-specific files. No laboratory performance or time saving has been measu
 | --- | --- | --- |
 | Watch the core demo | [Three-minute MP4](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4), recorded core product journey with English captions | No account or API key; latest pricing/instruction features are described below |
 | Read without installing | This guide, architecture below, source documentation and dated JSON examples | No account or API key |
+| Inspect the 96-well switch | [Confirmed plate project](examples/microplate-project.json), [small holder/reference CAD](examples/microplate/README.md) and [actual test record](examples/microplate-verification.json) | CAD and screenshots need no setup; reopen in the local app without inference |
 | Inspect the new tube rack | [Confirmed project](examples/parametric-tube-rack-project.json), [rack STEP](examples/tube-rack/tube-rack.step), [rack STL](examples/tube-rack/tube-rack.stl) and [fit coupon](examples/tube-rack/tube-rack-fit-coupon.stl) | CAD downloads need no account, setup or inference; the interactive viewer needs the local app |
 | Reopen a recorded project | Real 3D, accepted layout, cold bay, inspection sweep and local exports from the example below | Locked setup and local servers; no Meta key or new inference |
 | Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](../README.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
@@ -21,6 +22,30 @@ The interactive product runs locally. Offline fixtures test software behavior;
 they are not fresh model responses. A saved project rebuilds
 locally without inference but does not restore export jobs or authenticate imported
 historical model metadata.
+
+## One-message labware change
+
+The Jubilee sample module can change from the stored tube rack to a named
+96-well plate through the same chat. Start with a synthetic 200 µL preparation
+in tubes, focus the rack, and send **“Sostituisci le provette con una piastra da
+96 pozzetti.”** Inspect the new 8 × 12 array, A1 marking, occupied wells and updated
+build instructions. Existing target count and liquid amounts are retained. Ask
+**“Torna al portaprovette precedente.”** to restore the prior rack.
+
+The named reference is based on pinned Opentrons software data, not manufacturer
+CAD or measured fit. A format-only switch from a 2 mL recipe stays a draft with
+a volume conflict. See [the demonstration sequence and scope](microplate-switching.md).
+The video has not yet been updated to include this feature.
+
+For a reproducible starting point, open the [synthetic 200 µL tube setup](examples/microplate-tube-setup.json)
+in the running app. The quantity-only setup was prepared deterministically from
+the recorded rack project; its older conversation still mentions the earlier 2 mL
+recipe. The current preparation plan is authoritative. Sending the switch message
+requires Meta access. Alternatively, open the [confirmed plate result](examples/microplate-project.json)
+without a key and choose **Show plate in model → Selected part only**. This is the
+actual accepted result of a real Contributor request, subsequently confirmed.
+
+![Actual plate result reopened in the app](images/microplate-switch.png)
 
 ## Inspect the parametric rack
 

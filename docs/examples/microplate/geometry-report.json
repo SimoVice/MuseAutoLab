@@ -1,0 +1,3071 @@
+{
+  "project_id": "76ed7766-7b28-4395-b070-7ce16c6fa09a",
+  "revision": 16,
+  "units": "mm",
+  "coordinate_mapping": "app(x,y,z)->CAD(x,z,y); CAD Z is UP",
+  "interfaces": [
+    {
+      "feature": "plate pocket length",
+      "standard": "slas-microplate-footprint",
+      "dimension": "footprint_length",
+      "value": 129.36,
+      "intent": "envelope",
+      "clearance": 0.8
+    },
+    {
+      "feature": "plate pocket width",
+      "standard": "slas-microplate-footprint",
+      "dimension": "footprint_width",
+      "value": 87.08,
+      "intent": "envelope",
+      "clearance": 0.8
+    }
+  ],
+  "unchecked_interfaces": [
+    "Frame fixation, rails and transmission: vendor drawings and loads not selected.",
+    "Pipette actuation and tip handling: mounting dimensions not measured.",
+    "Labware fixtures: tube and tip rack vendor dimensions and tolerances not measured.",
+    "Cooling attachment, ventilation and insulation: not engineered.",
+    "Camera and arm attachment, loads, motion clearances and cabling: not engineered."
+  ],
+  "fabrication_ready": false,
+  "assembly_validity_scope": "Component shapes checked individually; STEP assembly not separately checked.",
+  "layout_origin": "Meta-proposed, geometrically screened layout",
+  "engineering_design": {
+    "schema_version": "1",
+    "proposal": {
+      "schema_version": "1",
+      "deck_width_mm": 300.0,
+      "deck_depth_mm": 300.0,
+      "placements": [
+        {
+          "component_id": "source-rack",
+          "x_mm": -70.0,
+          "z_mm": -65.0
+        },
+        {
+          "component_id": "sample-rack",
+          "x_mm": 70.0,
+          "z_mm": -65.0
+        },
+        {
+          "component_id": "tip-rack",
+          "x_mm": -70.0,
+          "z_mm": 35.0
+        },
+        {
+          "component_id": "tip-waste",
+          "x_mm": -70.0,
+          "z_mm": 110.0
+        },
+        {
+          "component_id": "controller",
+          "x_mm": 70.0,
+          "z_mm": 50.0
+        }
+      ],
+      "rationale": "Retains revision 5 arrangement and 120 mm bed pose while designating refrigerated cold-storage bay at 8 C target. Source/sample racks remain in rear two-column row, tip-rack front-left, tip-waste and controller front row; no rescaling, no rear exclusion applied, fixed frame width unchanged.",
+      "assumptions": [
+        "Refrigerated cold-storage bay target is 8 C as enabled in revision 5 state with cooling_enabled true.",
+        "Existing insert dimensions 300x300 mm and bed pose drop 120 mm are retained unchanged.",
+        "All five placements are copied verbatim from current_insert_layout with no recomputation.",
+        "10 mm edge clearance and 5 mm separation, two-row arrangement, and fixed frame width are preserved.",
+        "No physical operation, mounting, thermal performance, or collision validation is claimed.",
+        "300 mm workspace and bed drop remain illustrative unverified hypotheses over the imported Jubilee CAD."
+      ],
+      "bed_drop_mm": 120.0
+    },
+    "provenance": {
+      "run_id": "design-0d4dcfec",
+      "model": "muse-spark-1.3-contributor",
+      "source_revision": 5,
+      "attempt_count": 1,
+      "instruction": "Add a refrigerated cold-storage bay at a target of 8 C. Keep the existing component arrangement and bed pose.",
+      "attempts": [
+        {
+          "number": 1,
+          "proposal": {
+            "assumptions": [
+              "Refrigerated cold-storage bay target is 8 C as enabled in revision 5 state with cooling_enabled true.",
+              "Existing insert dimensions 300x300 mm and bed pose drop 120 mm are retained unchanged.",
+              "All five placements are copied verbatim from current_insert_layout with no recomputation.",
+              "10 mm edge clearance and 5 mm separation, two-row arrangement, and fixed frame width are preserved.",
+              "No physical operation, mounting, thermal performance, or collision validation is claimed.",
+              "300 mm workspace and bed drop remain illustrative unverified hypotheses over the imported Jubilee CAD."
+            ],
+            "bed_drop_mm": 120.0,
+            "deck_depth_mm": 300.0,
+            "deck_width_mm": 300.0,
+            "placements": [
+              {
+                "component_id": "source-rack",
+                "x_mm": -70.0,
+                "z_mm": -65.0
+              },
+              {
+                "component_id": "sample-rack",
+                "x_mm": 70.0,
+                "z_mm": -65.0
+              },
+              {
+                "component_id": "tip-rack",
+                "x_mm": -70.0,
+                "z_mm": 35.0
+              },
+              {
+                "component_id": "tip-waste",
+                "x_mm": -70.0,
+                "z_mm": 110.0
+              },
+              {
+                "component_id": "controller",
+                "x_mm": 70.0,
+                "z_mm": 50.0
+              }
+            ],
+            "rationale": "Retains revision 5 arrangement and 120 mm bed pose while designating refrigerated cold-storage bay at 8 C target. Source/sample racks remain in rear two-column row, tip-rack front-left, tip-waste and controller front row; no rescaling, no rear exclusion applied, fixed frame width unchanged.",
+            "schema_version": "1"
+          },
+          "checks": [
+            {
+              "id": "workflow",
+              "label": "Supported workflow",
+              "passed": true,
+              "detail": "Liquid preparation with design enabled is required."
+            },
+            {
+              "id": "feasible_width",
+              "label": "Feasible workspace",
+              "passed": true,
+              "detail": "Resolve the infeasible workspace width before developing a layout."
+            },
+            {
+              "id": "schema",
+              "label": "Proposal format",
+              "passed": true,
+              "detail": "Required fields and values are valid."
+            },
+            {
+              "id": "workspace_width",
+              "label": "Workspace width",
+              "passed": true,
+              "detail": "Fixed source frame width 483.1 mm; workspace limit 1250.0 mm."
+            },
+            {
+              "id": "envelopes",
+              "label": "Component envelopes",
+              "passed": true,
+              "detail": "Fixed project component envelopes are retained."
+            },
+            {
+              "id": "head_envelope",
+              "label": "Head height envelope",
+              "passed": true,
+              "detail": "Proposed head stays below the source frame envelope; interior clearance and mounting remain unchecked."
+            },
+            {
+              "id": "edge_source-rack",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "source-rack requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "edge_sample-rack",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "sample-rack requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "edge_tip-rack",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "tip-rack requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "edge_tip-waste",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "tip-waste requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "edge_controller",
+              "label": "Deck edge clearance",
+              "passed": true,
+              "detail": "controller requires at least 10 mm to each deck edge."
+            },
+            {
+              "id": "clearance_source-rack_sample-rack",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_source-rack_tip-rack",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_source-rack_tip-waste",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_source-rack_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "source-rack and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_sample-rack_tip-rack",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_sample-rack_tip-waste",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_sample-rack_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_tip-rack_tip-waste",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_tip-rack_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "clearance_tip-waste_controller",
+              "label": "Component separation",
+              "passed": true,
+              "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+            },
+            {
+              "id": "preserve_bed_drop_mm",
+              "label": "Preserve requested bed_drop_mm",
+              "passed": true,
+              "detail": "Requested existing parameter retained."
+            },
+            {
+              "id": "preserve_placements",
+              "label": "Preserve requested placements",
+              "passed": true,
+              "detail": "Requested existing parameter retained."
+            }
+          ],
+          "usage": {
+            "model": "muse-spark-1.3-contributor",
+            "input_tokens": 1703,
+            "output_tokens": 551
+          }
+        }
+      ],
+      "checks": [
+        {
+          "id": "workflow",
+          "label": "Supported workflow",
+          "passed": true,
+          "detail": "Liquid preparation with design enabled is required."
+        },
+        {
+          "id": "feasible_width",
+          "label": "Feasible workspace",
+          "passed": true,
+          "detail": "Resolve the infeasible workspace width before developing a layout."
+        },
+        {
+          "id": "schema",
+          "label": "Proposal format",
+          "passed": true,
+          "detail": "Required fields and values are valid."
+        },
+        {
+          "id": "workspace_width",
+          "label": "Workspace width",
+          "passed": true,
+          "detail": "Fixed source frame width 483.1 mm; workspace limit 1250.0 mm."
+        },
+        {
+          "id": "envelopes",
+          "label": "Component envelopes",
+          "passed": true,
+          "detail": "Fixed project component envelopes are retained."
+        },
+        {
+          "id": "head_envelope",
+          "label": "Head height envelope",
+          "passed": true,
+          "detail": "Proposed head stays below the source frame envelope; interior clearance and mounting remain unchecked."
+        },
+        {
+          "id": "edge_source-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "source-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "edge_sample-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "sample-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "edge_tip-rack",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-rack requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "edge_tip-waste",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "tip-waste requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "edge_controller",
+          "label": "Deck edge clearance",
+          "passed": true,
+          "detail": "controller requires at least 10 mm to each deck edge."
+        },
+        {
+          "id": "clearance_source-rack_sample-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and sample-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_source-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "source-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-rack",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-rack need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_sample-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "sample-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_tip-waste",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and tip-waste need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-rack_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-rack and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "clearance_tip-waste_controller",
+          "label": "Component separation",
+          "passed": true,
+          "detail": "tip-waste and controller need at least 5 mm separation in x or z."
+        },
+        {
+          "id": "preserve_bed_drop_mm",
+          "label": "Preserve requested bed_drop_mm",
+          "passed": true,
+          "detail": "Requested existing parameter retained."
+        },
+        {
+          "id": "preserve_placements",
+          "label": "Preserve requested placements",
+          "passed": true,
+          "detail": "Requested existing parameter retained."
+        }
+      ],
+      "usage": {
+        "model": "muse-spark-1.3-contributor",
+        "input_tokens": 1703,
+        "output_tokens": 551
+      },
+      "source_library_sha256": "3d522155746a04d52efb2ce0c309c7078c456c54e8c4444a231b43b4849ece7e"
+    }
+  },
+  "design_basis": {
+    "schema_version": "1",
+    "checked_on": "2026-10-29",
+    "library_sha256": "3d522155746a04d52efb2ce0c309c7078c456c54e8c4444a231b43b4849ece7e",
+    "architecture": "Imported Jubilee platform CAD with a custom liquid-preparation insert",
+    "bindings": [
+      {
+        "component_id": "foundation-jubilee",
+        "basis": "imported_open_hardware_cad",
+        "reference_id": "jubilee-hardware",
+        "detail": "Pinned original STEP; fixed frame and explicit bed pose."
+      },
+      {
+        "component_id": "base",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "carriage",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "pipette",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "source-rack",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "sample-rack",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "tip-rack",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "tip-waste",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "controller",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "cold-storage",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-mount",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-mast",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-shoulder",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-upper-link",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-elbow",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-forearm",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-wrist",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-camera-mount",
+        "basis": "custom_concept",
+        "reference_id": null,
+        "detail": "Custom concept; dimensions and interfaces remain unverified."
+      },
+      {
+        "component_id": "inspection-camera",
+        "basis": "manufacturer_envelope",
+        "reference_id": "rpi-camera-module-3",
+        "detail": "Camera envelope; board/lens details and mount are custom."
+      }
+    ],
+    "references": [
+      {
+        "id": "jubilee-hardware",
+        "title": "Jubilee V2.2.2 hardware",
+        "kind": "open_hardware",
+        "publisher": "Joshua Vasquez / Machine Agency",
+        "url": "https://github.com/machineagency/jubilee/tree/c877bd2e889560c83da2a68479641a4f7f0d9b83",
+        "revision": "c877bd2e889560c83da2a68479641a4f7f0d9b83",
+        "license": "CC-BY-4.0",
+        "license_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/license.txt",
+        "evidence_sha256": "aad996dd4ead654813cdf0025634f115dfb197dcbe73b7b269f22ba2b3ecfb31",
+        "checked_on": "2026-10-28",
+        "facts": [
+          "CoreXY multi-tool motion platform",
+          "Published STEP, SolidWorks and fabrication files",
+          "300 x 300 x 300 mm stated build volume"
+        ],
+        "use": "Pinned original jubilee.STEP is the foundation of new chat-generated liquid workstations; source assembly and attribution are retained",
+        "limits": "Only the identified STEP asset is imported. Custom inserts/tools/mounts, proposed bed pose, connections and hardware operation remain unverified. The legacy XYZ simulation does not validate Jubilee."
+      },
+      {
+        "id": "science-jubilee",
+        "title": "Science Jubilee laboratory tools",
+        "kind": "open_source",
+        "publisher": "Machine Agency",
+        "url": "https://github.com/machineagency/science-jubilee/tree/bb918fa78f300f57cc379a80731cfca7bdb55c66",
+        "revision": "bb918fa78f300f57cc379a80731cfca7bdb55c66",
+        "license": "MIT (repository); upstream hardware has separate licensing",
+        "license_url": "https://github.com/machineagency/science-jubilee/blob/bb918fa78f300f57cc379a80731cfca7bdb55c66/LICENSE.txt",
+        "evidence_sha256": "babe749cfaef51a59d7798b4ed50742aac36ba846bcab47635493f740c33a738",
+        "checked_on": "2026-10-28",
+        "facts": [
+          "Python interface for a Jubilee laboratory platform",
+          "Documents OT-2 pipette, syringe and camera tools",
+          "Tool and labware calibration is still required"
+        ],
+        "use": "Documented reference for pipette/camera modular workflows and integration advice",
+        "limits": "No Science Jubilee control code or CAD is installed in MuseAutoLab. A reference workflow is not a compatible ready-made adapter or verified liquid-handling result."
+      },
+      {
+        "id": "pololu-1209",
+        "title": "Pololu 1209 NEMA 14 motor body",
+        "kind": "manufacturer_catalogue",
+        "publisher": "Pololu",
+        "url": "https://www.pololu.com/product/1209/specs",
+        "revision": "Manufacturer specification consulted 2026-10-28",
+        "license": "Manufacturer documentation; no vendor CAD redistributed",
+        "license_url": null,
+        "checked_on": "2026-10-28",
+        "body_size_app_mm": [
+          35,
+          36,
+          35
+        ],
+        "facts": [
+          "35 mm square x 36 mm body, excluding shaft",
+          "1 A per phase",
+          "5 mm shaft diameter"
+        ],
+        "use": "Exact stated motor-body envelope inside the custom carriage when selected",
+        "limits": "Body envelope only, not complete supplier CAD. Mount holes, shaft clearance, torque sizing, transmission and controls remain unverified. Price retains the separately dated catalogue snapshot."
+      },
+      {
+        "id": "pololu-1208",
+        "title": "Pololu 1208 NEMA 14 motor body",
+        "kind": "manufacturer_catalogue",
+        "publisher": "Pololu",
+        "url": "https://www.pololu.com/product/1208/specs",
+        "revision": "Manufacturer specification consulted 2026-10-28",
+        "license": "Manufacturer documentation; no vendor CAD redistributed",
+        "license_url": null,
+        "checked_on": "2026-10-28",
+        "body_size_app_mm": [
+          35,
+          28,
+          35
+        ],
+        "facts": [
+          "35 mm square x 28 mm body, excluding shaft",
+          "0.5 A per phase",
+          "5 mm shaft diameter"
+        ],
+        "use": "Exact stated alternative motor-body envelope; fixed body is not scaled to fit",
+        "limits": "Body envelope only. Substitution does not establish adequate motor torque, shaft clearance or electrical compatibility. Price retains the separately dated snapshot."
+      },
+      {
+        "id": "rpi-camera-module-3",
+        "title": "Raspberry Pi Camera Module 3, standard lens",
+        "kind": "manufacturer_catalogue",
+        "publisher": "Raspberry Pi Ltd",
+        "url": "https://www.raspberrypi.com/products/camera-module-3/",
+        "revision": "Manufacturer specification consulted 2026-10-28",
+        "license": "Manufacturer documentation; no vendor CAD redistributed",
+        "license_url": null,
+        "checked_on": "2026-10-28",
+        "body_size_app_mm": [
+          25,
+          11.5,
+          24
+        ],
+        "facts": [
+          "Published standard-lens overall dimensions 25 x 24 x 11.5 mm",
+          "12 megapixel IMX708 sensor",
+          "CSI-2 interface; requires a compatible host and cable"
+        ],
+        "use": "Manufacturer overall envelope of the downward camera; Y is the optical/thickness axis",
+        "limits": "Schematic envelope, not vendor CAD. The custom bracket is separate; host, cable, field of view and calibration are unresolved. Browser photo capture is not a CSI hardware driver. Price is unknown."
+      },
+      {
+        "id": "opentrons-temp-module-gen2",
+        "title": "Opentrons Temperature Module GEN2 body",
+        "kind": "manufacturer_catalogue",
+        "publisher": "Opentrons",
+        "url": "https://docs.opentrons.com/temperature-module/product-specs/",
+        "revision": "Manufacturer specification consulted 2026-10-28",
+        "license": "Manufacturer documentation; no vendor CAD redistributed",
+        "license_url": null,
+        "checked_on": "2026-10-28",
+        "body_size_app_mm": [
+          90,
+          84,
+          194
+        ],
+        "facts": [
+          "Published body dimensions 194 mm long x 90 mm wide x 84 mm high",
+          "Top plate temperature differs from sample temperature",
+          "Thermal block and sample configuration require separate review"
+        ],
+        "use": "Existing sourced outer envelope when the commercial cooling variant is selected",
+        "limits": "Only the outer dimensions are sourced. Displayed enclosure details are a custom proxy, not vendor CAD; thermal performance and compatibility with this workstation remain unverified."
+      },
+      {
+        "id": "opentrons-ot2",
+        "title": "Opentrons OT-2 assembled liquid-handling platform",
+        "kind": "manufacturer_catalogue",
+        "publisher": "Opentrons",
+        "url": "https://opentrons.com/products/ot-2-robot",
+        "revision": "Manufacturer catalogue consulted 2026-10-29; software deck 95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+        "license": "Manufacturer specifications; pinned software deck definition Apache-2.0; no vendor machine CAD",
+        "license_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE",
+        "checked_on": "2026-10-29",
+        "body_size_app_mm": [
+          630,
+          660,
+          570
+        ],
+        "facts": [
+          "Catalogue explicitly states W630 x D570 x H660 mm",
+          "11 working deck slots plus removable trash and two compatible pipette mounts",
+          "System documentation requires 200 mm around the instrument for ventilation",
+          "Software deck slot coordinates are pinned and hash-checked; no robot driver is installed"
+        ],
+        "use": "Explicitly selected ready-made platform route, quote/setup guidance and bounded schematic slot layout",
+        "limits": "Frame, internal height and labware/pipette bodies are schematic. Only published outer envelope and deck-relative software slot grid are bound. Confirm actual instrument/labware compatibility, access space, calibration, configuration, price, stock and delivery. A manual pipette is not assumed compatible. The software adapter does not operate or physically validate the robot."
+      }
+    ],
+    "open_hardware_status": "Pinned original Jubilee STEP imported; custom interfaces and travel unverified"
+  },
+  "process": "not selected; concept only",
+  "material": "not selected; concept only",
+  "notes": [
+    "Custom concept details and dimensions are illustrative; not fabrication-ready.",
+    "The top-view SVG omits imported source geometry; use the STEP for the complete assembly.",
+    "Custom deck is a solid blank for concept review.",
+    "Consumables remain separate visual and physics proxies; sample insert pattern follows the target count.",
+    "Details and openings do not establish fit, process, or performance.",
+    "Reported volumes sum separate primitive solids and may count overlaps; they are not material volume or mass.",
+    "Plate reference is schematic, not manufacturer CAD or a fabrication part; holder base profile, retention, tool access, mounting, material and print fit are unchecked."
+  ],
+  "components": [
+    {
+      "id": "foundation-jubilee",
+      "kind": "upstream-cad",
+      "label": "Jubilee source CAD platform",
+      "app_position": [
+        0.0,
+        282.1791957925,
+        0.0
+      ],
+      "app_size": [
+        483.143869005,
+        564.358391585,
+        612.687507964
+      ],
+      "cad_center": [
+        0.0,
+        0.0,
+        282.1791957925
+      ],
+      "cad_size": [
+        483.143869005,
+        612.687507964,
+        564.358391585
+      ],
+      "shape": "pinned upstream CAD",
+      "foundation_asset_id": "jubilee-v2.2.2-c877bd2",
+      "bed_drop_mm": 120.0,
+      "source_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+      "source_revision": "c877bd2e889560c83da2a68479641a4f7f0d9b83",
+      "source_license": "CC-BY-4.0",
+      "source_transform": "(X-274.855945675, 425.743280356-Z, Y-272.216535584)",
+      "pose": "Only build_plate_assembly translated down by bed_drop_mm.",
+      "valid": true,
+      "volume_mm3": 1000667.5061940725,
+      "volume_scope": "Sum of imported solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -241.57118752544162,
+          -306.3430070420269,
+          0.19686301227534325
+        ],
+        "max": [
+          238.4288124747395,
+          305.6569931580369,
+          564.1968632336395
+        ],
+        "size": [
+          480.0000000001811,
+          612.0000002000638,
+          564.0000002213642
+        ]
+      },
+      "solids": 809,
+      "provenance": "Pinned upstream STEP"
+    },
+    {
+      "id": "base",
+      "kind": "base",
+      "label": "Custom workflow deck on Jubilee platform",
+      "app_position": [
+        -1.57118753,
+        258.86690226,
+        -6.13189038
+      ],
+      "app_size": [
+        300.0,
+        12.0,
+        300.0
+      ],
+      "cad_center": [
+        -1.57118753,
+        -6.13189038,
+        258.86690226
+      ],
+      "cad_size": [
+        300.0,
+        300.0,
+        12.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "blank",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            300.0,
+            12.0,
+            300.0
+          ],
+          "appearance": "deck"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 1080000.0,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -151.57118753,
+          -156.13189038,
+          252.86690226000002
+        ],
+        "max": [
+          148.42881247,
+          143.86810962,
+          264.86690226
+        ],
+        "size": [
+          300.0,
+          300.0,
+          12.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "carriage",
+      "kind": "carriage",
+      "label": "Custom pipette adapter concept",
+      "app_position": [
+        -1.57118753,
+        499.86690226,
+        -6.13189038
+      ],
+      "app_size": [
+        75.0,
+        70.0,
+        65.0
+      ],
+      "cad_center": [
+        -1.57118753,
+        -6.13189038,
+        499.86690226
+      ],
+      "cad_size": [
+        75.0,
+        65.0,
+        70.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "backplate",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            -24.7
+          ],
+          "size": [
+            75.0,
+            70.0,
+            15.6
+          ],
+          "appearance": "structure"
+        },
+        {
+          "id": "motor",
+          "kind": "box",
+          "position": [
+            -16.5,
+            8.4,
+            -4.550000000000001
+          ],
+          "size": [
+            28.5,
+            40.599999999999994,
+            24.7
+          ],
+          "appearance": "motor"
+        },
+        {
+          "id": "drive",
+          "kind": "box",
+          "position": [
+            15.75,
+            5.6000000000000005,
+            -3.9
+          ],
+          "size": [
+            21.000000000000004,
+            45.5,
+            26.0
+          ],
+          "appearance": "rail"
+        },
+        {
+          "id": "holder-upper",
+          "kind": "box",
+          "position": [
+            0,
+            21.0,
+            18.849999999999998
+          ],
+          "size": [
+            51.00000000000001,
+            14.0,
+            27.3
+          ],
+          "appearance": "holder"
+        },
+        {
+          "id": "holder-lower",
+          "kind": "box",
+          "position": [
+            0,
+            -21.0,
+            18.849999999999998
+          ],
+          "size": [
+            51.00000000000001,
+            14.0,
+            27.3
+          ],
+          "appearance": "holder"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 174307.77,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -39.07118753,
+          -38.631890379999994,
+          464.86690226
+        ],
+        "max": [
+          35.92881247,
+          26.36810962,
+          534.86690226
+        ],
+        "size": [
+          75.0,
+          65.0,
+          69.99999999999994
+        ]
+      },
+      "solids": 5,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "pipette",
+      "kind": "pipette",
+      "label": "Pipette concept",
+      "app_position": [
+        -1.57118753,
+        404.86690226,
+        -6.13189038
+      ],
+      "app_size": [
+        28.0,
+        155.0,
+        28.0
+      ],
+      "cad_center": [
+        -1.57118753,
+        -6.13189038,
+        404.86690226
+      ],
+      "cad_size": [
+        28.0,
+        28.0,
+        155.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "body",
+          "kind": "cylinder",
+          "position": [
+            0,
+            24.8,
+            0
+          ],
+          "size": [
+            28.0,
+            105.4,
+            28.0
+          ],
+          "appearance": "pipette",
+          "axis": "y"
+        },
+        {
+          "id": "shoulder",
+          "kind": "frustum",
+          "position": [
+            0,
+            -37.199999999999996,
+            0
+          ],
+          "size": [
+            28.0,
+            18.599999999999998,
+            28.0
+          ],
+          "appearance": "pipette",
+          "axis": "y",
+          "radius_top_mm": 14.0,
+          "radius_bottom_mm": 6.72
+        },
+        {
+          "id": "shaft",
+          "kind": "cylinder",
+          "position": [
+            0,
+            -57.35,
+            0
+          ],
+          "size": [
+            13.44,
+            21.700000000000003,
+            13.44
+          ],
+          "appearance": "pipette",
+          "axis": "y"
+        },
+        {
+          "id": "nozzle",
+          "kind": "frustum",
+          "position": [
+            0,
+            -72.85,
+            0
+          ],
+          "size": [
+            13.44,
+            9.299999999999999,
+            13.44
+          ],
+          "appearance": "pipette",
+          "axis": "y",
+          "radius_top_mm": 6.72,
+          "radius_bottom_mm": 3.36
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 75278.21384147828,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -15.571187530000001,
+          -20.13189038,
+          327.3669022600001
+        ],
+        "max": [
+          12.428812470000002,
+          7.868109620000002,
+          482.3669022600001
+        ],
+        "size": [
+          28.000000000000004,
+          28.000000000000004,
+          155.0
+        ]
+      },
+      "solids": 4,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "source-rack",
+      "kind": "rack",
+      "label": "Source tube rack",
+      "app_position": [
+        -71.57118753,
+        286.86690226,
+        -71.13189038
+      ],
+      "app_size": [
+        95.0,
+        44.0,
+        70.0
+      ],
+      "cad_center": [
+        -71.57118753,
+        -71.13189038,
+        286.86690226
+      ],
+      "cad_size": [
+        95.0,
+        70.0,
+        44.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "floor",
+          "kind": "box",
+          "position": [
+            0,
+            -19.36,
+            0
+          ],
+          "size": [
+            95.0,
+            5.279999999999999,
+            70.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "side--1",
+          "kind": "box",
+          "position": [
+            -44.175000000000004,
+            -2.6399999999999997,
+            0
+          ],
+          "size": [
+            6.65,
+            33.44,
+            70.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "side-1",
+          "kind": "box",
+          "position": [
+            44.175000000000004,
+            -2.6399999999999997,
+            0
+          ],
+          "size": [
+            6.65,
+            33.44,
+            70.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "perforated-top",
+          "kind": "plate",
+          "position": [
+            0,
+            18.04,
+            0
+          ],
+          "size": [
+            95.0,
+            7.92,
+            70.0
+          ],
+          "appearance": "rack-top",
+          "holes": [
+            {
+              "x_mm": -10.0,
+              "z_mm": 0,
+              "radius_mm": 6.3
+            },
+            {
+              "x_mm": 10.0,
+              "z_mm": 0,
+              "radius_mm": 6.3
+            }
+          ]
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 116937.55337125169,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -119.07118753000002,
+          -106.13189038,
+          264.86690226
+        ],
+        "max": [
+          -24.071187529999996,
+          -36.13189038,
+          308.8669022600001
+        ],
+        "size": [
+          95.00000000000003,
+          70.0,
+          44.00000000000006
+        ]
+      },
+      "solids": 4,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "sample-rack",
+      "kind": "rack",
+      "label": "Corning 96-well software reference + proposed holder",
+      "app_position": [
+        68.42881247,
+        273.22690226000003,
+        -71.13189038
+      ],
+      "app_size": [
+        135.36,
+        16.72,
+        93.08
+      ],
+      "cad_center": [
+        68.42881247,
+        -71.13189038,
+        273.22690226000003
+      ],
+      "cad_size": [
+        135.36,
+        93.08,
+        16.72
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "holder-floor",
+          "kind": "box",
+          "position": [
+            0,
+            -7.109999999999999,
+            0
+          ],
+          "size": [
+            135.36,
+            2.5,
+            93.08
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "holder-left",
+          "kind": "box",
+          "position": [
+            -66.18,
+            -4.859999999999999,
+            0
+          ],
+          "size": [
+            3.0,
+            2.0,
+            93.08
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "holder-right",
+          "kind": "box",
+          "position": [
+            66.18,
+            -4.859999999999999,
+            0
+          ],
+          "size": [
+            3.0,
+            2.0,
+            93.08
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "holder-front",
+          "kind": "box",
+          "position": [
+            0,
+            -4.859999999999999,
+            -45.04
+          ],
+          "size": [
+            129.36,
+            2.0,
+            3.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "holder-back",
+          "kind": "box",
+          "position": [
+            0,
+            -4.859999999999999,
+            45.04
+          ],
+          "size": [
+            129.36,
+            2.0,
+            3.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "reference-plate-bottom",
+          "kind": "box",
+          "position": [
+            0,
+            -4.084999999999999,
+            0
+          ],
+          "size": [
+            127.76,
+            3.5500000000000007,
+            85.47
+          ],
+          "appearance": "rack-top"
+        },
+        {
+          "id": "reference-plate-wells",
+          "kind": "plate",
+          "position": [
+            0,
+            3.0250000000000012,
+            0
+          ],
+          "size": [
+            127.76,
+            10.67,
+            85.47
+          ],
+          "appearance": "rack-top",
+          "holes": [
+            {
+              "x_mm": -49.5,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -49.5,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -40.5,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -31.5,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -22.5,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -13.5,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": -4.5,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 4.499999999999993,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 13.499999999999993,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 22.499999999999993,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 31.499999999999993,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 40.49999999999999,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": 31.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": 22.504999999999995,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": 13.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": 4.505000000000003,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": -4.494999999999997,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": -13.495000000000001,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": -22.495,
+              "radius_mm": 3.43
+            },
+            {
+              "x_mm": 49.49999999999999,
+              "z_mm": -31.494999999999997,
+              "radius_mm": 3.43
+            }
+          ]
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 151585.53184444475,
+      "volume_scope": "Separate fused holder and schematic reference plate.",
+      "bbox_cad": {
+        "min": [
+          0.7488124699999901,
+          -117.67189038000001,
+          264.86690226
+        ],
+        "max": [
+          136.10881247,
+          -24.59189038000001,
+          281.58690226000004
+        ],
+        "size": [
+          135.36,
+          93.08,
+          16.720000000000027
+        ]
+      },
+      "solids": 2,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "tip-rack",
+      "kind": "tiprack",
+      "label": "Tip rack",
+      "app_position": [
+        -71.57118753,
+        286.86690226,
+        28.86810962
+      ],
+      "app_size": [
+        95.0,
+        44.0,
+        70.0
+      ],
+      "cad_center": [
+        -71.57118753,
+        28.86810962,
+        286.86690226
+      ],
+      "cad_size": [
+        95.0,
+        70.0,
+        44.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "floor",
+          "kind": "box",
+          "position": [
+            0,
+            -19.36,
+            0
+          ],
+          "size": [
+            95.0,
+            5.279999999999999,
+            70.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "side--1",
+          "kind": "box",
+          "position": [
+            -44.175000000000004,
+            -2.6399999999999997,
+            0
+          ],
+          "size": [
+            6.65,
+            33.44,
+            70.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "side-1",
+          "kind": "box",
+          "position": [
+            44.175000000000004,
+            -2.6399999999999997,
+            0
+          ],
+          "size": [
+            6.65,
+            33.44,
+            70.0
+          ],
+          "appearance": "rack"
+        },
+        {
+          "id": "perforated-top",
+          "kind": "plate",
+          "position": [
+            0,
+            18.04,
+            0
+          ],
+          "size": [
+            95.0,
+            7.92,
+            70.0
+          ],
+          "appearance": "rack-top",
+          "holes": [
+            {
+              "x_mm": -28.5,
+              "z_mm": 0,
+              "radius_mm": 5
+            },
+            {
+              "x_mm": -9.5,
+              "z_mm": 0,
+              "radius_mm": 5
+            },
+            {
+              "x_mm": 9.5,
+              "z_mm": 0,
+              "radius_mm": 5
+            },
+            {
+              "x_mm": 28.5,
+              "z_mm": 0,
+              "radius_mm": 5
+            }
+          ]
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 116424.49861835685,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -119.07118753000002,
+          -6.1318903800000015,
+          264.86690226
+        ],
+        "max": [
+          -24.071187529999996,
+          63.86810962,
+          308.8669022600001
+        ],
+        "size": [
+          95.00000000000003,
+          70.0,
+          44.00000000000006
+        ]
+      },
+      "solids": 4,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "tip-waste",
+      "kind": "waste",
+      "label": "Tip waste container",
+      "app_position": [
+        -71.57118753,
+        304.86690226,
+        103.86810962
+      ],
+      "app_size": [
+        55.0,
+        80.0,
+        55.0
+      ],
+      "cad_center": [
+        -71.57118753,
+        103.86810962,
+        304.86690226
+      ],
+      "cad_size": [
+        55.0,
+        55.0,
+        80.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "floor",
+          "kind": "box",
+          "position": [
+            0,
+            -36.0,
+            0
+          ],
+          "size": [
+            55.0,
+            8.0,
+            55.0
+          ],
+          "appearance": "waste"
+        },
+        {
+          "id": "side-x--1",
+          "kind": "box",
+          "position": [
+            -24.75,
+            4.0,
+            0
+          ],
+          "size": [
+            5.5,
+            72.0,
+            55.0
+          ],
+          "appearance": "waste"
+        },
+        {
+          "id": "side-z--1",
+          "kind": "box",
+          "position": [
+            0,
+            4.0,
+            -24.75
+          ],
+          "size": [
+            44.0,
+            72.0,
+            5.5
+          ],
+          "appearance": "waste"
+        },
+        {
+          "id": "side-x-1",
+          "kind": "box",
+          "position": [
+            24.75,
+            4.0,
+            0
+          ],
+          "size": [
+            5.5,
+            72.0,
+            55.0
+          ],
+          "appearance": "waste"
+        },
+        {
+          "id": "side-z-1",
+          "kind": "box",
+          "position": [
+            0,
+            4.0,
+            24.75
+          ],
+          "size": [
+            44.0,
+            72.0,
+            5.5
+          ],
+          "appearance": "waste"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 102608.0,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -99.07118753,
+          76.36810962,
+          264.86690226
+        ],
+        "max": [
+          -44.07118753,
+          131.36810961999998,
+          344.86690226
+        ],
+        "size": [
+          55.0,
+          54.999999999999986,
+          80.0
+        ]
+      },
+      "solids": 5,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "controller",
+      "kind": "controller",
+      "label": "Custom pipette interface enclosure",
+      "app_position": [
+        68.42881247,
+        289.86690226,
+        43.86810962
+      ],
+      "app_size": [
+        90.0,
+        50.0,
+        80.0
+      ],
+      "cad_center": [
+        68.42881247,
+        43.86810962,
+        289.86690226
+      ],
+      "cad_size": [
+        90.0,
+        80.0,
+        50.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "case",
+          "kind": "box",
+          "position": [
+            0,
+            -2.0,
+            0
+          ],
+          "size": [
+            90.0,
+            46.0,
+            80.0
+          ],
+          "appearance": "controller"
+        },
+        {
+          "id": "panel",
+          "kind": "box",
+          "position": [
+            0,
+            23.5,
+            0
+          ],
+          "size": [
+            70.2,
+            3.0,
+            54.400000000000006
+          ],
+          "appearance": "panel"
+        },
+        {
+          "id": "vent-0",
+          "kind": "box",
+          "position": [
+            -14.4,
+            24.75,
+            14.399999999999999
+          ],
+          "size": [
+            8.1,
+            0.5,
+            8.0
+          ],
+          "appearance": "vent"
+        },
+        {
+          "id": "vent-1",
+          "kind": "box",
+          "position": [
+            0.0,
+            24.75,
+            14.399999999999999
+          ],
+          "size": [
+            8.1,
+            0.5,
+            8.0
+          ],
+          "appearance": "vent"
+        },
+        {
+          "id": "vent-2",
+          "kind": "box",
+          "position": [
+            14.4,
+            24.75,
+            14.399999999999999
+          ],
+          "size": [
+            8.1,
+            0.5,
+            8.0
+          ],
+          "appearance": "vent"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 342753.84,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          23.428812469999997,
+          3.8681096199999985,
+          264.86690226
+        ],
+        "max": [
+          113.42881247,
+          83.86810962,
+          314.86690226
+        ],
+        "size": [
+          90.0,
+          80.0,
+          50.0
+        ]
+      },
+      "solids": 5,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "cold-storage",
+      "kind": "cooling",
+      "label": "Proposed external cold sidecar",
+      "app_position": [
+        0.0,
+        80.0,
+        411.343753982
+      ],
+      "app_size": [
+        150.0,
+        120.0,
+        130.0
+      ],
+      "cad_center": [
+        0.0,
+        411.343753982,
+        80.0
+      ],
+      "cad_size": [
+        150.0,
+        130.0,
+        120.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "floor",
+          "kind": "box",
+          "position": [
+            0,
+            -54.0,
+            0
+          ],
+          "size": [
+            150.0,
+            12.0,
+            130.0
+          ],
+          "appearance": "cooling"
+        },
+        {
+          "id": "wall-x--1",
+          "kind": "box",
+          "position": [
+            -67.5,
+            -1.5,
+            0
+          ],
+          "size": [
+            15.0,
+            105.0,
+            130.0
+          ],
+          "appearance": "cooling"
+        },
+        {
+          "id": "wall-z--1",
+          "kind": "box",
+          "position": [
+            0,
+            -1.5,
+            -58.5
+          ],
+          "size": [
+            120.0,
+            105.0,
+            13.0
+          ],
+          "appearance": "cooling"
+        },
+        {
+          "id": "wall-x-1",
+          "kind": "box",
+          "position": [
+            67.5,
+            -1.5,
+            0
+          ],
+          "size": [
+            15.0,
+            105.0,
+            130.0
+          ],
+          "appearance": "cooling"
+        },
+        {
+          "id": "wall-z-1",
+          "kind": "box",
+          "position": [
+            0,
+            -1.5,
+            58.5
+          ],
+          "size": [
+            120.0,
+            105.0,
+            13.0
+          ],
+          "appearance": "cooling"
+        },
+        {
+          "id": "insert",
+          "kind": "box",
+          "position": [
+            0,
+            -36.0,
+            0
+          ],
+          "size": [
+            99.0,
+            14.399999999999999,
+            83.2
+          ],
+          "appearance": "insert"
+        },
+        {
+          "id": "lid",
+          "kind": "box",
+          "position": [
+            0,
+            55.2,
+            0
+          ],
+          "size": [
+            150.0,
+            9.6,
+            130.0
+          ],
+          "appearance": "lid"
+        },
+        {
+          "id": "vent-0",
+          "kind": "box",
+          "position": [
+            -31.500000000000004,
+            59.4,
+            35.1
+          ],
+          "size": [
+            12.0,
+            1.2,
+            10.4
+          ],
+          "appearance": "vent"
+        },
+        {
+          "id": "vent-1",
+          "kind": "box",
+          "position": [
+            -10.500000000000002,
+            59.4,
+            35.1
+          ],
+          "size": [
+            12.0,
+            1.2,
+            10.4
+          ],
+          "appearance": "vent"
+        },
+        {
+          "id": "vent-2",
+          "kind": "box",
+          "position": [
+            10.500000000000002,
+            59.4,
+            35.1
+          ],
+          "size": [
+            12.0,
+            1.2,
+            10.4
+          ],
+          "appearance": "vent"
+        },
+        {
+          "id": "vent-3",
+          "kind": "box",
+          "position": [
+            31.500000000000004,
+            59.4,
+            35.1
+          ],
+          "size": [
+            12.0,
+            1.2,
+            10.4
+          ],
+          "appearance": "vent"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 1277508.96,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          -75.0,
+          346.343753982,
+          20.0
+        ],
+        "max": [
+          75.0,
+          476.343753982,
+          140.0
+        ],
+        "size": [
+          150.0,
+          130.0,
+          120.0
+        ]
+      },
+      "solids": 11,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-mount",
+      "kind": "inspection-mount",
+      "label": "Sidecar pad and edge bracket",
+      "app_position": [
+        161.5719345025,
+        254.86690226000002,
+        421.343753982
+      ],
+      "app_size": [
+        140.0,
+        24.0,
+        210.0
+      ],
+      "cad_center": [
+        161.5719345025,
+        421.343753982,
+        254.86690226000002
+      ],
+      "cad_size": [
+        140.0,
+        210.0,
+        24.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "pad",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            35
+          ],
+          "size": [
+            140,
+            20,
+            140
+          ],
+          "appearance": "structure"
+        },
+        {
+          "id": "edge-bridge",
+          "kind": "box",
+          "position": [
+            0,
+            10,
+            -65
+          ],
+          "size": [
+            85,
+            4,
+            80
+          ],
+          "appearance": "rail"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 419199.99999999994,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          91.5719345025,
+          316.343753982,
+          244.86690226000002
+        ],
+        "max": [
+          231.5719345025,
+          526.343753982,
+          266.86690226
+        ],
+        "size": [
+          140.0,
+          209.99999999999994,
+          22.0
+        ]
+      },
+      "solids": 2,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-mast",
+      "kind": "inspection-mast",
+      "label": "Inspection mast",
+      "app_position": [
+        161.5719345025,
+        457.36690225999996,
+        456.343753982
+      ],
+      "app_size": [
+        42.0,
+        384.99999999999994,
+        42.0
+      ],
+      "cad_center": [
+        161.5719345025,
+        456.343753982,
+        457.36690225999996
+      ],
+      "cad_size": [
+        42.0,
+        42.0,
+        384.99999999999994
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "mast",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            42,
+            384.99999999999994,
+            42
+          ],
+          "appearance": "frame"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 679140.0,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          140.5719345025,
+          435.343753982,
+          264.86690225999996
+        ],
+        "max": [
+          182.5719345025,
+          477.343753982,
+          649.86690226
+        ],
+        "size": [
+          42.0,
+          42.0,
+          385.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-shoulder",
+      "kind": "inspection-joint",
+      "label": "Shoulder joint",
+      "app_position": [
+        161.5719345025,
+        664.86690226,
+        456.343753982
+      ],
+      "app_size": [
+        58.0,
+        30.0,
+        58.0
+      ],
+      "cad_center": [
+        161.5719345025,
+        456.343753982,
+        664.86690226
+      ],
+      "cad_size": [
+        58.0,
+        58.0,
+        30.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "housing",
+          "kind": "cylinder",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            58,
+            30,
+            58
+          ],
+          "appearance": "motor",
+          "axis": "y"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 79262.38265007047,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          132.5719345025,
+          427.343753982,
+          649.86690226
+        ],
+        "max": [
+          190.5719345025,
+          485.343753982,
+          679.86690226
+        ],
+        "size": [
+          58.0,
+          58.0,
+          30.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-upper-link",
+      "kind": "inspection-link",
+      "label": "Upper arm link",
+      "app_position": [
+        107.54299554025421,
+        664.86690226,
+        329.9035556485036
+      ],
+      "app_size": [
+        141.16222076089792,
+        26.0,
+        267.0261552316536
+      ],
+      "cad_center": [
+        107.54299554025421,
+        329.9035556485036,
+        664.86690226
+      ],
+      "cad_size": [
+        141.16222076089792,
+        267.0261552316536,
+        26.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "beam",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            275.0,
+            26.0,
+            36.0
+          ],
+          "appearance": "frame",
+          "rotation_y_deg": 113.13741797946163
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 257400.0,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          36.961885159805234,
+          196.39047803267675,
+          651.86690226
+        ],
+        "max": [
+          178.12410592070322,
+          463.41663326433036,
+          677.86690226
+        ],
+        "size": [
+          141.16222076089798,
+          267.0261552316536,
+          26.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-elbow",
+      "kind": "inspection-joint",
+      "label": "Elbow joint",
+      "app_position": [
+        53.51405657800842,
+        664.86690226,
+        203.4633573150071
+      ],
+      "app_size": [
+        58.0,
+        30.0,
+        58.0
+      ],
+      "cad_center": [
+        53.51405657800842,
+        203.4633573150071,
+        664.86690226
+      ],
+      "cad_size": [
+        58.0,
+        58.0,
+        30.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "housing",
+          "kind": "cylinder",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            58,
+            30,
+            58
+          ],
+          "appearance": "motor",
+          "axis": "y"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 79262.38265007047,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          24.51405657800842,
+          174.4633573150071,
+          649.86690226
+        ],
+        "max": [
+          82.51405657800842,
+          232.4633573150071,
+          679.86690226
+        ],
+        "size": [
+          58.0,
+          58.0,
+          30.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-forearm",
+      "kind": "inspection-link",
+      "label": "Forearm link",
+      "app_position": [
+        60.97143452400421,
+        664.86690226,
+        66.16573346750354
+      ],
+      "app_size": [
+        50.861770135701576,
+        26.0,
+        276.5477248299587
+      ],
+      "cad_center": [
+        60.97143452400421,
+        66.16573346750354,
+        664.86690226
+      ],
+      "cad_size": [
+        50.861770135701576,
+        276.5477248299587,
+        26.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "beam",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            275.0,
+            26.0,
+            36.0
+          ],
+          "appearance": "frame",
+          "rotation_y_deg": 86.89101067957884
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 257399.9999999999,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          35.54054945615342,
+          -72.10812894747585,
+          651.86690226
+        ],
+        "max": [
+          86.402319591855,
+          204.4395958824829,
+          677.86690226
+        ],
+        "size": [
+          50.86177013570158,
+          276.5477248299587,
+          26.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-wrist",
+      "kind": "inspection-joint",
+      "label": "Camera wrist",
+      "app_position": [
+        68.42881247,
+        664.86690226,
+        -71.13189038
+      ],
+      "app_size": [
+        40.0,
+        30.0,
+        40.0
+      ],
+      "cad_center": [
+        68.42881247,
+        -71.13189038,
+        664.86690226
+      ],
+      "cad_size": [
+        40.0,
+        40.0,
+        30.0
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "housing",
+          "kind": "cylinder",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            40,
+            30,
+            40
+          ],
+          "appearance": "motor",
+          "axis": "y"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 37699.11184307752,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          48.42881247,
+          -91.13189038,
+          649.86690226
+        ],
+        "max": [
+          88.42881247,
+          -51.13189038,
+          679.86690226
+        ],
+        "size": [
+          40.0,
+          40.0,
+          30.0
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-camera-mount",
+      "kind": "inspection-camera-mount",
+      "label": "Custom camera neck concept",
+      "app_position": [
+        68.42881247,
+        632.74190226,
+        -71.13189038
+      ],
+      "app_size": [
+        12.0,
+        34.25,
+        12.0
+      ],
+      "cad_center": [
+        68.42881247,
+        -71.13189038,
+        632.74190226
+      ],
+      "cad_size": [
+        12.0,
+        12.0,
+        34.25
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "neck",
+          "kind": "box",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            12,
+            34.25,
+            12
+          ],
+          "appearance": "structure"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 4932.0,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          62.42881247,
+          -77.13189038,
+          615.61690226
+        ],
+        "max": [
+          74.42881247,
+          -65.13189038,
+          649.86690226
+        ],
+        "size": [
+          12.0,
+          12.0,
+          34.25
+        ]
+      },
+      "solids": 1,
+      "provenance": "project.design.components geometry primitives"
+    },
+    {
+      "id": "inspection-camera",
+      "kind": "inspection-camera",
+      "label": "Raspberry Pi Camera Module 3 envelope",
+      "app_position": [
+        68.42881247,
+        609.86690226,
+        -71.13189038
+      ],
+      "app_size": [
+        25.0,
+        11.5,
+        24.0
+      ],
+      "cad_center": [
+        68.42881247,
+        -71.13189038,
+        609.86690226
+      ],
+      "cad_size": [
+        25.0,
+        24.0,
+        11.5
+      ],
+      "shape": "shared primitives",
+      "primitive_manifest": [
+        {
+          "id": "pcb",
+          "kind": "box",
+          "position": [
+            0,
+            4.25,
+            0
+          ],
+          "size": [
+            25,
+            3,
+            24
+          ],
+          "appearance": "controller",
+          "reference_id": "rpi-camera-module-3",
+          "dimension_basis": "schematic_within_manufacturer_envelope"
+        },
+        {
+          "id": "lens",
+          "kind": "cylinder",
+          "position": [
+            0,
+            -1.5,
+            0
+          ],
+          "size": [
+            11,
+            8.5,
+            11
+          ],
+          "appearance": "motor",
+          "axis": "y",
+          "reference_id": "rpi-camera-module-3",
+          "dimension_basis": "schematic_within_manufacturer_envelope"
+        }
+      ],
+      "valid": true,
+      "volume_mm3": 2607.7820110542752,
+      "volume_scope": "Sum of primitive solid volumes; overlaps may be counted more than once.",
+      "bbox_cad": {
+        "min": [
+          55.92881247,
+          -83.13189038,
+          604.11690226
+        ],
+        "max": [
+          80.92881247,
+          -59.13189038,
+          615.61690226
+        ],
+        "size": [
+          25.0,
+          24.0,
+          11.5
+        ]
+      },
+      "solids": 2,
+      "provenance": "project.design.components geometry primitives"
+    }
+  ],
+  "deck_component_id": "base",
+  "component_count": 19,
+  "solid_count": 861,
+  "source": {
+    "generator": "app.cad_exports.build_cad_files",
+    "source_sha256": "cf76cd14bf093092a03a169a907f8377ef1504a649dea33c40e411e156f5cf51",
+    "geometry_source_sha256": "169a2a535f91ccf8fefc29cbf419aaa50cfd4941de64c6450dd258511a84a755",
+    "microplate_geometry_source_sha256": "cee95acf7801cd20d827d3d8c7aa258bc322dd0d15ecb00b4bebf5c15f5881f2",
+    "build123d_version": "0.13.0",
+    "input": "Pinned source STEP and project.design.components primitives (mm, y is UP)"
+  }
+}

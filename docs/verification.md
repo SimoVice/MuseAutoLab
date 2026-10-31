@@ -1,4 +1,104 @@
-# Delivery verification — 2026-10-30
+# Delivery verification — 2026-10-31
+
+## Latest module: one-message 96-well plate switch
+
+The ordinary chat now switches the Jubilee sample module between its saved tube
+rack and a named Corning 96-well software reference with a separate custom holder.
+The viewer, capacity checks, well addresses, part list, immediate instructions,
+portable project and fabrication exports share the accepted state. Three existing
+preparations remain three preparations; a format change never silently changes
+their volume or creates 96 tasks. See the [demonstration sequence](microplate-switching.md)
+and [curated evidence](examples/microplate-verification.json).
+
+Two frozen rounds each made eight actual Spark Contributor requests. The first
+passed structural checks, but manual review found stale assistant prose describing
+an earlier 2 mL recipe when the canonical project contained 200 µL. The application
+now derives the bounded labware-change status reply from the accepted post-action
+state, while Meta still interprets the request. This distinction is recorded in
+`assistant_message_origin`; unrelated conversation remains model-generated.
+
+The second round's original evaluator recorded **7/8**, with the PCR-plate negative
+incorrectly flagged because it did not recognize “stays as-is” as preservation.
+Manual review found the state and reply correct in all eight cases. After fixing
+that evaluator, a strict replay of the identical recorded requests/responses passed
+**8/8 without another provider call**. The original results and failures are retained;
+the replay is not a third live round. The cases cover English, Italian, the user's
+mixed-language wording, explicit volume changes, a 2 mL conflict, exact rack
+restoration and rejection of unsupported plate families. They are developer-defined
+regression cases, not independent generalization or a reliability percentage.
+
+Final release review found a separate quantity-intent defect: “switch from 1.5 mL
+tubes and set the volume to 1.5 mL” could lose the explicit volume edit because it
+equaled the old tube capacity. Literal quantity-role binding now preserves the
+requested 1500 µL and shows the conflict, while nominal container capacity alone
+does not change a recipe. English/Italian, negated/future and literal-source cases
+passed focused offline tests. This repair changes no prompt or geometry; it follows
+the live rounds and full package runs and is recorded separately from that evidence.
+
+Total new usage was **16 actual calls and 303,633 reported tokens** (287,951 input,
+15,682 output), with no missing usage fields. Charges and remaining credit were not
+checked. The [dataset](examples/microplate-evaluation-cases.json) is fixed and the
+evaluation script defaults to no inference:
+
+```powershell
+.venv/Scripts/python.exe scripts/evaluate_microplates.py --dataset docs/examples/microplate-evaluation-cases.json
+```
+
+An explicit `--live --max-calls 8 --output <new-output-directory>` uses separately
+configured Meta access. Source/input fingerprints and each actual attempt are
+retained. The synthetic 200 µL starting fixture is prepared deterministically;
+the recorded one-message switch itself uses the real model/API path.
+
+The accepted S1 result was confirmed as revision 16. Its first fully verified
+package contained 31 manifest-listed files plus the manifest. All hashes, guides,
+BOM entries and profile bindings matched. The full STEP reopened valid with
+**861 solids**, including all **809 original Jubilee solids**. The holder and
+schematic plate each reopened as one solid, and all **96 wells** passed geometric
+probes. Generation, download and verification together took 415.86 seconds.
+
+An earlier interrupted verification helper timed out; its server's job was later
+observed ready. That is retained as an incomplete verification attempt, not a CAD
+failure. During the successful package run, native CAD computation could stall API
+reads and one browser capture timed out. CAD now runs in a bounded separate process,
+with queueing, timeout and cancellation cleanup. Process tests cover a child holding
+its own interpreter lock while the API continues answering, plus invalid results,
+failure and cleanup. The next real full export passed the same package/96-well
+checks and **555/555 independent API reads** (513 during CAD), all HTTP 200 and
+below the predeclared 2-second threshold. The maximum was **0.329 seconds**.
+Generation/download/actual-solid verification together took 519.36 seconds.
+These are single-host observations, not latency guarantees. Small published CAD
+files retain the first package's provenance; the separate run is in the curated record.
+
+Browser checks cover the switch and return, rejected/over-capacity requests,
+occupied/free wells, A1 orientation, selected-part focus, save/reopen, current guide,
+mobile layout and unavailable operating animation. Actual captures reopen the
+accepted model result without new inference, price refresh or CAD generation.
+These are agent checks, not external-user research. The earlier capture timeout is
+retained separately from the later successful capture.
+
+The final regular suite passed **850 tests in 143.49 seconds**; Ruff and the
+production frontend build passed. Four offline browser flows cover the plate,
+rack, scene focus and resources. One earlier regular-suite attempt retained
+849 passes and one failure: a test left its artificial 0.2-second timeout in place
+for a subsequent normal worker startup. Restoring the normal deadline for that
+second job fixed the test while keeping the forced-timeout and cleanup assertions.
+Production code did not change for that repair. All **eight source-CAD/rebuild
+checks** also passed in 903.56 seconds: source-identity rejections, export/reopen,
+independent generated-script reconstruction and rejection of an altered source hash.
+A final strict replay of the same eight recorded round-2 responses also passed
+on the release code, with identical requests after transient-ID normalization,
+byte-identical recorded responses and **zero new provider calls**. The separate
+record keeps the live/replay and pre-/post-repair evidence boundaries explicit.
+
+Open the [synthetic 200 µL tube setup](examples/microplate-tube-setup.json) to try the
+message, or inspect the [confirmed plate project](examples/microplate-project.json)
+without a key. Small [holder and reference artifacts](examples/microplate/README.md)
+are provided with hashes. Only the named software profile is implemented; actual
+plate fit, print accuracy, retention, material suitability, working volume and
+pipetting remain unverified. The plate STEP is schematic reference geometry, not
+a file for manufacturing laboratory labware. Procurement/fabrication is unpriced.
+
+![Actual reopened plate project, current reply and capacity card](images/microplate-switch.png)
 
 ## Latest module: dimension-driven tube rack
 

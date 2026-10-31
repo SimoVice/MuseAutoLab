@@ -12,20 +12,18 @@ import io
 import json
 import logging
 import re
-import threading
 import zipfile
 from copy import deepcopy
 from uuid import uuid4
 
 from app.assembly import assembly_steps, build_document_files
-from app.cad_exports import build_cad_files
+from app.cad_worker import execute_cad
 
 TOTAL_STAGES = 4
 MAX_PACKAGE_BYTES = 128 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 512 * 1024 * 1024
 MAX_RETAINED_JOBS_PER_PROJECT = 3
 
-_cad_lock = threading.Lock()
 _jobs: dict[str, dict] = {}
 _background_tasks: set[asyncio.Task] = set()
 
@@ -62,8 +60,9 @@ def _check_coherence(project: dict, job: dict) -> None:
         raise ExportError(404, "Export job not found for this project.")
     if project.get("revision") != job["revision"]:
         raise ExportError(409, "Export is stale for the current project revision.")
-    if (_procurement_id(project) != job.get("procurement_report_id")
-            or _procurement_sha256(project) != job.get("procurement_sha256")):
+    if _procurement_id(project) != job.get("procurement_report_id") or _procurement_sha256(
+        project
+    ) != job.get("procurement_sha256"):
         raise ExportError(
             409, "Export procurement report is stale. Generate files with the current report."
         )
@@ -74,9 +73,12 @@ def _procurement_id(project: dict) -> str | None:
     report = project.get("procurement_report")
     if report is None:
         return None
-    if (not isinstance(report, dict) or report.get("project_id") != project.get("id")
-            or report.get("project_revision") != project.get("revision")
-            or not report.get("report_id")):
+    if (
+        not isinstance(report, dict)
+        or report.get("project_id") != project.get("id")
+        or report.get("project_revision") != project.get("revision")
+        or not report.get("report_id")
+    ):
         raise ExportError(409, "Procurement report does not match the current project revision.")
     return report["report_id"]
 
@@ -187,6 +189,11 @@ def _build_archive_bytes(payload_files: dict[str, bytes]) -> bytes:
     return buffer.getvalue()
 
 
+async def _execute_cad(snapshot: dict) -> dict[str, bytes]:
+    """Trusted hook; production always runs CAD in the isolated process."""
+    return await execute_cad(snapshot)
+
+
 async def _run_job(job_id: str) -> None:
     job = _jobs.get(job_id)
     if job is None:
@@ -197,11 +204,7 @@ async def _run_job(job_id: str) -> None:
         snapshot = job["snapshot"]
         loop = asyncio.get_running_loop()
 
-        def _cad() -> dict:
-            with _cad_lock:
-                return build_cad_files(deepcopy(snapshot))
-
-        cad_files = await loop.run_in_executor(None, _cad)
+        cad_files = await _execute_cad(deepcopy(snapshot))
         job["completed_stages"] = 1
         job["stage"] = "documents"
 
@@ -215,15 +218,21 @@ async def _run_job(job_id: str) -> None:
         job["stage"] = "simulation"
 
         def _sim() -> dict[str, bytes]:
-            if (snapshot.get("design", {}).get("foundation")
-                    or snapshot.get("design", {}).get("platform")):
+            if snapshot.get("design", {}).get("foundation") or snapshot.get("design", {}).get(
+                "platform"
+            ):
                 return {
-                    "simulation/result.json": json.dumps({
-                        "project_id": snapshot["id"], "revision": snapshot["revision"],
-                        "status": "not_run", "scope": "unsupported_selected_platform",
-                        "reason": "The selected platform's contacts, drives and adapters have "
-                                  "not been mapped or validated in MuJoCo.",
-                    }, indent=2).encode(),
+                    "simulation/result.json": json.dumps(
+                        {
+                            "project_id": snapshot["id"],
+                            "revision": snapshot["revision"],
+                            "status": "not_run",
+                            "scope": "unsupported_selected_platform",
+                            "reason": "The selected platform's contacts, drives and adapters have "
+                            "not been mapped or validated in MuJoCo.",
+                        },
+                        indent=2,
+                    ).encode(),
                     "simulation/README.md": b"# Simulation scope\n\n"
                     b"This selected-platform revision "
                     b"has not been simulated. The legacy XYZ physics model does not validate "
@@ -307,6 +316,17 @@ async def _run_job(job_id: str) -> None:
         job["stage"] = "done"
         job["status"] = "ready"
         job["download_url"] = f"/api/projects/{job['project_id']}/exports/{job['id']}/download"
+    except asyncio.CancelledError:
+        job.update(
+            status="failed",
+            stage="failed",
+            error="Project file generation was cancelled.",
+            file_bytes={},
+            archive_bytes=b"",
+            files=[],
+            download_url=None,
+        )
+        raise
     except Exception as exc:  # noqa: BLE001 - sanitized into job state
         logging.getLogger(__name__).exception("Export generation failed for job %s", job_id)
         job["status"] = "failed"
@@ -330,8 +350,11 @@ async def start_export(project: dict) -> dict:
         if job["project_id"] != project_id:
             continue
         if job["status"] in ("queued", "running"):
-            if (job["revision"] == revision and job.get("procurement_report_id") == report_id
-                    and job.get("procurement_sha256") == report_sha256):
+            if (
+                job["revision"] == revision
+                and job.get("procurement_report_id") == report_id
+                and job.get("procurement_sha256") == report_sha256
+            ):
                 return _public_metadata(job)
             raise ExportError(409, "Another export is already running for this project.")
     for job in _jobs.values():

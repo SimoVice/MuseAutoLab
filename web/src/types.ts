@@ -155,6 +155,7 @@ export type Project = {
   revision: number;
   labware_brief?: LabwareBrief | null;
   labware_rack?: LabwareRack | null;
+  labware_plate?: LabwarePlate | null;
   status: 'draft' | 'confirmed';
   brief: ProjectBrief;
   workflow: ProjectWorkflow;
@@ -216,6 +217,24 @@ export type LabwareRack = {
   checks: DesignCheck[];
   provenance: { basis: string; sources: Record<string, RackFieldSource>; compiler: string;
     source_project_revision: number; previous_size_mm?: [number, number, number] };
+};
+
+export type MicroplateWell = {
+  label: string; x_mm: number; y_mm: number; z_mm: number;
+  app_x_mm: number; app_y_mm: number; app_z_mm: number;
+  diameter_mm: number; depth_mm: number; total_liquid_volume_ul: number;
+};
+export type LabwarePlate = {
+  schema_version: number; kind: 'microplate_96'; profile_id: string; target_component_id: string;
+  size_mm: [number, number, number]; geometry: ComponentGeometry;
+  profile: { id: string; display_name: string; source_dimensions_mm: [number, number, number]; scope: string;
+    source: { source_url: string; revision: string; sha256: string; checked_on: string; license: string; license_url: string; scope: string } };
+  derived: { well_count: number; well_capacity_ul: number; well_ordering: string[]; wells: MicroplateWell[];
+    source_to_app: string; holder_pocket_mm: [number, number]; holder_wall_mm: number; holder_floor_mm: number; holder_lip_mm: number };
+  checks: DesignCheck[];
+  compatibility: { status: 'ready' | 'volume_conflict' | 'needs_recipe'; blocking_issues: string[];
+    well_capacity_ul: number; requested_volume_ul: number | null; current_target_count: number; occupied_wells: string[] };
+  provenance: { selection_literal: string; compiler: string; source_project_revision: number };
 };
 
 export type ConversationEntry = { id: number; role: 'assistant' | 'user'; text: string; references?: DesignReference[] };

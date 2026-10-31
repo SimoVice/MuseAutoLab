@@ -8,6 +8,7 @@ import VoiceDictation from './VoiceDictation';
 import AgentActivity, { finishAgentReveal } from './AgentActivity';
 import ProjectResources from './ProjectResources';
 import LabwareRackPanel from './LabwareRackPanel';
+import MicroplatePanel from './MicroplatePanel';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
 import CameraPanel from './CameraPanel';
@@ -587,7 +588,8 @@ export default function App() {
                 <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
               </div>
 
-              {project && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
+              {project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
+              {project && <MicroplatePanel plate={project.labware_plate} onSelect={handleVisionSelect} />}
               {project && <ProjectResources key={`${project.id}:${project.revision}`} project={project} busy={uiBusy} onSelect={handleVisionSelect} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find((run) => run.kind === 'show_build_plan' && run.status === 'ready')} />}
 
               <details className="project-details" ref={details}>
@@ -627,7 +629,7 @@ export default function App() {
                     <input id="inspection-time" type="range" min={0} max={6} step={0.05} value={inspectionTime} disabled={uiBusy} onChange={(event) => { const value = Number(event.target.value); handleInspection(value); }} />
                   </div>
                 )}
-                {showPreview && !project?.labware_rack && (
+                {showPreview && !project?.labware_rack && !project?.labware_plate && (
                   <div className="preview-block">
                     <div className="preview-controls" role="group" aria-label="Preparation preview controls">
                       <button type="button" className="preview-button" onClick={handlePlay} disabled={playing} aria-pressed={playing}>Play preview</button>
@@ -638,6 +640,7 @@ export default function App() {
                   </div>
                 )}
                 {showPreview && project?.labware_rack && <p className="preview-note">The operating preview is unavailable for this custom rack. Tool access, pipette approach and calibration need verification; tube envelopes mark the current preparation targets and unused holes remain free.</p>}
+                {project?.labware_plate && <p className="preview-note">The operating preview is unavailable for this plate setup. Plate location, pipette approach, working volume and calibration need verification. Occupied wells show the current preparation targets.</p>}
                 {showPhotoCheck && project && (
                   <details className="photo-check" open={requestedPhoto || undefined}>
                     <summary>Photo check</summary>
@@ -652,7 +655,7 @@ export default function App() {
               </details>
             </>
           )}
-          {!hasEngineeringDesign && project && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
+          {!hasEngineeringDesign && project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
           {!hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
             <details className="project-details" ref={details}>
               <summary>Project details</summary>
@@ -693,7 +696,7 @@ export default function App() {
                     <div className="plan-heading">
                       <div>
                         <h3>Preparation plan</h3>
-                        <p>Direct dilution · one tube per target</p>
+                        <p>Direct dilution · one {project.labware_plate ? 'well' : 'tube'} per target</p>
                       </div>
                       <span className="plan-status plan-status-missing">Unavailable</span>
                     </div>
@@ -705,7 +708,7 @@ export default function App() {
                     <div className="plan-heading">
                       <div>
                         <h3>Preparation plan</h3>
-                        <p>Direct dilution · one tube per target · no serial dilutions</p>
+                        <p>Direct dilution · one {project?.labware_plate ? 'well' : 'tube'} per target · no serial dilutions</p>
                       </div>
                       <span className={`plan-status plan-status-${plan.status}`}>{planStatusLabel(plan.status)}</span>
                     </div>
@@ -717,19 +720,19 @@ export default function App() {
                     {plan.steps.length > 0 ? (
                       <div className="plan-table-wrap">
                         <table className="plan-table">
-                          <caption className="sr-only">Per-target preparation volumes in microlitres</caption>
+                          <caption className="sr-only">{project.labware_plate ? 'Well assignments and preparation volumes in microlitres' : 'Per-target preparation volumes in microlitres'}</caption>
                           <thead>
                             <tr>
-                              <th scope="col">Target</th>
+                              <th scope="col">{project.labware_plate ? 'Well / target' : 'Target'}</th>
                               <th scope="col">Stock</th>
                               <th scope="col">Diluent</th>
                               <th scope="col">Total</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {plan.steps.map((step) => (
+                            {plan.steps.map((step, index) => (
                               <tr key={step.id}>
-                                <th scope="row">{step.target}</th>
+                                <th scope="row">{project.labware_plate ? `${project.labware_plate.compatibility.occupied_wells[index] ?? 'Unassigned'} · ${step.target}` : step.target}</th>
                                 <td>{formatVolumeUl(step.stock_volume_ul)}</td>
                                 <td>{formatVolumeUl(step.diluent_volume_ul)}</td>
                                 <td>{formatVolumeUl(step.total_volume_ul)}</td>

@@ -1,5 +1,6 @@
 """Export boundary checks; CAD bytes are stubbed here, real geometry is tested separately."""
 
+import asyncio
 import hashlib
 import io
 import json
@@ -21,9 +22,10 @@ from app.domain import apply_update, configure_project, confirm_project, new_pro
 def client(monkeypatch):
     api._sessions.clear()
     exports._jobs.clear()
-    monkeypatch.setattr(
-        exports, "build_cad_files", lambda p: {"cad/workstation.step": b"test-only CAD"}
-    )
+    async def fixture_cad(_):
+        return {"cad/workstation.step": b"test-only CAD"}
+
+    monkeypatch.setattr(exports, "_execute_cad", fixture_cad)
     monkeypatch.setattr(
         simulations, "simulation_files_for_project", lambda p: {"simulation/result.json": b"{}"}
     )
@@ -148,10 +150,10 @@ def test_archive_manifest_hashes_cache_and_attachments(client):
 
 
 def test_failure_has_no_partial_download_or_internal_error(client, monkeypatch):
-    def broken(_):
+    async def broken(_):
         raise RuntimeError("private-local-path-and-secret")
 
-    monkeypatch.setattr(exports, "build_cad_files", broken)
+    monkeypatch.setattr(exports, "_execute_cad", broken)
     _, base = seed(client)
     created = client.post(base).json()
     url = base + "/" + created["id"]
@@ -159,7 +161,10 @@ def test_failure_has_no_partial_download_or_internal_error(client, monkeypatch):
     assert job["status"] == "failed" and job["files"] == []
     assert "private-local-path-and-secret" not in json.dumps(job)
     assert client.get(url + "/download").status_code == 409
-    monkeypatch.setattr(exports, "build_cad_files", lambda _: {"cad/workstation.step": b"retry"})
+    async def retry_cad(_):
+        return {"cad/workstation.step": b"retry"}
+
+    monkeypatch.setattr(exports, "_execute_cad", retry_cad)
     retried = client.post(base).json()
     assert retried["id"] != job["id"]
     assert wait_done(client, base + "/" + retried["id"])["status"] == "ready"
@@ -168,13 +173,13 @@ def test_failure_has_no_partial_download_or_internal_error(client, monkeypatch):
 def test_running_revision_change_blocks_stale_and_duplicate_work(client, monkeypatch):
     entered, release = threading.Event(), threading.Event()
 
-    def slow(_):
+    async def slow(_):
         entered.set()
-        if not release.wait(10):
+        if not await asyncio.to_thread(release.wait, 10):
             raise TimeoutError("Test release missing")
         return {"cad/workstation.step": b"blocked-test"}
 
-    monkeypatch.setattr(exports, "build_cad_files", slow)
+    monkeypatch.setattr(exports, "_execute_cad", slow)
     project, base = seed(client)
     created = client.post(base).json()
     url = base + "/" + created["id"]

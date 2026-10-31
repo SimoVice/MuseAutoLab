@@ -1,0 +1,9 @@
+{
+  "source_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/labware/definitions/2/corning_96_wellplate_360ul_flat/1.json",
+  "revision": "95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+  "sha256": "c13f112e52893e781c59ced9e6418ff10a5e2cc4b4877fd9559045f2f475558d",
+  "checked_on": "2026-10-30",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE",
+  "scope": "Software labware definition, not manufacturer CAD or a verified exact fit for all listed SKUs. Plate body shape, skirt, lid, plate tolerance and mounting are not established."
+}

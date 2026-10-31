@@ -20,6 +20,7 @@ from app.labware import (
     rack_inputs,
     restore_labware,
 )
+from app.microplates import SavedPlate, plate_inputs, restore_plate
 from app.upstream_cad import ASSET_ID
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
@@ -70,7 +71,7 @@ class HistoryEntry(StrictModel):
 class Snapshot(StrictModel):
     format: Literal["museautolab-project"]
     schema_version: Annotated[int, Field(ge=1, le=1)]
-    compiler_version: Literal["1", "2", "3", "4", "5"]
+    compiler_version: Literal["1", "2", "3", "4", "5", "6"]
     saved_at: Annotated[str, Field(min_length=10, max_length=50)]
     project_id: Annotated[str, Field(min_length=36, max_length=36)]
     revision: Annotated[int, Field(ge=0, le=1000000)]
@@ -84,6 +85,7 @@ class Snapshot(StrictModel):
     inspection_extension: dict[str, JsonValue] | None = None
     labware_brief: SavedLabwareBrief | None = None
     labware_rack: SavedLabwareRack | None = None
+    labware_plate: SavedPlate | None = None
     history: Annotated[list[HistoryEntry], Field(max_length=8)]
 
 
@@ -127,6 +129,7 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         "format": "museautolab-project",
         "schema_version": 1,
         "compiler_version": (
+            "6" if project.get("labware_plate") else
             "5" if project.get("labware_brief") or project.get("labware_rack") else "4"
         ),
         "saved_at": datetime.now(timezone.utc).isoformat(),
@@ -150,6 +153,9 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         "labware_rack": (
             rack_inputs(project["labware_rack"]) if project.get("labware_rack") else None
         ),
+        "labware_plate": (
+            plate_inputs(project["labware_plate"]) if project.get("labware_plate") else None
+        ),
         "inspection_extension": (
             {
                 "proposal": deepcopy(extension["proposal"]),
@@ -163,6 +169,8 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
     if payload["compiler_version"] == "4":
         payload.pop("labware_brief")
         payload.pop("labware_rack")
+    if payload["compiler_version"] != "6":
+        payload.pop("labware_plate")
     # Validate our own format before returning a file that cannot be reopened.
     Snapshot.model_validate(payload)
     raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")
@@ -179,8 +187,12 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     except (ValidationError, ValueError) as exc:
         raise ValueError("Unsupported or invalid MuseAutoLab project file.") from exc
     inputs = saved.inputs
-    if saved.compiler_version != "5" and (saved.labware_brief or saved.labware_rack):
+    if saved.compiler_version not in ("5", "6") and (saved.labware_brief or saved.labware_rack):
         raise ValueError("Only compiler-5 project files support measured labware inputs.")
+    if saved.labware_plate and saved.compiler_version != "6":
+        raise ValueError("Only compiler-6 project files support the source-bound microplate.")
+    if saved.labware_plate and saved.labware_rack:
+        raise ValueError("Tube rack and microplate cannot both be active.")
     if saved.compiler_version in ("1", "2") and (
         saved.foundation_id is not None or saved.foundation_bed_drop_mm is not None
     ):
@@ -199,7 +211,7 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     if isinstance(proposal, CommercialProposal) != bool(saved.platform_id):
         if proposal is not None:
             raise ValueError("The layout does not match the selected commercial platform.")
-    if saved.compiler_version in ("3", "4", "5") and proposal is not None:
+    if saved.compiler_version in ("3", "4", "5", "6") and proposal is not None:
         source_proposal = isinstance(proposal, FoundationLayoutProposal)
         if source_proposal != (saved.foundation_id == ASSET_ID):
             raise ValueError("The saved layout does not match its CAD foundation.")
@@ -270,6 +282,9 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
             saved.labware_brief.model_dump(exclude_none=True) if saved.labware_brief else None,
             saved.labware_rack.model_dump(exclude_none=True) if saved.labware_rack else None,
         )
+    if saved.labware_plate is not None:
+        project["revision"] = saved.revision
+        project = restore_plate(project, saved.labware_plate.model_dump(exclude_none=True))
     if saved.platform_id:
         from app.platform_profiles import commercial_sourcing
 

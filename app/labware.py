@@ -613,6 +613,9 @@ def reapply_labware(project: dict, *, require_accepted: bool = True) -> dict:
         extension = check_extension(result, previous["proposal"])
         extension["provenance"] = deepcopy(previous.get("provenance", {}))
         result["inspection_extension"] = extension
+        by_id = {component["id"]: component for component in extension["components"]}
+        result["design"]["components"] = [deepcopy(by_id.get(component["id"], component))
+                                            for component in result["design"]["components"]]
         result["design"]["assembly_bounds"] = deepcopy(extension["assembly_bounds"])
     _sourcing(result)
     return add_geometry(result)
@@ -620,6 +623,11 @@ def reapply_labware(project: dict, *, require_accepted: bool = True) -> dict:
 
 def develop_labware(project: dict) -> tuple[dict, dict]:
     from app.engineering import state_for
+
+    if project.get("labware_plate"):
+        raise ValueError(
+            "Switch back to the stored previous tube rack before changing its dimensions."
+        )
 
     if (
         project.get("design", {}).get("platform")

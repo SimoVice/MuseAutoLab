@@ -194,6 +194,14 @@ def add_geometry(project: dict) -> dict:
         from app.labware_geometry import compile_labware_rack
 
         rack_geometry = compile_labware_rack(labware.get("spec"))
+    plate = result.get("labware_plate")
+    plate_geometry = None
+    if isinstance(plate, dict) and plate.get("kind") == "microplate_96":
+        if rack_geometry:
+            raise ValueError("Tube rack and microplate cannot both be active.")
+        from app.microplate_geometry import compile_microplate
+
+        plate_geometry = compile_microplate(plate.get("profile_id"))
     reference_specs = component_geometry_specs(result)
     for comp in result["design"]["components"]:
         if comp.get("kind") == "upstream-cad":
@@ -209,7 +217,15 @@ def add_geometry(project: dict) -> dict:
                 max(1, min(6, len(result.get("plan", {}).get("steps", []))))
             )
         canonical = inspection.get(comp["id"])
-        if rack_geometry and comp["id"] == labware.get("target_component_id"):
+        if plate_geometry and comp["id"] == plate.get("target_component_id"):
+            if comp["kind"] != "rack" or len(comp["size"]) != 3 or any(
+                abs(float(a) - b) > 1e-7
+                for a, b in zip(comp["size"], plate_geometry["size_mm"])
+            ):
+                raise ValueError("Microplate component does not match compiled dimensions.")
+            comp["geometry"] = deepcopy(plate_geometry["geometry"])
+            comp.pop("rack_slot_count", None)
+        elif rack_geometry and comp["id"] == labware.get("target_component_id"):
             if comp["kind"] != "rack" or any(
                 abs(float(a) - b) > 1e-7
                 for a, b in zip(comp["size"], rack_geometry["size_mm"])

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "Synthetic developer-defined bounded acceptance cases; not independent held-out validation or physical laboratory evidence.",
+  "baseline": "docs/examples/parametric-tube-rack-project.json",
+  "fixture_derivation": "Reopen the public synthetic confirmed rack. Use the existing quantity-only apply_update(final_volume='200 µL') and confirm_project for rack_200ul. Build plate_200ul using deterministic select_plate with a declared fixture literal, then confirm. Fixture setup makes no model calls and is not live evidence.",
+  "max_model_calls": 8,
+  "cases": [
+    {"id": "S1_italian_simple", "fixture": "rack_200ul", "prompt": "Sostituisci le provette con una piastra da 96 pozzetti.", "expected": {"outcome": "plate_ready", "volume_ul": 200}},
+    {"id": "S2_english_simple", "fixture": "rack_200ul", "prompt": "Switch from Eppendorf 1.5 mL tubes to a 96-well microplate.", "expected": {"outcome": "plate_ready", "volume_ul": 200}},
+    {"id": "S3_volume_conflict", "fixture": "rack_2ml", "prompt": "Sostituisci le provette con una piastra da 96 pozzetti.", "expected": {"outcome": "volume_conflict", "volume_ul": 2000}},
+    {"id": "S4_explicit_volume", "fixture": "rack_2ml", "prompt": "Passa a una piastra da 96 pozzetti, con 200 µL per pozzetto.", "expected": {"outcome": "plate_ready", "volume_ul": 200}},
+    {"id": "S5_restore_rack", "fixture": "plate_200ul", "prompt": "Torna al portaprovette precedente.", "expected": {"outcome": "rack_restored", "volume_ul": 200}},
+    {"id": "S6_mixed_language", "fixture": "rack_200ul", "prompt": "Passa da eppendorf 1.5ml a 96 microwells plates.", "expected": {"outcome": "plate_ready", "volume_ul": 200}},
+    {"id": "N1_unsupported_384", "fixture": "plate_200ul", "prompt": "Sostituisci la piastra con una da 384 pozzetti.", "expected": {"outcome": "unchanged", "volume_ul": 200}},
+    {"id": "N2_specific_pcr", "fixture": "rack_200ul", "prompt": "Use a Bio-Rad 96-well PCR plate instead.", "expected": {"outcome": "unchanged", "volume_ul": 200}}
+  ]
+}

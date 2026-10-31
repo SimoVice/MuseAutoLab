@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from app.design_sources import reference_context, resolve_reference
 from app.engineering import EngineeringUpdate, state_for
 from app.labware import LabwareUpdate
+from app.microplates import LabwareSelection
 from app.quantities import (
     has_spoken_quantity,
     normalize_concentration,
@@ -62,6 +63,12 @@ def using_model(model: str):
 
 
 TURN_DELTA_INSTRUCTIONS = """Return only changes from the latest user message, not stored facts.
+Current recorded project state is authoritative over historical conversation. History may
+describe an older revision, container or recipe. For plate readiness and current quantities,
+use the latest summary, current_plan and labware_plate.compatibility supplied in state.
+Do not revive an older volume conflict after a recorded quantity correction resolved it.
+Your prose precedes execution: selection outcomes are rendered from the resulting canonical
+state by the application. Do not predict success, blockage or unexecuted changes as facts.
 All response arrays have variable length. maxItems is an upper bound, never a target count.
 An empty array [] is valid. Never pad arrays with duplicate records, placeholder characters,
 unknown values or invented source text.
@@ -299,6 +306,34 @@ are not physical fit, material strength, cleaning, open-cap or pipetting validat
 Return labware with null values/sources when no new labware measurement is supplied.
 """
 
+SYSTEM_INSTRUCTIONS += """
+An accepted Jubilee project's sample module can now switch to one reviewed 96-well
+plate reference in a single ordinary message. Set labware_selection.profile_id to
+corning_96_wellplate_360ul_flat with its literal source and use select_labware.
+For a generic 96-well request explicitly name the Corning 96 Well Plate 360 µL Flat
+software reference in your reply; it is pinned Opentrons data, not vendor machine CAD
+or a verified exact SKU. Other plate formats, named unreviewed vendors/SKUs and arbitrary
+URLs are unsupported; explain the missing adapter and leave selection/actions unchanged.
+Do not call develop_layout for a plate-only switch. Its holder and sample-only placement
+are deterministic; other deck parts and the fixed source platform remain unchanged.
+The previous measured rack, inputs and position are retained. To switch back, choose
+labware_selection.profile_id=previous_tube_rack and select_labware; do not invent new
+Eppendorf dimensions. Leave both selection fields null when there is no selection now.
+A switch from 'Eppendorf 1.5 mL tubes' to a plate does NOT change final_volume: 1.5 mL
+describes the OLD container capacity. Keep existing recipe fields null unless explicitly
+changed, e.g. '200 µL per well' or '200 µL per pozzetto'. This context is supported.
+A 96-well plate does not imply 96 preparations. Preserve targets and assign them in the
+source ordering A1,B1,...,H1,A2,... . 360 µL is the reference maximum, not a validated
+working volume. A 2 mL recipe can visibly switch to a plate but remains draft/blocked
+until the user explicitly changes the volume. Never silently scale a recipe.
+Current labware_plate.compatibility records the real volume status and occupied wells.
+It supersedes earlier chat statements about different containers, capacities or volumes.
+For quantity edits explain that the application will recompute the actual plan; never
+repeat an old blocked-volume claim when the current recorded plan is ready.
+Pipette range, working volume, holder fit, open access, calibration and hardware control
+remain unverified. Operation animation is disabled for this new plate adapter.
+"""
+
 REQUIREMENT_KEYS = (
     "stock_concentration",
     "target_concentrations",
@@ -341,6 +376,48 @@ TARGET_TEMP_PATTERN = re.compile(
 ALLOWED_WORKFLOW_KINDS = ("general", "liquid_preparation")
 
 
+def _plate_volume_roles(message: str) -> list[tuple[str, str]]:
+    """Bind literal liquid amounts to current requests versus container descriptions.
+
+    The same number can legitimately occur twice: an old tube capacity and a new
+    requested preparation volume. Classify each occurrence rather than treating
+    numeric equality as evidence that both occurrences mean the old container.
+    """
+    quantity = re.compile(r"(?<![\w.,+\-])\d+(?:[.,]\d+)?\s*(?:[µμu]l|ml)\b", re.I)
+    separators = list(re.finditer(r"[,;!?\n](?!\d)|\.(?!\d)", message))
+    roles = []
+    for match in quantity.finditer(message):
+        start = max((item.end() for item in separators if item.end() <= match.start()), default=0)
+        end = min((item.start() for item in separators if item.start() >= match.end()),
+                  default=len(message))
+        prefix, suffix = message[start:match.start()], message[match.end():end]
+        prefix = re.split(r"\b(?:and|but|e|ma)\b", prefix, flags=re.I)[-1]
+        nominal = bool(re.match(
+            r"\s*(?:(?:eppendorf|microcentrifuge)\s+)?(?:tubes?|provett[ae])\b",
+            suffix, re.I
+        ) or re.search(
+            r"\b(?:eppendorf|provett[ae]|microcentrifuge\s+tubes?)\s*(?:da\s*)?$", prefix, re.I
+        ))
+        requested = bool(re.search(
+            r"\b(?:set|change|adjust|use|prepare|make|fill|dispense|imposta\w*|usa\w*|"
+            r"prepara\w*|metti|porta|cambia\w*|modifica\w*)\b|"
+            r"final[ _-]*volum|volum.{0,12}final|\b(?:a|un)\s+volum|"
+            r"\bvolum(?:e|i)\s*(?:of|to|di|a|:|=)|\b(?:with|con)\s*$",
+            prefix, re.I,
+        ) or re.match(r"\s*(?:per\s+(?:well|pozzett)|in\s+(?:each\s+well|ogni\s+pozzett))",
+                      suffix, re.I))
+        negated = bool(re.search(r"\b(?:don't|do not|never|non|mai)\b", prefix, re.I))
+        future = bool(re.search(
+            r"\b(?:later|someday|future|eventually|in futuro|più avanti|poi|"
+            r"next\s+(?:week|month|time)|one\s+day)\b", prefix + " " + suffix, re.I
+        ))
+        role = "nominal" if nominal else "future" if future else "negated" if negated else (
+            "requested" if requested else "other"
+        )
+        roles.append((match[0], role))
+    return roles
+
+
 class ModelClientError(Exception):
     """A sanitized, user-facing model integration failure."""
 
@@ -365,7 +442,7 @@ class ChatAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["develop_layout", "add_inspection", "remove_inspection", "confirm",
                   "show_files", "show_sources", "show_components", "show_photo_check",
-                  "show_build_plan", "develop_labware", "remove_labware"]
+                  "show_build_plan", "develop_labware", "remove_labware", "select_labware"]
     source: Annotated[str, Field(min_length=1, max_length=1000)]
 
 
@@ -381,6 +458,7 @@ class ExtractedTurn(BaseModel):
     actions: Annotated[list[ChatAction], Field(max_length=2)] = Field(default_factory=list)
     engineering: EngineeringUpdate = Field(default_factory=EngineeringUpdate)
     labware: LabwareUpdate = Field(default_factory=LabwareUpdate)
+    labware_selection: LabwareSelection = Field(default_factory=LabwareSelection)
     stock_concentration: Annotated[str | None, Field(max_length=500)] = None
     target_concentrations: Annotated[str | None, Field(max_length=500)] = None
     final_volume: Annotated[str | None, Field(max_length=500)] = None
@@ -456,9 +534,32 @@ class ExtractedTurn(BaseModel):
             key: getattr(self, key) for key in ALL_UPDATE_KEYS if getattr(self, key) is not None
         }
 
+    def normalize_container_volume_scope(self, user_message: str) -> None:
+        """A named old tube capacity is not an implicit final-volume edit."""
+        if (self.labware_selection.profile_id != "corning_96_wellplate_360ul_flat"
+                or self.final_volume is None):
+            return
+        if not self.source_final_volume or self.source_final_volume not in user_message:
+            return  # Ordinary source validation must reject missing/nonliteral citations.
+        try:
+            expected = normalize_volume(self.final_volume)
+            matches = [(literal, role) for literal, role in _plate_volume_roles(user_message)
+                       if normalize_volume(literal) == expected]
+        except ValueError:
+            return
+        requested = next((literal for literal, role in matches if role == "requested"), None)
+        if requested is not None:
+            # Rebind an underspecified repeated-number citation to the actual
+            # explicit request. The value is unchanged and the span is literal.
+            self.source_final_volume = requested
+        elif any(role in ("nominal", "negated", "future") for _, role in matches):
+            self.final_volume = None
+            self.source_final_volume = None
+
     def verify_sources(self, user_message: str) -> None:
         """Verify each change against a literal span from the latest user message."""
         self.labware.verify_sources(user_message)
+        self.labware_selection.verify_sources(user_message)
         for action in self.actions:
             if action.source not in user_message:
                 raise ValueError("Action source must occur literally in this message")
@@ -709,6 +810,11 @@ async def generate_turn(
 
     state["reviewed_platforms"] = platform_profiles()
     state["labware_brief"] = deepcopy(project.get("labware_brief"))
+    plate = project.get("labware_plate")
+    state["labware_plate"] = ({key: plate.get(key) for key in (
+        "kind", "profile_id", "profile", "size_mm", "compatibility", "checks", "provenance",
+        "position_xz_mm",
+    )} if plate else None)
     rack = project.get("labware_rack")
     state["labware_rack"] = ({key: rack.get(key) for key in (
         "kind", "target_component_id", "spec", "size_mm", "derived", "metrics", "checks",
@@ -804,6 +910,7 @@ async def generate_turn(
             raise TypeError("invalid message content")
         result = ExtractedTurn.model_validate_json(content)
         failure_kind = "source_validation"
+        result.normalize_container_volume_scope(user_message)
         for key in BRIEF_KEYS:
             value = getattr(result, key)
             source = getattr(result, f"source_{key}")

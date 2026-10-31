@@ -8,6 +8,7 @@ from app.engineering import state_for
 from app.foundation_design import adopt_foundation, is_source_based
 from app.inspection import clear_extension, develop_inspection
 from app.labware import develop_labware, reapply_labware, remove_labware
+from app.microplates import LabwareSelection, reapply_plate, select_plate
 from app.model_client import ModelClientError
 from app.upstream_cad import foundation_metadata
 
@@ -28,7 +29,8 @@ def extension_only_patch(patch: dict, actions: list) -> dict:
     kinds = {a.kind for a in actions}
     if (
         kinds.intersection({
-            "add_inspection", "remove_inspection", "develop_labware", "remove_labware"
+            "add_inspection", "remove_inspection", "develop_labware", "remove_labware",
+            "select_labware"
         })
         and "develop_layout" not in kinds
     ):
@@ -46,14 +48,18 @@ def extension_only_patch(patch: dict, actions: list) -> dict:
     return patch
 
 
-async def execute_chat_actions(project: dict, actions: list, instruction: str) -> tuple[dict, list]:
+async def execute_chat_actions(
+    project: dict, actions: list, instruction: str,
+    labware_selection: LabwareSelection | None = None,
+) -> tuple[dict, list]:
     result, runs = deepcopy(project), []
     for action in actions:
         kind = action.kind
         try:
             if kind == "develop_layout":
                 selected = state_for(result)["selected_platform_id"]
-                if result.get("labware_rack") and selected != "jubilee":
+                if ((result.get("labware_rack") or result.get("labware_plate"))
+                        and selected != "jubilee"):
                     raise ValueError(
                         "Remove the custom Jubilee tube rack before changing platforms."
                     )
@@ -94,6 +100,8 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                 result, run = await develop_design(base, instruction)
                 if run["status"] == "accepted" and result.get("labware_rack"):
                     result = reapply_labware(result)
+                if run["status"] == "accepted" and result.get("labware_plate"):
+                    result = reapply_plate(result)
                 if commercial:
                     result["sourcing"] = commercial_sourcing()
                 runs.append({**run, "kind": kind})
@@ -118,6 +126,11 @@ async def execute_chat_actions(project: dict, actions: list, instruction: str) -
                 )
             elif kind == "develop_labware":
                 result, run = develop_labware(result)
+                runs.append(run)
+            elif kind == "select_labware":
+                result, run = select_plate(
+                    result, labware_selection or LabwareSelection(), instruction
+                )
                 runs.append(run)
             elif kind == "remove_labware":
                 result = remove_labware(result)

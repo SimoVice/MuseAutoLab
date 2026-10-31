@@ -26,6 +26,7 @@ from app.illustration import (
 )
 from app.inspection import clear_extension, develop_inspection
 from app.labware import reapply_labware, update_labware_brief
+from app.microplates import canonical_labware_reply, reapply_plate
 from app.model_catalog import (
     AGENT_MODELS,
     IMAGE_MODEL,
@@ -511,7 +512,14 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 project_with_report(current, session.procurement_report),
                 request.message, list(session.history)
             )
+            if turn.labware_selection.profile_id is not None:
+                turn.normalize_container_volume_scope(request.message)
             actions = list(turn.actions)
+            if (turn.labware_selection.profile_id is not None
+                    and not any(action.kind == "select_labware" for action in actions)):
+                actions.append(ChatAction(
+                    kind="select_labware", source=turn.labware_selection.source
+                ))
             patch = extension_only_patch(turn.patch(), actions)
             updated = apply_update(current, patch)
             engineering = getattr(turn, "engineering", EngineeringUpdate())
@@ -548,11 +556,20 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 actions = [ChatAction(kind="develop_layout", source=request.message[:1000])]
             action_runs = []
             if actions:
-                updated, action_runs = await execute_chat_actions(updated, actions, request.message)
+                if any(action.kind == "select_labware" for action in actions):
+                    updated, action_runs = await execute_chat_actions(
+                        updated, actions, request.message, turn.labware_selection
+                    )
+                else:
+                    updated, action_runs = await execute_chat_actions(
+                        updated, actions, request.message
+                    )
                 if any(run["status"] in ("failed", "rejected") for run in action_runs):
                     updated = deepcopy(current)
             if updated.get("labware_rack"):
                 updated = reapply_labware(updated, require_accepted=False)
+            if updated.get("labware_plate"):
+                updated = reapply_plate(updated, require_accepted=False)
         except ModelClientError as exc:
             return JSONResponse(status_code=502, content={
                 "detail": str(exc),
@@ -565,7 +582,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 detail=f"{exc} The project was not changed.",
             ) from None
 
-        reply = turn.assistant_message
+        canonical_reply = canonical_labware_reply(updated, action_runs, patch)
+        reply = canonical_reply if canonical_reply is not None else turn.assistant_message
         from app.platform_profiles import engineering_guidance
 
         if state_for(updated)["selected_platform_id"] or any(
@@ -573,7 +591,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         ):
             updated["engineering_guidance"] = engineering_guidance(updated)
         if action_runs:
-            reply += "\n\n" + "\n".join(run["message"] for run in action_runs)
+            if canonical_reply is None:
+                reply += "\n\n" + "\n".join(run["message"] for run in action_runs)
             if any(run["kind"] == "develop_layout" and run["status"] == "accepted"
                    for run in action_runs):
                 proposal = updated.get("engineering_design", {}).get("proposal", {})
@@ -591,14 +610,21 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             previous_plan = current.get("plan")
             if plan is not None and plan != previous_plan:
                 if plan["status"] == "invalid":
-                    reply += f"\n\nThe preparation plan needs a correction: {plan['message']}"
+                    if canonical_reply is None:
+                        reply += f"\n\nThe preparation plan needs a correction: {plan['message']}"
                 elif plan["status"] == "ready":
-                    recipes = [
-                        f"{step['target']}: {step['stock_volume_ul']:g} µL stock + "
-                        f"{step['diluent_volume_ul']:g} µL diluent"
-                        for step in plan["steps"]
-                    ]
-                    reply += "\n\nCalculated preparation per tube:\n" + "\n".join(recipes)
+                    plate = updated.get("labware_plate")
+                    recipes = []
+                    for index, step in enumerate(plan["steps"]):
+                        label = (
+                            plate["compatibility"]["occupied_wells"][index] + " — " if plate else ""
+                        )
+                        recipes.append(
+                            f"{label}{step['target']}: {step['stock_volume_ul']:g} µL stock + "
+                            f"{step['diluent_volume_ul']:g} µL diluent"
+                        )
+                    container = "well" if plate else "tube"
+                    reply += f"\n\nCalculated preparation per {container}:\n" + "\n".join(recipes)
                     reply += "\nReview the plan below before confirming."
             if "workspace_width_mm" in patch and not action_runs:
                 width = updated["summary"]["workspace_width_mm"]
@@ -629,7 +655,10 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         )
         session.history = session.history[-8:]
         return {"project": deepcopy(updated), "assistant_message": display_reply, "usage": usage,
-                "recommendations": recommendations, "action_runs": action_runs}
+                "recommendations": recommendations, "action_runs": action_runs,
+                "assistant_message_origin": (
+                    "canonical_labware_state" if canonical_reply is not None else "model"
+                )}
 
 
 @app.post("/api/projects/{project_id}/configuration")
@@ -750,6 +779,8 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
             updated, run = await develop_design(deepcopy(current), request.instruction)
             if run.get("status") == "accepted" and updated.get("labware_rack"):
                 updated = reapply_labware(updated)
+            if run.get("status") == "accepted" and updated.get("labware_plate"):
+                updated = reapply_plate(updated)
         except ValueError as exc:
             return {"project": deepcopy(current), "design_run": {
                 "status": "rejected", "message": str(exc)

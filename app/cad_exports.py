@@ -107,6 +107,19 @@ def _components(project: dict) -> list[dict]:
                 abs(a - b) > 1e-7 for a, b in zip(size, compiled["size_mm"])
             ):
                 raise ValueError("Rack geometry does not match its compiled specification.")
+        plate = project.get("labware_plate")
+        is_microplate = (
+            isinstance(plate, dict) and plate.get("kind") == "microplate_96"
+            and plate.get("target_component_id") == comp["id"]
+        )
+        if is_microplate:
+            from app.microplate_geometry import compile_microplate
+
+            compiled = compile_microplate(plate.get("profile_id"))
+            if is_parametric_rack or geometry != compiled["geometry"] or any(
+                abs(a - b) > 1e-7 for a, b in zip(size, compiled["size_mm"])
+            ):
+                raise ValueError("Microplate geometry does not match its pinned profile.")
         if geometry.get("schema_version") != "1" or not geometry.get("primitives"):
             raise ValueError(f"Invalid geometry for {comp['id']}.")
         for primitive in geometry["primitives"]:
@@ -152,6 +165,8 @@ def _components(project: dict) -> list[dict]:
                 "size": size,
                 "geometry": geometry,
                 **({"fabrication_shape": "rim_supported_tube_rack"} if is_parametric_rack else {}),
+                **({"fabrication_shape": "microplate_holder"} if is_microplate else {}),
+                **({"plate_interfaces": compiled["checks"]["interfaces"]} if is_microplate else {}),
                 **(
                     {"reference_geometry": comp["reference_geometry"]}
                     if "reference_geometry" in comp
@@ -224,10 +239,28 @@ def _primitive_solid(comp, primitive):
     return solid
 
 
+def _build_plate_part(comp, prefix):
+    """Fuse only the holder or only the schematic reference plate."""
+    parts = [_primitive_solid(comp, p) for p in comp["geometry"]["primitives"]
+             if p["id"].startswith(prefix)]
+    if not parts:
+        raise ValueError("Microplate part is missing its primitives.")
+    solid = parts[0]
+    for part in parts[1:]:
+        solid = solid.fuse(part)
+    if not solid.is_valid or len(solid.solids()) != 1:
+        raise ValueError("Microplate part must form one valid solid.")
+    solid.label = "plate-holder" if prefix == "holder-" else "plate-reference-schematic"
+    return solid
+
+
 def _build_solid(comp):
     """Group the exact shared primitives, retaining component and primitive IDs."""
     from build123d import Compound
 
+    if comp.get("fabrication_shape") == "microplate_holder":
+        return Compound(children=[_build_plate_part(comp, "holder-"),
+                                  _build_plate_part(comp, "reference-")], label=comp["id"])
     parts = [_primitive_solid(comp, p) for p in comp["geometry"]["primitives"]]
     if comp.get("fabrication_shape") == "rim_supported_tube_rack":
         solid = parts[0]
@@ -259,6 +292,7 @@ def _build_rack_fit_coupon(comp):
 
 # Freeze the imported builder for self-contained exports throughout this process.
 _PRIMITIVE_BUILDER_SOURCE = inspect.getsource(_primitive_solid)
+_PLATE_BUILDER_SOURCE = inspect.getsource(_build_plate_part)
 _COMPONENT_BUILDER_SOURCE = inspect.getsource(_build_solid)
 _COUPON_BUILDER_SOURCE = inspect.getsource(_build_rack_fit_coupon)
 
@@ -280,6 +314,10 @@ def _build123d_version() -> str:
 
 
 def _deck_model_source(components: list[dict], project_id, revision) -> str:
+    plate_interfaces = next(
+        (c.get("plate_interfaces", []) for c in components
+         if c.get("fabrication_shape") == "microplate_holder"), []
+    )
     return (
         '"""Shared concept primitives, mm. Requires build123d==0.13.0.\n'
         "Process, material and all interfaces unchecked; not fabrication-ready.\n"
@@ -289,6 +327,8 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         f"PROJECT_ID = {project_id!r}\nREVISION = {revision!r}\n"
         f"COMPONENTS_MM = {pformat(components, width=88, sort_dicts=False)}\n\n"
         + _PRIMITIVE_BUILDER_SOURCE
+        + "\n\n"
+        + _PLATE_BUILDER_SOURCE
         + "\n\n"
         + _COMPONENT_BUILDER_SOURCE
         + "\n\n"
@@ -313,7 +353,8 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         + "    bed = Pos(0, 0, -c['bed_drop_mm']) * transform * beds[0]\n"
         + "    bed.label = 'build_plate_assembly'\n"
         + "    return Compound(children=[transform * fixed, bed], label=c['id'])\n\n"
-        + "def interfaces():\n    return []\n\n"
+        + "def interfaces():\n"
+        + f"    return {pformat(plate_interfaces, width=88)}\n\n"
         + "def build():\n    return Compound(children=[_standalone_solid(c) "
         + "for c in COMPONENTS_MM], "
         + 'label="MuseAutoLab concept")\n\n'
@@ -336,6 +377,14 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         + '        coupon = _build_rack_fit_coupon(rack)\n'
         + '        export_step(coupon, output / "tube-rack-fit-coupon.step", unit=Unit.MM)\n'
         + '        export_stl(coupon, output / "tube-rack-fit-coupon.stl")\n'
+        + '    plate = next((c for c in COMPONENTS_MM if c.get("fabrication_shape") '
+        + '== "microplate_holder"), None)\n'
+        + '    if plate:\n'
+        + '        holder = _build_plate_part(plate, "holder-")\n'
+        + '        reference = _build_plate_part(plate, "reference-")\n'
+        + '        export_step(holder, output / "plate-holder.step", unit=Unit.MM)\n'
+        + '        export_stl(holder, output / "plate-holder.stl")\n'
+        + '        export_step(reference, output / "plate-reference.step", unit=Unit.MM)\n'
     )
 
 
@@ -471,8 +520,14 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 "volume_scope": (
                     "Sum of imported solid volumes; overlaps may be counted more than once."
                     if imported
-                    else ("One fused rack solid." if comp.get("fabrication_shape") else
-                          "Sum of primitive solid volumes; overlaps may be counted more than once.")
+                    else (
+                        "One fused rack solid."
+                        if comp.get("fabrication_shape") == "rim_supported_tube_rack"
+                        else "Separate fused holder and schematic reference plate."
+                        if comp.get("fabrication_shape") == "microplate_holder"
+                        else "Sum of primitive solid volumes; overlaps may be counted "
+                        "more than once."
+                    )
                 ),
                 "bbox_cad": bbox,
                 "solids": len(solid.solids()),
@@ -501,7 +556,10 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
         export_step(workstation, ws_path, unit=Unit.MM)
         export_step(deck_solid, deck_step_path, unit=Unit.MM)
         export_stl(deck_solid, deck_stl_path)
-        rack_comp = next((c for c in components if c.get("fabrication_shape")), None)
+        rack_comp = next(
+            (c for c in components if c.get("fabrication_shape") == "rim_supported_tube_rack"),
+            None,
+        )
         rack_files = {}
         if rack_comp:
             rack_solid = _build_solid(rack_comp)
@@ -522,6 +580,21 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 rack_files["cad/tube-rack.step"] = fh.read()
             with open(rack_stl_path, "rb") as fh:
                 rack_files["cad/tube-rack.stl"] = fh.read()
+        plate_comp = next(
+            (c for c in components if c.get("fabrication_shape") == "microplate_holder"), None
+        )
+        if plate_comp:
+            holder = _build_plate_part(plate_comp, "holder-")
+            reference = _build_plate_part(plate_comp, "reference-")
+            for filename, solid, exporter in (
+                ("plate-holder.step", holder, lambda s, p: export_step(s, p, unit=Unit.MM)),
+                ("plate-holder.stl", holder, export_stl),
+                ("plate-reference.step", reference, lambda s, p: export_step(s, p, unit=Unit.MM)),
+            ):
+                path = os.path.join(tmp, filename)
+                exporter(solid, path)
+                with open(path, "rb") as fh:
+                    rack_files["cad/" + filename] = fh.read()
         with open(ws_path, "rb") as fh:
             workstation_step = fh.read()
         with open(deck_step_path, "rb") as fh:
@@ -536,12 +609,18 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
         from app.labware_geometry import LABWARE_GEOMETRY_SOURCE_SHA256
 
         labware_source = LABWARE_GEOMETRY_SOURCE_SHA256
+    microplate_source = None
+    if project.get("labware_plate"):
+        from app.microplate_geometry import MICROPLATE_GEOMETRY_SOURCE_SHA256, compile_microplate
+
+        microplate_source = MICROPLATE_GEOMETRY_SOURCE_SHA256
+        plate_details = compile_microplate(project["labware_plate"]["profile_id"])
     report = {
         "project_id": project_id,
         "revision": revision,
         "units": UNITS,
         "coordinate_mapping": COORDINATE_MAPPING,
-        "interfaces": [],
+        "interfaces": plate_details["checks"]["interfaces"] if microplate_source else [],
         "unchecked_interfaces": [
             "Frame fixation, rails and transmission: vendor drawings and loads not selected.",
             "Pipette actuation and tip handling: mounting dimensions not measured.",
@@ -576,6 +655,10 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "Details and openings do not establish fit, process, or performance.",
             "Reported volumes sum separate primitive solids and may count overlaps; "
             "they are not material volume or mass.",
+            *(["Plate reference is schematic, not manufacturer CAD or a fabrication part; "
+               "holder base profile, retention, tool access, mounting, material and print fit "
+               "are unchecked."]
+              if microplate_source else []),
         ],
         "components": entries,
         "deck_component_id": DECK_ID,
@@ -586,6 +669,8 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             "source_sha256": _SOURCE_SHA256,
             "geometry_source_sha256": GEOMETRY_SOURCE_SHA256,
             **({"labware_geometry_source_sha256": labware_source} if labware_source else {}),
+            **({"microplate_geometry_source_sha256": microplate_source}
+               if microplate_source else {}),
             "build123d_version": _build123d_version(),
             "input": (
                 "Pinned source STEP and project.design.components primitives (mm, y is UP)"
@@ -611,4 +696,9 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             files[f"cad/source/jubilee-c877bd2.{suffix}"] = STEP_PATH.with_name(
                 f"jubilee-c877bd2.{suffix}"
             ).read_bytes()
+    if microplate_source:
+        from app.microplate_geometry import DATA_DIR, PROFILE_ID
+
+        for name in (PROFILE_ID + ".json", "provenance.json", "LICENSE.txt"):
+            files["cad/source/microplate-" + name] = (DATA_DIR / name).read_bytes()
     return files

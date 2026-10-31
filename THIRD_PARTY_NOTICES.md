@@ -50,6 +50,20 @@ internal mechanisms and labware fit are unverified. No Opentrons control code is
 installed and no endorsement or compatibility certification is claimed. Exported
 commercial packages retain the deck definition, license and provenance.
 
+## Opentrons software microplate definition
+
+`app/data/labware/corning_96_wellplate_360ul_flat.json` is an unmodified definition
+from the same Opentrons revision `95a8a37922cfd5f46ad26c983bcc1659fa13b6e1`, under
+Apache License 2.0. The adjacent `LICENSE.txt` and `provenance.json` retain its
+license, source URL, retrieval date and raw SHA-256:
+`c13f112e52893e781c59ced9e6418ff10a5e2cc4b4877fd9559045f2f475558d`.
+
+[Original definition](https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/labware/definitions/2/corning_96_wellplate_360ul_flat/1.json).
+MuseAutoLab derives schematic plate primitives and adds its own separate holder.
+The original definition is not edited. It is software reference data, not
+manufacturer CAD, a verified exact commercial SKU, working-volume validation or
+endorsement. Plate exports include the definition, provenance and license.
+
 ## Multimodal demonstration media
 
 `docs/images/multimodal-reference.png` is an actual view of the attributed Jubilee

@@ -172,13 +172,16 @@ def build_bom_csv(project: dict) -> bytes:
 def build_preparation_csv(project: dict) -> bytes:
     buf = io.StringIO()
     writer = csv.writer(buf, quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
-    writer.writerow(["target", "stock_volume_ul", "diluent_volume_ul", "total_volume_ul"])
+    plate = project.get("labware_plate")
+    wells = plate["compatibility"]["occupied_wells"] if plate else []
+    header = ["target", "stock_volume_ul", "diluent_volume_ul", "total_volume_ul"]
+    writer.writerow((["well"] if plate else []) + header)
     plan = project.get("plan") or {}
-    for step in plan.get("steps") or []:
+    for index, step in enumerate(plan.get("steps") or []):
         if not isinstance(step, dict):
             continue
         writer.writerow(
-            [
+            ([_csv_cell(wells[index] if index < len(wells) else "Unassigned")] if plate else []) + [
                 _csv_cell(str(step.get("target", ""))),
                 _csv_cell(str(step.get("stock_volume_ul", ""))),
                 _csv_cell(str(step.get("diluent_volume_ul", ""))),
@@ -505,6 +508,32 @@ STEPS
             "Tube and tip consumables remain separate assumed proxies.",
             "Occupied sample positions show declared body envelopes and closed-cap outlines; "
             "tip and source consumables remain separate assumed proxies.")
+    if project.get("labware_plate"):
+        page = page.replace(
+            "The custom sample insert follows the target count without changing its "
+            "outside dimensions.",
+            "The selected 96-well software profile has 8 rows and 12 columns. Only existing "
+            "recipe targets are assigned; unused wells remain free. A1 orientation follows "
+            "the pinned definition, not a calibrated instrument pose.")
+        page = page.replace(
+            "Tube and tip consumables remain separate assumed proxies.",
+            "The sample plate is schematic reference geometry, not vendor CAD. Colored wells "
+            "mark targets, not measured liquid. The printable item is its custom holder.")
+        plan = project.get("plan") or {}
+        wells = project["labware_plate"]["compatibility"]["occupied_wells"]
+        rows = []
+        for index, step in enumerate(plan.get("steps") or []):
+            values = [wells[index] if index < len(wells) else "Unassigned", step.get("target", ""),
+                      step.get("stock_volume_ul", ""), step.get("diluent_volume_ul", ""),
+                      step.get("total_volume_ul", "")]
+            rows.append("<tr>" + "".join(f"<td>{html.escape(str(v))}</td>" for v in values)
+                        + "</tr>")
+        table = ('<section class="card"><h2>Well assignments and preparation volumes</h2><p>'
+                 + html.escape(str(plan.get("message", "")))
+                 + '</p><div class="table-scroll"><table><thead><tr><th>Well</th><th>Target</th>'
+                   '<th>Stock (µL)</th><th>Diluent (µL)</th><th>Total (µL)</th></tr></thead><tbody>'
+                 + "".join(rows) + '</tbody></table></div></section>')
+        page = page.replace("</main>", table + "</main>")
     if guide is not None:
         page = page.replace("</main>", procurement_html(guide) + "</main>")
     return page.encode("utf-8")
@@ -697,6 +726,35 @@ def build_readme(project: dict) -> bytes:
             "requires no assembly fasteners; deck location and retention remain open. "
             "The custom-rack operating animation is unavailable until tool access, "
             "pipette approach and calibration are implemented and verified.\n"
+        )
+    if project.get("labware_plate"):
+        plate = project["labware_plate"]
+        text = text.replace(
+            "- Rack holes and clamp details are concept assumptions, not verified labware fits.\n"
+            "  The sample insert pattern follows the number of targets; "
+            "validate before fabrication.\n",
+            "- The sample position uses a pinned 96-well software reference and a custom holder.\n"
+            "  Existing recipe targets map to wells; the switch never creates 96 targets or "
+            "scales volumes.\n"
+            "  Actual plate fit, working volume, attachment and pipette access "
+            "remain unverified.\n")
+        text += (
+            "\n## Selected 96-well plate and holder\n\n"
+            f"Profile: {plate['profile']['display_name']} ({plate['profile_id']}). "
+            "The pinned Opentrons definition is software geometry, not manufacturer CAD. "
+            f"Definition capacity is {plate['derived']['well_capacity_ul']:g} uL per well; "
+            "practical working volume and headspace require separate review.\n\n"
+            f"Assigned wells: {', '.join(plate['compatibility']['occupied_wells']) or 'none'}. "
+            "A1 is at positive model Z; columns increase along X and rows A-H run toward "
+            "negative Z. Record actual plate identity and orientation before use.\n\n"
+            "Fabricate only the custom cad/plate-holder.stl or edit cad/plate-holder.step. "
+            "cad/plate-reference.step is schematic reference geometry and must not be "
+            "fabricated as a laboratory plate. Print the holder flat-bottom-down, inspect "
+            "the pocket and dry fit the actual empty plate. Holder material, printing, "
+            "plate procurement and deck attachment remain unresolved or unpriced.\n\n"
+            "The plate operating animation is disabled pending actual location, pipette "
+            "approach, calibration and control integration. Follow the plate profile, "
+            "volume, holder-fit and placement steps in assembly-guide.html.\n"
         )
     return text.encode("utf-8")
 

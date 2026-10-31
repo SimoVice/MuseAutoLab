@@ -6,5 +6,11 @@ Kassis, T., Agarwal, V., He, Y., Patel, D., & Brueckner, A. M. (2026). *Scientif
 
 Pinned product dependencies and optional development-skill sources are listed in the README. Skill files remain outside the public product checkout. Generated concept geometry does not establish mechanical fit, manufacturability or laboratory performance.
 
+The same labware-adapter guidance informed the shallow 96-well plate holder's
+base-footprint tolerance budget and reopened-solid/visual checks. Its reference
+well geometry comes separately from the pinned Opentrons software definition;
+see [third-party notices](../THIRD_PARTY_NOTICES.md). No skill supplies physical
+plate measurements or validates printing and laboratory use.
+
 
 The bundled labware example photograph is by **Gannu03**, [Laboratory microcentrifuge tubes and pipette tips 01](https://commons.wikimedia.org/wiki/File:Laboratory_microcentrifuge_tubes_and_pipette_tips_01.jpg), **CC BY-SA 4.0**. [Asset attribution and changes](../web/public/examples/README.md) apply to that photograph; it is not original MuseAutoLab work. The surrounding project is not assigned a new license by inclusion of this asset.

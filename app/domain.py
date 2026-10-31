@@ -558,6 +558,10 @@ def apply_update(project: dict, patch: dict) -> dict:
         result["revision"] = project["revision"] + 1
         result["status"] = "draft"
         result["workflow"] = describe_workflow(result)
+        if result.get("labware_plate"):
+            from app.microplates import reapply_plate
+
+            return reapply_plate(result, require_accepted=False)
         if result.get("labware_rack"):
             from app.labware import reapply_labware
 
@@ -594,14 +598,18 @@ def confirm_project(project: dict) -> dict:
         raise ValueError(f"Required parameters are missing: {', '.join(missing)}.")
     if project["design"]["constraint_status"] == "infeasible":
         raise ValueError("The requested workspace width is infeasible for the supported layouts.")
-    if project["plan"]["status"] != "ready":
-        raise ValueError(f"Dilution plan needs attention: {project['plan']['message']}")
-    if project.get("labware_rack"):
+    if project.get("labware_plate"):
+        from app.microplates import reapply_plate
+
+        result = reapply_plate(project)
+    elif project.get("labware_rack"):
         from app.labware import reapply_labware
 
         result = reapply_labware(project)
     else:
         result = deepcopy(project)
+    if result["plan"]["status"] != "ready":
+        raise ValueError(f"Dilution plan needs attention: {result['plan']['message']}")
     if result["status"] != "confirmed":
         result["status"] = "confirmed"
         result["revision"] += 1

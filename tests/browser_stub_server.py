@@ -22,6 +22,7 @@ import app.api  # noqa: E402
 import app.design_agent  # noqa: E402
 import app.model_catalog  # noqa: E402
 from app.labware import LabwareUpdate  # noqa: E402
+from app.microplates import LabwareSelection  # noqa: E402
 
 
 async def _offline_catalog(**kwargs):
@@ -43,6 +44,7 @@ class _FakeTurn:
         self.recommendations = []
         self.actions = []
         self.labware = LabwareUpdate()
+        self.labware_selection = LabwareSelection()
 
     def patch(self) -> dict:
         return dict(self._patch_data)

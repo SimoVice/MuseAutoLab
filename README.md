@@ -4,7 +4,7 @@ Turn repetitive laboratory work into a sourced, editable automation proposal thr
 
 Meta models interpret the researcher's request, propose checked layouts and design an optional inspection extension. The application retains the original source CAD and performs deterministic arithmetic, geometry compilation and checks. Coding assistants used to build MuseAutoLab are separate from its runtime Meta inference.
 
-The current result is a **working digital prototype**: compare two reviewed platform routes, explicitly choose one, revise its supported geometry, save/reopen the project and generate coherent CAD/documents. The Jubilee route also supports a cold-bay concept, an explicitly requested inspection-arm/camera concept and a dimension-driven tube rack with separate STEP/STL and fit-coupon files. Neither current platform has physics or hardware control; no laboratory performance or time saving has been measured.
+The current result is a **working digital prototype**: compare two reviewed platform routes, explicitly choose one, revise its supported geometry, save/reopen the project and generate coherent CAD/documents. The Jubilee route also supports a cold-bay concept, an explicitly requested inspection-arm/camera concept, a dimension-driven tube rack and a one-message switch to a named 96-well plate with a separate holder. Neither current platform has physics or hardware control; no laboratory performance or time saving has been measured.
 
 **Start here:** [watch the three-minute demo](https://raw.githubusercontent.com/SimoVice/MuseAutoLab/main/docs/video/museautolab-demo.mp4) · [reviewer/demo guide and architecture](docs/demo-guide.md) · [delivery verification](docs/verification.md) · [locked setup](#setup-on-windows-powershell) · [run locally](#run-locally) · [offline checks](#verify-the-product) · [latest live Meta journey](docs/examples/delivery-third-rehearsal.json) · [source attribution](THIRD_PARTY_NOTICES.md).
 
@@ -72,6 +72,29 @@ inputs. The [rack STEP](docs/examples/tube-rack/tube-rack.step),
 directly. [Verification](docs/verification.md#latest-module-dimension-driven-tube-rack)
 records the initial failed live round, parser correction and successful regression.
 
+### Switch from tubes to a 96-well plate
+
+With an accepted Jubilee project, send **“Sostituisci le provette con una piastra
+da 96 pozzetti.”** The sample module changes to the named Corning 360 µL flat
+software reference and a custom holder. Existing preparations keep their volumes
+and gain well addresses; three targets remain three, with 93 free wells. An
+existing 200 µL preparation fits the reference maximum. A 2 mL preparation instead
+produces a visible volume conflict and blocks confirmation until explicitly revised.
+
+The model, source, part list, instructions and portable save change together.
+**“Torna al portaprovette precedente.”** restores the stored rack dimensions and
+position. Separate holder STEP/STL files are fabrication proposals; the plate STEP
+is schematic reference geometry. Actual fit and liquid handling remain unverified.
+See the [one-message demonstration and source/fit scope](docs/microplate-switching.md).
+
+Open the [synthetic 200 µL tube setup](docs/examples/microplate-tube-setup.json)
+to try that message, or the [confirmed plate project](docs/examples/microplate-project.json)
+to inspect the result without new inference. [Small CAD downloads](docs/examples/microplate/README.md)
+and [the test record](docs/verification.md#latest-module-one-message-96-well-plate-switch)
+retain the source, actual checks and known limits.
+
+![Actual plate result and current preparation](docs/images/microplate-switch.png)
+
 Choose Spark Contributor, Spark Standard or Wonder above chat using the account-checked selector. **Muse Voice** transcribes a recording into an editable draft; review numbers and units, then explicitly send. With an accepted design, **Project details → Project illustration** generates an optional Muse Image presentation PNG from the actual 3D view, labelled as nontechnical artwork. These paths use real server-side Meta access and preserve the canonical project. See [model choice, dictation and illustrations](docs/multimodal-demo.md) for supported formats, cancellation, privacy, availability and limits.
 
 Visible **Review preparation plan** and **Project files** shortcuts reveal the relevant section. Keyboard controls rotate/zoom the scene. A failed new-project request preserves the workspace; a successful reset offers **Undo new project**.
@@ -82,7 +105,7 @@ The OT-2 enclosure is **630 × 570 × 660 mm** (width × depth × height). Manuf
 
 ## Save and export
 
-**Save project / Open project** use a portable JSON file, capped at 256 KB. Compiler version 4 records engineering requirements/options, the selected platform, source identity/pose or slot assignments, then rebuilds canonical geometry without a Meta call. It accepts no arbitrary mesh URLs, CAD paths or executable code. Version-3 Jubilee designs retain geometry and acquire their existing platform choice. Version-1/2 files preserve inputs/history, clear incompatible designs/extensions and require a new design. New openings get a fresh runtime ID and retain lineage; old jobs/results are not restored. Browser-local resume is convenience, not cloud storage or a backup.
+**Save project / Open project** use a portable JSON file, capped at 256 KB, and rebuild canonical geometry without a Meta call. Compiler 4 retains engineering requirements, platform choice, source pose and accepted proposals; compiler 5 adds declared tube-rack inputs, and compiler 6 adds the pinned plate profile and reversible previous-rack state. Old projects retain their supported geometry. Files accept no arbitrary mesh URLs, CAD paths or executable code. Version-3 Jubilee designs retain geometry and acquire their existing platform choice. Version-1/2 files preserve inputs/history, clear incompatible designs/extensions and require a new design. New openings get a fresh runtime ID and retain lineage; old jobs/results are not restored. Browser-local resume is convenience, not cloud storage or a backup.
 
 After confirmation, **Project details → Generate project files** performs real CAD, document and archive work. The package contains the full workstation STEP, custom deck STEP/STL, standalone build123d regeneration source, original source STEP gzip, license/provenance, source bindings, preparation/BOM data, assembly guidance and file hashes. The viewer uses simplified source meshes; the original STEP is the geometric authority. The SVG is a custom-parts layout view and omits source geometry. Simulation records `not_run` for this imported foundation.
 
@@ -248,6 +271,7 @@ npm.cmd --prefix web run build
 .\.venv\Scripts\python.exe tests/browser_scene_accessibility.py
 .\.venv\Scripts\python.exe tests/browser_resources.py
 .\.venv\Scripts\python.exe tests/browser_labware.py
+.\.venv\Scripts\python.exe tests/browser_microplate.py
 ```
 
 The first Python command runs the regular regression suite; the second runs the source-CAD checks, including a full export/reopen and standalone regeneration. That integration test reads expanded source geometry twice and requires substantial time and memory (several GiB on the verified Windows host). Run it separately from quick UI iteration. Both check sets are required for source/export changes.
@@ -264,6 +288,12 @@ instruction navigation, real document download, revision/report guards, saved-pr
 reopening and mobile layout. Catalog responses are controlled fixtures; the separate
 [live supplier and Meta record](docs/examples/procurement-instructions-verification.json)
 contains actual observations.
+
+`browser_microplate.py` checks a tube-to-plate message, occupied well addresses,
+volume conflicts, rejected requests, rack restoration, portable recovery and
+mobile layout. Its model responses are explicit offline fixtures. The separate
+[microplate evaluation record](docs/examples/microplate-verification.json) retains
+the actual Meta calls, failures, corrections and CAD/API responsiveness measurements.
 
 The shareable [live Meta example](docs/examples/chat-foundation-live.json) records synthetic future-example, source-layout, bed revision and inspection requests. It distinguishes actual model choices from deterministic checks and preserves rejection evidence. Results are nondeterministic and are integration checks, not model accuracy or laboratory validation.
 

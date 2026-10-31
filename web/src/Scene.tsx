@@ -1,11 +1,11 @@
-import { OrbitControls } from '@react-three/drei';
+import { Html, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode, RefObject } from 'react';
 import { DoubleSide, Spherical, Vector3 } from 'three';
 import type { Group, OrthographicCamera } from 'three';
-import type { Component, InspectionExtension, LabwareRack, PhysicsFrame, PhysicsView, Project } from './types';
+import type { Component, InspectionExtension, LabwarePlate, LabwareRack, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
 import FoundationMesh from './FoundationMesh';
 import './scene-controls.css';
@@ -350,13 +350,15 @@ function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }
   );
 }
 
-function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack }: {
+function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack, labwarePlate, showPlateLabels }: {
   components: Component[];
   center: [number, number, number];
   stepCount: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   labwareRack?: LabwareRack | null;
+  labwarePlate?: LabwarePlate | null;
+  showPlateLabels?: boolean;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const events = (id: string) => ({
@@ -444,11 +446,34 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
       </group>;
     })}</group>;
   };
+  const microplateWells = () => {
+    const part = details.sampleRack;
+    if (!part || !labwarePlate) return null;
+    const occupied = new Set(labwarePlate.compatibility.occupied_wells);
+    const wells = labwarePlate.derived.wells;
+    const origin = part.position.map((value, axis) => (value - center[axis]) / SCALE);
+    const a1 = wells.find((well) => well.label === 'A1');
+    return <group>{wells.filter((well) => occupied.has(well.label)).map((well) => <mesh key={well.label}
+      name={`occupied-well-${well.label}`} position={[origin[0] + well.app_x_mm / SCALE, origin[1] + (well.app_y_mm - 0.5) / SCALE, origin[2] + well.app_z_mm / SCALE]}
+      rotation={[-Math.PI / 2, 0, 0]} {...events(part.id)}>
+      <circleGeometry args={[well.diameter_mm / SCALE * 0.42, 24]} />
+      <meshStandardMaterial color="#087d7d" side={DoubleSide} transparent opacity={0.75} />
+    </mesh>)}
+    {showPlateLabels && a1 && <>
+      {Array.from({ length: 12 }, (_, column) => wells.find((well) => well.label === `A${column + 1}`)).map((well) => well && <Html key={`column-${well.label}`} center position={[origin[0] + well.app_x_mm / SCALE, origin[1] + (well.app_y_mm + 0.6) / SCALE, origin[2] + (well.app_z_mm + 7) / SCALE]} style={{ pointerEvents: 'none' }}><span className="microplate-axis-label">{well.label.slice(1)}</span></Html>)}
+      {'ABCDEFGH'.split('').map((row) => wells.find((well) => well.label === `${row}1`)).map((well) => well && <Html key={`row-${well.label}`} center position={[origin[0] + (well.app_x_mm - 7) / SCALE, origin[1] + (well.app_y_mm + 0.6) / SCALE, origin[2] + well.app_z_mm / SCALE]} style={{ pointerEvents: 'none' }}><span className="microplate-axis-label">{well.label[0]}</span></Html>)}
+      <mesh name="a1-orientation-marker" position={[origin[0] + a1.app_x_mm / SCALE, origin[1] + (a1.app_y_mm + 0.1) / SCALE, origin[2] + a1.app_z_mm / SCALE]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[a1.diameter_mm / SCALE * 0.55, a1.diameter_mm / SCALE * 0.65, 28]} />
+        <meshStandardMaterial color="#b16b20" side={DoubleSide} />
+      </mesh>
+    </>}
+    </group>;
+  };
 
   return (
     <group>
       {tubeRow(details.sourceRack, 2, 0.06, 0.22, '#2f6f77', 'source-tube')}
-      {labwareRack ? customSampleTubes() : tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
+      {labwarePlate ? microplateWells() : labwareRack ? customSampleTubes() : tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
       {tipRow(details.tipRack)}
     </group>
   );
@@ -483,14 +508,20 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   const [viewKey, setViewKey] = useState(0);
   const [isolation, setIsolation] = useState<Isolation | null>(null);
   const isolatedRevision = useRef(`${project.id}:${project.revision}`);
+  const layoutKey = JSON.stringify(project.engineering_design?.proposal ?? null);
+  const isolationContext = useRef({ projectId: project.id, layoutKey });
   useEffect(() => {
     const revision = `${project.id}:${project.revision}`;
-    if (isolation && (isolation.id !== selectedId || isolatedRevision.current !== revision)) {
+    const retainSampleFocus = isolation?.mode === 'part' && isolation.id === 'sample-rack'
+      && selectedId === 'sample-rack' && Boolean(project.labware_plate || project.labware_rack)
+      && isolationContext.current.projectId === project.id && isolationContext.current.layoutKey === layoutKey;
+    if (isolation && (isolation.id !== selectedId || (isolatedRevision.current !== revision && !retainSampleFocus))) {
       setIsolation(null);
       setViewKey((value) => value + 1);
     }
     isolatedRevision.current = revision;
-  }, [isolation, selectedId, project.id, project.revision]);
+    isolationContext.current = { projectId: project.id, layoutKey };
+  }, [isolation, selectedId, project.id, project.revision, project.labware_plate, project.labware_rack, layoutKey]);
   const bounds = useMemo(() => {
     if (!components.length) return { center: [0, 0, 0] as [number, number, number], height: 0 };
     const min = [0, 1, 2].map((axis) => Math.min(...components.map((part) => part.position[axis] - part.size[axis] / 2), extension?.bounds.min_mm[axis] ?? Infinity));
@@ -500,7 +531,15 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   const target: [number, number, number] = [0, bounds.height / SCALE / 2, 0];
 
   const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
-  const isolated = isolation?.id === selectedId ? isolation : null;
+  const isolated = useMemo(() => {
+    if (!isolation || isolation.id !== selectedId) return null;
+    const parts = components.filter((part) => isolation.ids.includes(part.id));
+    if (!parts.length) return null;
+    const min = [0, 1, 2].map((axis) => Math.min(...parts.map((part) => part.position[axis] - part.size[axis] / 2)));
+    const max = [0, 1, 2].map((axis) => Math.max(...parts.map((part) => part.position[axis] + part.size[axis] / 2)));
+    return { ...isolation, position: min.map((value, axis) => ((value + max[axis]) / 2 - bounds.center[axis]) / SCALE) as Vec3,
+      size: min.map((value, axis) => (max[axis] - value) / SCALE) as Vec3 };
+  }, [isolation, selectedId, components, bounds.center]);
   const selectedPart = selectedId ? byId.get(selectedId) : undefined;
   const canInspectWork = Boolean(project.design.foundation && selectedId && WORKING_AREA_IDS.includes(selectedId));
   const canInspectArm = Boolean(selectedId && extension?.component_ids.includes(selectedId));
@@ -529,7 +568,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     () => (physicsActive && physics ? samplePhysicsFrames(physics.result.frames, physics.time_s) : null),
     [physicsActive, physics],
   );
-  const showAnimation = Boolean(!project.labware_rack && !physicsActive && operation && carriagePart && pipettePart);
+  const showAnimation = Boolean(!project.labware_rack && !project.labware_plate && !physicsActive && operation && carriagePart && pipettePart);
 
   const normalizedStepCount = useMemo(() => {
     if (!operation) return 0;
@@ -537,7 +576,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   }, [operation]);
 
   const animationLayout = useMemo(() => {
-    if (project.labware_rack || !carriagePart || !pipettePart) return null;
+    if (project.labware_rack || project.labware_plate || !carriagePart || !pipettePart) return null;
     const toCentered = (position: [number, number, number]): Vec3 => [
       (position[0] - bounds.center[0]) / SCALE,
       (position[1] - bounds.center[1]) / SCALE,
@@ -597,7 +636,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     keyframes.push({ position: [...home] as Vec3, time });
     const duration = keyframes.length > 1 ? keyframes[keyframes.length - 1].time : 0;
     return { home, cruiseY, dipY, keyframes, duration };
-  }, [project.labware_rack, byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
+  }, [project.labware_rack, project.labware_plate, byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
 
   const staticParts = useMemo(() => {
     if (!showAnimation && !physicsActive) return components;
@@ -634,7 +673,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
               selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
           </group>
         </Suspense>}
-        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} />
+        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} labwarePlate={project.labware_plate} showPlateLabels={isolated?.mode === 'part' && selectedId === project.labware_plate?.target_component_id} />
         {!isolated && physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh
             key={obstacle.id}
@@ -680,6 +719,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     </SceneBoundary>
     {project.design.foundation && sourceLoading && <div className="scene-loading" role="status">Loading source model…</div>}
     {project.labware_rack && <div className="scene-rack-occupancy">{Math.min(normalizedStepCount, project.labware_rack.spec.count)} / {project.labware_rack.spec.count} positions occupied · tube envelopes</div>}
+    {project.labware_plate && <div className="scene-rack-occupancy">{project.labware_plate.compatibility.occupied_wells.length} / {project.labware_plate.derived.well_count} wells occupied · A1 marked in amber</div>}
     <div className="scene-controls" role="group" aria-label="3D view controls">
       <span>View</span>
       {([['left', 'Rotate left', '←'], ['right', 'Rotate right', '→'], ['up', 'Rotate up', '↑'], ['down', 'Rotate down', '↓'], ['in', 'Zoom in', '+'], ['out', 'Zoom out', '−']] as const).map(([action, label, symbol]) =>

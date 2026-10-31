@@ -7,3 +7,8 @@
 *.step -text -diff
 *.STEP -text -diff
 *.stl -text -diff
+# Preserve recorded JSON bytes against their evidence hashes.
+/docs/examples/microplate-tube-setup.json -text whitespace=cr-at-eol
+/docs/examples/microplate-project.json -text
+/docs/examples/microplate/geometry-report.json -text
+/docs/examples/microplate/package-manifest.json -text

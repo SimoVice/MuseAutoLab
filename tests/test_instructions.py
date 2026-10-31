@@ -1,6 +1,8 @@
 """Canonical guide coherence and immediate generation, without CAD or providers."""
 
 import asyncio
+import csv
+import io
 import json
 from copy import deepcopy
 
@@ -9,13 +11,14 @@ from evolution_fixtures import inspection_proposal, layout_project
 from test_commercial_design import proposal as ot2_proposal
 from test_foundation_storage import source_project
 
-from app.assembly import assembly_steps, build_document_files, build_readme
+from app.assembly import assembly_steps, build_document_files, build_preparation_csv, build_readme
 from app.commercial_design import adopt_commercial, compile_commercial_layout
 from app.domain import apply_update, confirm_project
 from app.foundation_design import compile_source_layout
 from app.inspection import apply_extension, clear_extension
 from app.instructions import build_instruction_files, build_instruction_guide
 from app.labware import LabwareUpdate, develop_labware, update_labware_brief
+from app.microplates import PROFILE_ID, LabwareSelection, select_plate
 
 
 def report_for(project):
@@ -270,11 +273,56 @@ def test_rack_guide_exports_keep_revision_inputs_and_scope_without_inventing_val
     assert "rack-print" not in {step["id"] for step in partial_guide["steps"]}
 
 
+def test_plate_guide_replaces_tube_steps_preserves_targets_and_exposes_volume_conflict():
+    project = apply_update(rack_project(), {"final_volume": "2 mL"})
+    previous = deepcopy(project)
+    message = "Switch to a 96-well plate."
+    plate, _ = select_plate(
+        project, LabwareSelection(profile_id=PROFILE_ID, source=message), message
+    )
+    guide = build_instruction_guide(plate)
+    steps = {step["id"]: step for step in guide["steps"]}
+    assert guide["labware_plate"] == plate["labware_plate"]
+    assert not guide["labware_rack"]
+    assert not {"rack-inputs", "rack-print", "rack-fit", "rack-placement"}.intersection(steps)
+    assert {"plate-profile", "plate-volume", "plate-holder", "plate-placement"} <= steps.keys()
+    assert "sample-rack" not in steps["racks"]["component_ids"]
+    assert steps["plate-volume"]["status"] == "needs_design"
+    assert "2000 µL" in " ".join(steps["plate-volume"]["instructions"])
+    assert "360 µL" in " ".join(steps["plate-volume"]["instructions"])
+    assert plate["summary"]["final_volume"] == previous["summary"]["final_volume"]
+    assert len(plate["labware_plate"]["compatibility"]["occupied_wells"]) == len(
+        previous["plan"]["steps"]
+    )
+    files = build_instruction_files(plate)
+    text = files["assembly-guide.html"].decode("utf8")
+    assert "cad/plate-holder.stl" in text and "cad/plate-reference.step" in text
+    assert "do not print it as a laboratory plate" in text
+    assert "A1" in text and "not manufacturer CAD" in text
+    assert "cad/tube-rack.stl" not in text
+    assert "capacity is independent" not in text
+    assert "Well assignments and preparation volumes" in text
+    assert "<td>A1</td>" in text
+    rows = list(csv.DictReader(io.StringIO(build_preparation_csv(plate).decode("utf8"))))
+    assert rows[0]["well"] == "A1" and rows[0]["total_volume_ul"] == "2000.0"
+    readme = build_readme(plate).decode("utf8")
+    assert "Selected 96-well plate and holder" in readme
+    assert "sample insert pattern follows" not in readme
+    assert "cad/tube-rack-fit-coupon" not in readme
+    repaired = apply_update(plate, {"final_volume": "200 uL"})
+    repaired_steps = {step["id"]: step for step in build_instruction_guide(repaired)["steps"]}
+    assert repaired_steps["plate-volume"]["status"] == "ready"
+    assert "200 µL" in " ".join(repaired_steps["plate-volume"]["instructions"])
+
+
 def test_export_captures_report_and_refuses_replaced_or_removed_report(monkeypatch):
     import app.project_exports as exports
 
     exports._jobs.clear()
-    monkeypatch.setattr(exports, "build_cad_files", lambda _: {"cad/concept.step": b"fixture CAD"})
+    async def fixture_cad(_):
+        return {"cad/concept.step": b"fixture CAD"}
+
+    monkeypatch.setattr(exports, "_execute_cad", fixture_cad)
 
     async def run():
         project = confirm_project(source_project())

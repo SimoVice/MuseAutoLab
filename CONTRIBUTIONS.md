@@ -2,6 +2,29 @@
 
 Git history records changes made to MuseAutoLab during development. This file distinguishes implemented work from the intended project direction.
 
+## 2026-10-31: One-message labware switching and responsive CAD export
+
+Added a reversible chat-driven change from the saved Jubilee tube rack to a named
+96-well reference and separate holder. The pinned Opentrons definition supplies
+well names, pitch, capacity and schematic geometry; explicit holder assumptions
+remain separate from verified physical fit. The application preserves preparation
+volumes and target count, rejects unsupported families, blocks confirmation on
+volume conflicts and restores the previous rack's dimensions and placement.
+
+Viewer, well addressing, instructions, scoped unpriced parts, compiler-6 portable
+state and STEP/STL exports share canonical geometry. The plate remains schematic;
+only the custom holder is a fabrication proposal. An observed stale model reply
+led to canonical post-action status messages for this bounded action. A CAD export
+stall led to native CAD execution in a separate process with bounded transfer,
+timeouts and cleanup, keeping the API interpreter available.
+
+GPT-6.1 Terra xhigh implemented geometry/CAD; GPT-6.1 Sol implemented conversation,
+state, instructions, UI, export isolation and evaluation tooling. Codex coordinated,
+checked primary sources, reviewed cross-output consistency and curated the evidence.
+Two bounded real-Meta rounds used 16 calls; original failures and evaluator corrections
+remain recorded. See [verification](docs/verification.md) for the actual test, package
+and responsiveness results. No physical or external-user validation is claimed.
+
 ## 2026-10-30: Dimension-driven tube rack
 
 Added a bounded tube-rack adapter within the existing Jubilee project. Meta extracts

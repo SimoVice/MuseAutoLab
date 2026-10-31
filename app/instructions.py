@@ -491,6 +491,150 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         )
 
     if parts:
+        plate = project.get("labware_plate")
+        plate_component = plate.get("target_component_id") if plate else None
+        has_microplate = bool(plate and plate_component in index and route == "jubilee")
+        if has_microplate:
+            profile, derived, compatibility = (
+                plate["profile"],
+                plate["derived"],
+                plate["compatibility"],
+            )
+            facts = profile["source"]
+            plate_source = _source(
+                "microplate-profile",
+                profile["display_name"],
+                facts["source_url"],
+                profile["scope"],
+                facts["revision"],
+            )
+            plate_source.update(
+                {key: facts[key] for key in ("checked_on", "license", "license_url")}
+            )
+            plate_source["publisher"] = "Opentrons"
+            labels = ", ".join(compatibility["occupied_wells"]) or "none assigned"
+            requested = compatibility["requested_volume_ul"]
+            add(
+                "plate-profile",
+                "Review the selected 96-well profile and orientation",
+                [plate_component],
+                [
+                    f"Selected profile: {profile['display_name']} ({plate['profile_id']}). "
+                    "This is a pinned official Opentrons software definition, not manufacturer CAD "
+                    "or proof that a specific purchased plate fits the holder.",
+                    f"The definition provides {derived['well_count']} wells in 8 rows and 12 "
+                    f"columns, with {derived['well_capacity_ul']:g} µL maximum definition capacity "
+                    "per well. Working volume, headspace and mixing must be checked separately.",
+                    f"Current preparation targets use {len(compatibility['occupied_wells'])} "
+                    f"wells: {labels}. The switch does not add targets or scale recipe volumes.",
+                    "Locate A1 on the actual plate and compare its mark with the amber model "
+                    "marker. In model coordinates A1 is at positive Z, columns increase along X, "
+                    "and rows A–H run toward negative Z. The definition orders A1, B1 through H1 "
+                    "before A2; retain the displayed well assignments.",
+                    "Colored well markers show assigned targets only, not a liquid level or "
+                    "evidence that liquid was dispensed. The source fixture remains separate.",
+                ],
+                ["The plate identity and A1 orientation match the selected software profile."],
+                status="ready",
+                prerequisites=["design-review"],
+                sources=[plate_source],
+            )
+            add(
+                "plate-volume",
+                "Check per-well volume before confirming the recipe",
+                [plate_component],
+                [
+                    (
+                        f"The current recipe requests {requested:g} µL per target. "
+                        if requested is not None
+                        else "The current recipe has no complete per-target volume. "
+                    )
+                    + f"Selected definition capacity: {derived['well_capacity_ul']:g} µL per well.",
+                    *(
+                        compatibility["blocking_issues"]
+                        or [
+                            "The requested volume is within the definition limit. This arithmetic "
+                            "check does not validate practical working volume or pipette access."
+                        ]
+                    ),
+                    "If the requested volume is too large, revise final volume explicitly in "
+                    "chat or return to the previous tube rack. Do not split or dilute the "
+                    "recipe automatically; retain stock and target concentrations unless changed.",
+                ],
+                ["Volume per target is explicit, below the limit and reviewed for headspace."],
+                status="ready" if compatibility["status"] == "ready" else "needs_design",
+                prerequisites=["plate-profile"],
+                sources=[plate_source],
+                tasks=[]
+                if compatibility["status"] == "ready"
+                else [
+                    (
+                        "Resolve the plate-volume conflict in the design chat before confirmation.",
+                        "A revision records an explicit compatible volume or different labware "
+                        "selection; the recipe has not been silently scaled.",
+                    )
+                ],
+            )
+            add(
+                "plate-holder",
+                "Print and dry fit the custom plate holder",
+                [plate_component],
+                [
+                    "After resolving recipe conflicts, confirm the revision and generate project "
+                    "files. cad/plate-holder.step and cad/plate-holder.stl describe the custom "
+                    "holder only. cad/plate-reference.step is schematic source-reference geometry; "
+                    "do not print it as a laboratory plate.",
+                    f"Proposed holder pocket: {_vector_text(derived['holder_pocket_mm'])} mm, "
+                    f"with a {derived['holder_floor_mm']:g} mm floor, "
+                    f"{derived['holder_wall_mm']:g} mm walls, {derived['holder_lip_mm']:g} mm lip. "
+                    "Review the actual plate base, skirt and protrusions against this shallow "
+                    "pocket before fabrication.",
+                    "Print the holder with its broad bottom face on the print bed and pocket "
+                    "facing upward. FDM clearances and material are proposals, not measured "
+                    "printer results. Inspect the slicer preview; do not scale the plate.",
+                    "Measure the printed pocket, then dry fit the empty plate. It must seat "
+                    "flat, remain removable without forcing, expose A1 and the grid, and leave "
+                    "lid, gripper and pipette access clear. Record plate identity, material, "
+                    "printer settings, dimensions and fit observations before accepting it.",
+                    "The purchased plate, holder material, print process, attachment and fit are "
+                    "unpriced or unverified unless separately recorded. No successful print or "
+                    "physical fit is recorded by this digital guide.",
+                ],
+                ["A first-article record shows pocket dimensions and actual plate seating."],
+                prerequisites=["plate-volume", "frame"],
+                sources=[plate_source],
+                tasks=[
+                    (
+                        "Record the actual plate and printed-holder fit before installation.",
+                        "Verify base/skirt compatibility, flat seating, removal and tool access "
+                        "on the actual manufactured parts.",
+                    )
+                ],
+            )
+            add(
+                "plate-placement",
+                "Locate the plate and commission its well coordinates",
+                [plate_component],
+                [
+                    "Use the canonical sample position below while preserving the source Jubilee "
+                    "frame and other fixtures. Define deck locating and retention for the holder; "
+                    "the software position is not a calibrated instrument coordinate.",
+                    "Verify A1 orientation and every assigned well using the actual pipette, tips, "
+                    "plate and holder. Check approach, depth, lid and travel clearances before "
+                    "powered operation. Plate operation, calibration and hardware control are "
+                    "not implemented by this adapter.",
+                ],
+                ["Reviewed holder retention and recorded well/tool-clearance checks exist."],
+                prerequisites=["plate-holder"],
+                sources=[plate_source],
+                tasks=[
+                    (
+                        "Resolve holder retention and calibrate well positions before operation.",
+                        "Retain mounting details, A1 orientation, measured pipette approach and "
+                        "depth records for all assigned wells.",
+                    )
+                ],
+            )
         rack = project.get("labware_rack")
         rack_component = rack.get("target_component_id") if rack else None
         has_parametric_rack = bool(rack and rack_component in index and route == "jubilee")
@@ -633,13 +777,15 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         rack_ids = [
             cid
             for cid in ("source-rack", "sample-rack", "tip-rack", "tip-waste")
-            if cid in index and (not has_parametric_rack or cid != rack_component)
+            if cid in index
+            and (not has_parametric_rack or cid != rack_component)
+            and (not has_microplate or cid != plate_component)
         ]
         rack_prerequisite = "ot2-calibration" if route == "opentrons-ot2" else "frame"
         add(
             "racks",
             "Match the remaining labware to the layout"
-            if has_parametric_rack
+            if has_parametric_rack or has_microplate
             else "Match the layout to actual labware",
             rack_ids,
             [
@@ -654,6 +800,14 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
                         "tip and waste fixtures."
                     ]
                     if has_parametric_rack
+                    else []
+                ),
+                *(
+                    [
+                        "The selected microplate and custom holder have their own profile, volume, "
+                        "print/fit and placement steps above; this covers other source fixtures."
+                    ]
+                    if has_microplate
                     else []
                 ),
             ],
@@ -792,6 +946,8 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         "coordinate_system": "mm; X right, Y up, Z depth; canonical component centers",
         "labware_brief": deepcopy(project.get("labware_brief")),
         "labware_rack": deepcopy(project.get("labware_rack")),
+        "labware_plate": deepcopy(project.get("labware_plate")),
+        "preparation": deepcopy(project.get("plan")) if project.get("labware_plate") else None,
         "readiness_scope": "Review-ready document; not an assembly completion or "
         "physical validation record",
         "procurement_report_id": report["report_id"] if report else None,
@@ -980,6 +1136,29 @@ def build_guide_markdown(guide: dict) -> bytes:
         guide["coordinate_system"],
         "",
     ]
+    if guide.get("labware_plate") and guide.get("preparation"):
+        plan = guide["preparation"]
+        wells = guide["labware_plate"]["compatibility"]["occupied_wells"]
+        lines.extend(
+            [
+                "## Well assignments and preparation volumes",
+                "",
+                plain(plan.get("message", "")),
+                "",
+                "| Well | Target | Stock (µL) | Diluent (µL) | Total (µL) |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for index, step in enumerate(plan.get("steps") or []):
+            cells = [
+                wells[index] if index < len(wells) else "Unassigned",
+                step.get("target", ""),
+                step.get("stock_volume_ul", ""),
+                step.get("diluent_volume_ul", ""),
+                step.get("total_volume_ul", ""),
+            ]
+            lines.append("| " + " | ".join(plain(value) for value in cells) + " |")
+        lines.append("")
     for step in guide["steps"]:
         lines.extend(
             [

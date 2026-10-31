@@ -18,7 +18,10 @@ def test_imported_foundation_has_no_legacy_physics_result(monkeypatch):
     )
     # Real CAD export/import is checked in test_foundation_exports. Stub it here
     # to isolate orchestration, documents and the physical-simulation guard.
-    monkeypatch.setattr(exports, "build_cad_files", lambda _: {"cad/test.txt": b"fixture"})
+    async def fixture_cad(_):
+        return {"cad/test.txt": b"fixture"}
+
+    monkeypatch.setattr(exports, "_execute_cad", fixture_cad)
 
     async def run():
         job = await exports.start_export(project)
