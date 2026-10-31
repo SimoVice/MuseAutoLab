@@ -63,6 +63,9 @@ def check(field, value, source):
         ("cap_diameter_max_mm", 17, "ingombro del tappo chiuso, cerniera inclusa: 1,7 cm"),
         ("cap_diameter_max_mm", 17, "closed cap envelope including hinge and rim: 17 mm"),
         ("below_rim_height_mm", 36, "length beneath the supporting flange to the tube tip: 3.6 cm"),
+        ("below_rim_height_mm", 40, "length below the rim 40 mm"),
+        ("below_rim_height_mm", 40, "height under the supporting rim 4 cm"),
+        ("below_rim_height_mm", 40, "distance beneath the flange 40 mm"),
         (
             "below_rim_height_mm",
             36,
@@ -109,6 +112,10 @@ def test_novel_labelled_dimension_paraphrases_and_mixed_lists(field, value, sour
         ("rim_diameter_min_mm", 14, "maximum rim diameter 14 mm"),
         ("cap_diameter_max_mm", 17, "minimum closed cap envelope 17 mm"),
         ("max_height_mm", 45, "minimum rack height limit 45 mm"),
+        ("below_rim_height_mm", 40, "length below the rim 1.5 mL"),
+        ("below_rim_height_mm", 12, "body diameter 12 mm, length below the rim 40 mm"),
+        ("below_rim_height_mm", 40, "length below the rim 40 mm or 45 mm"),
+        ("rim_diameter_min_mm", 40, "length below the rim 40 mm"),
     ],
 )
 def test_swapped_ambiguous_missing_unit_and_tube_to_rack_bindings_rejected(field, value, source):

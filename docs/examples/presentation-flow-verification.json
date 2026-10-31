@@ -1,0 +1,205 @@
+{
+  "date": "2026-10-31",
+  "scope": "Actual Chromium browser, application/API/compiler, Muse Spark Contributor responses and supplier retrieval using synthetic shareable laboratory inputs. Bounded software integration evidence; no physical validation or external-user study.",
+  "tested_source": {
+    "baseline_commit": "807755bc9ab84d89bf4ed7966bbfadea02e0e9df",
+    "patch_sha256": "b0f675033706778ccf2b03f337748c7e9d6c619115bf512cbd22f2514d34d96d",
+    "patch_definition": "git diff --binary HEAD -- app/labware.py tests/test_labware_grounding.py",
+    "scope": "Source and regression changes tested on the baseline; excludes unrelated local video work and packaging documentation."
+  },
+  "model": "muse-spark-1.3-contributor",
+  "inputs": {
+    "stock_mg_ml": 5,
+    "targets_mg_ml": [
+      0.5,
+      0.25,
+      0.05
+    ],
+    "final_volume_ul": 200,
+    "tube_capacity_context_ml": "1.5–2",
+    "tube_dimensions_mm": {
+      "body_diameter_max": 12,
+      "supporting_rim_diameter_min": 15,
+      "closed_cap_envelope_max": 18,
+      "below_rim_length": 40
+    },
+    "rack_positions": 12,
+    "rack_columns": 4,
+    "measurement_status": "Synthetic inputs; not measured commercial labware."
+  },
+  "flow": [
+    "Fresh project and platform comparison",
+    "Explicit Jubilee choice",
+    "Three 200 µL preparations",
+    "Rim-supported tube rack",
+    "96-well plate with three assigned wells",
+    "TipOne followed by Opentrons commercial tip-rack choice with explicit placement acceptance",
+    "One actual US supplier refresh",
+    "Revision-specific instructions and downloads",
+    "Save/Open retains recipe, plate and selected tip geometry"
+  ],
+  "failure_and_correction": {
+    "initial_status": 502,
+    "failure_kind": "source_validation",
+    "state_preserved": true,
+    "diagnosis": "The literal source length below the rim 40 mm was not recognized as an axial measurement.",
+    "correction": "Recognize explicitly labelled length/height/distance below, under or beneath the rim/flange while retaining literal numeric units, role binding and ambiguity rejection.",
+    "causal_limit": "The initial raw model response was not recorded, so the exact initial invalid field cannot be established.",
+    "diagnostic_replay": "One later real response to the original unchanged prompt cited length below the rim 40 mm. Offline replay rejects that response with the prior validator and accepts it with the corrected validator.",
+    "validation_limit": "Successful repetition after correction is regression evidence, not an independent generalization benchmark."
+  },
+  "validation": {
+    "targeted_tests": {
+      "command": "python -m pytest tests/test_labware_grounding.py tests/test_labware.py -q",
+      "passed": 99
+    },
+    "ruff": "passed",
+    "frontend_build": "passed",
+    "semantic_assertions_passed": 22,
+    "semantic_checks": {
+      "runtime_project_revision_binding": true,
+      "report_binding": true,
+      "preview_and_download_semantic_equality": true,
+      "plate_definition96_occupied3": true,
+      "three200ul_targets": true,
+      "liquid_arithmetic": true,
+      "well_assignment": true,
+      "plate_replaces_sample_tubes": true,
+      "selected_tip_identity": true,
+      "selected_tip_geometry": true,
+      "tip_geometry_binding": true,
+      "purchase_quantities": true,
+      "selected_tip_procurement": true,
+      "USD_US": true,
+      "fresh_total": true,
+      "unknown_not_zero": true,
+      "estimate_group_basis": true,
+      "supplier_estimate_separation": true,
+      "model_assumptions_exclusions": true,
+      "group_range_arithmetic": true,
+      "reopen_regenerates_runtime_preserves_design": true,
+      "technical_readiness_not_build_success": true
+    },
+    "requested_gates_passed": 9,
+    "gates": [
+      "Revision/report binding",
+      "Recipe and well arithmetic",
+      "Plate replaces sample-tube instructions",
+      "Tip identity, geometry and explicitly accepted pose",
+      "Purchase quantities and US/USD",
+      "Partial fresh supplier coverage",
+      "Separate model allowances and exclusions",
+      "Revision-bound JSON/HTML/Markdown and procurement downloads",
+      "Late automatic estimate scope and current download reconciliation"
+    ],
+    "download_http200_count": 4,
+    "document_render": "Saved HTML inspected in isolated Chromium desktop 1440×1000 and mobile 390×844; readable 16px prose, no horizontal document overflow; wide tables scroll. Not exhaustive visual QA or real-device gesture testing."
+  },
+  "captured_pricing": {
+    "revision": 12,
+    "currency": "USD",
+    "market": "US",
+    "fresh_supplier_groups": 3,
+    "declared_purchase_groups": 12,
+    "fresh_supplier_subtotal": 246.98,
+    "supplier_unpriced_groups": 9,
+    "separate_model_allowance_groups": 9,
+    "additional_model_range": [
+      1475,
+      4170
+    ],
+    "combined_planning_range": [
+      1721.98,
+      4416.98
+    ],
+    "scope": "Observed supplier values plus separately labelled model allowances; not complete machine cost, compatibility or a complete BOM. Unknown supplier line totals remain null.",
+    "supplier_limits": "Three supplier candidate-kit requests returned HTTP 429; remaining unpriced scope retained."
+  },
+  "reopen_handoff": {
+    "portable_revision": 12,
+    "status": "draft",
+    "preserved": [
+      "plate",
+      "three-target recipe",
+      "selected Opentrons tip rack",
+      "geometry"
+    ],
+    "fresh_runtime_supplier_report": "not restored",
+    "fresh_runtime_model_range_usd": [
+      1225,
+      4270
+    ],
+    "scope": "A reopened runtime regenerates its estimate without a fresh supplier report. Its model-only range is distinct from the captured supplier-reconciled report."
+  },
+  "consumption": {
+    "attempts": [
+      {
+        "sequence": 1,
+        "status": "stopped",
+        "observed_tokens": 94039,
+        "chat_latencies_seconds": [
+          8.094000000040978,
+          7.186999999976251,
+          10.28200000000652,
+          11.09399999998277,
+          16.14100000000326
+        ],
+        "browser_page_errors": []
+      },
+      {
+        "sequence": 2,
+        "status": "conversation_stages_complete",
+        "observed_tokens": 81034,
+        "chat_latencies_seconds": [
+          14.421999999962281,
+          7.0,
+          9.89100000000326
+        ],
+        "browser_page_errors": []
+      },
+      {
+        "sequence": 3,
+        "status": "complete",
+        "observed_tokens": 22877,
+        "chat_latencies_seconds": [],
+        "browser_page_errors": []
+      }
+    ],
+    "recorded_user_messages_including_failure": 8,
+    "observed_flow_tokens": 197950,
+    "handoff_automatic_estimate_tokens": 8113,
+    "observed_total_tokens": 206063,
+    "unresolved_automatic_requests": 1,
+    "unresolved_scope": "A final post-open automatic estimate was cancelled or in flight at browser close. Its provider consumption is unknown; observed total is not a complete billing total.",
+    "retries": "No automatic chat retries; one coordinated instrumented diagnostic after a scoped correction."
+  },
+  "artifacts": [
+    {
+      "path": "docs/examples/presentation-flow-project.json",
+      "sha256": "dea1468baf3160129ecdc1f5ac69068cf41303064049418eec618c421d3e7435",
+      "bytes": 26017
+    },
+    {
+      "path": "docs/examples/presentation-flow-instructions.html",
+      "sha256": "a7f12f20174394e03e1e3f7437c09c8bcf3a8410feb89b87b00bb58d5b5ee1b1",
+      "bytes": 118465
+    },
+    {
+      "path": "docs/images/presentation-flow-tipone.png",
+      "sha256": "b94008b626e4516a74786e9577cdc7be84d3d68c05499ed56337a8959e3dfd0a",
+      "bytes": 78961
+    },
+    {
+      "path": "docs/images/presentation-flow-opentrons.png",
+      "sha256": "e2716bbd2712cd9f79fb290923dcf79b2d5e37dad012449aa7dd610ca1c10932",
+      "bytes": 72388
+    }
+  ],
+  "limits": [
+    "No hardware fit, pipetting, calibration or laboratory performance validation.",
+    "No new full source-CAD package generated.",
+    "Guide remains needs_design with unresolved engineering tasks; not successful assembly.",
+    "No purchases or deployment.",
+    "Raw model responses, system prompts and traces are excluded from these public artifacts."
+  ]
+}

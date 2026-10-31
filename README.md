@@ -1,5 +1,13 @@
 # MuseAutoLab
 
+### Full presentation flow checked — 2026-10-31
+
+The actual Meta/browser journey now covers declared tube dimensions, a one-message
+96-well plate switch, two supplier tip-rack choices, US pricing, instructions and
+Save/Open. The check found and fixed recognition of “length below the rim 40 mm”;
+the original request now passes. See the [results and reopenable project](docs/presentation-flow.md)
+for the retained failure, real price coverage and verification limits.
+
 ### Workspace usability update — 2026-10-31
 
 The preparation plan has one stable place beside the cost summary below the 3D

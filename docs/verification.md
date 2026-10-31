@@ -1,5 +1,14 @@
 # Delivery verification — 2026-10-31
 
+## Full presentation journey
+
+The [presentation-flow record](presentation-flow.md) covers the fresh-start
+conversation, retained tube-request failure and corrected continuation through
+plate conversion, supplier geometry, live catalogs, instruction downloads and
+Save/Open. It includes 99 targeted grounding/API tests, 22 independent output
+assertions, observed provider consumption and a reopenable final project.
+The correction changes measurement-language recognition, not geometry or prices.
+
 ## Accepted workspace refinement
 
 The accepted refinement improves the existing workspace using the installed

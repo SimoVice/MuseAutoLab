@@ -51,6 +51,8 @@ ALIASES = {
     "rim_diameter_min_mm": r"\brim\b|\bbordo\b|\bcollar\w*|\bflangi\w*|rim_diameter",
     "cap_diameter_max_mm": r"\bcap\b|\btapp\w*|closed.envelope|ingombro.chius|cap_diameter",
     "below_rim_height_mm": (
+        r"(?:length|height|distance)\s+(?:below|under|beneath)\s+"
+        r"(?:the\s+)?(?:supporting\s+)?(?:rim|flange)\b|"
         r"below.rim|under.rim|sotto.{0,20}(?:bordo|collar)|below_rim|"
         r"underside.{0,20}rim.{0,30}tip|rim.{0,20}underside.{0,30}tip|"
         r"intradosso.{0,20}(?:bordo|collar).{0,30}(?:punta|fondo)|"
