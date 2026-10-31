@@ -149,9 +149,54 @@ def test_request_uses_meta_schema_budget_and_preserves_zero_cost_usage():
     schema = payload["response_format"]["json_schema"]
     assert schema["strict"] is True
     assert set(schema["schema"]["required"]) == set(schema["schema"]["properties"])
+    objects = []
+
+    def inspect_schema(node, path="$"):
+        if isinstance(node, dict):
+            if node.get("type") == "object" or "properties" in node:
+                objects.append(path)
+                assert node.get("additionalProperties") is False, path
+                assert set(node.get("required", [])) == set(node.get("properties", {})), path
+            for key, value in node.items():
+                inspect_schema(value, f"{path}/{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                inspect_schema(value, f"{path}/{index}")
+
+    inspect_schema(schema["schema"])
+    assert "$/$defs/TipRackSources" in objects
+    assert set(schema["schema"]["$defs"]["TipRackSources"]["properties"]) == {
+        "body_diameter_max_mm", "rim_diameter_min_mm", "rim_diameter_max_mm",
+        "below_rim_height_mm", "count", "columns", "pitch_mm", "radial_clearance_mm",
+    }
     assert result.patch() == {"workspace_width_mm": 400.0}
     assert usage == {"model": TEST_SETTINGS.model, "prompt_tokens": 27,
                      "completion_tokens": 35, "total_tokens": 62}
+
+
+def test_strict_nullable_tip_sources_roundtrip_without_weakening_required_provenance():
+    from app.tip_racks import TipRackSources
+
+    sources = TipRackSources().model_dump()
+    sources["body_diameter_max_mm"] = "maximum body diameter 6 mm"
+
+    def handler(request):
+        return httpx.Response(200, json=valid_response(tip_rack={
+            "spec": {"body_diameter_max_mm": 6.0}, "spec_sources": sources,
+        }))
+
+    turn, _ = run_turn(handler, message="maximum body diameter 6 mm")
+    assert turn.tip_rack.spec_sources.supplied() == {
+        "body_diameter_max_mm": "maximum body diameter 6 mm"
+    }
+
+    sources["body_diameter_max_mm"] = None
+    with pytest.raises(ModelClientError):
+        run_turn(handler, message="maximum body diameter 6 mm")
+
+    sources["invented_source"] = "maximum body diameter 6 mm"
+    with pytest.raises(ModelClientError):
+        run_turn(handler, message="maximum body diameter 6 mm")
 
 
 @pytest.mark.parametrize(

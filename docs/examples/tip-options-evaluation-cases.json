@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "Synthetic developer-defined bounded cases; not independent validation, generalization evidence, supplier purchase verification or physical fit evidence.",
+  "baseline": "docs/examples/parametric-tube-rack-project.json",
+  "fixture_derivation": "Reopen the public synthetic accepted rack. Deterministically prepare comparison/printer context and a reviewed TipOne selection through product functions; these setup actions are not live Meta evidence. Every case receives one frozen ordinary message and at most one provider attempt.",
+  "max_model_calls": 8,
+  "cases": [
+    {"id": "T1_alternatives_unknown", "fixture": "original", "prompt": "Show me alternative tip rack products for this workstation.", "expected": {"outcome": "printer_question"}},
+    {"id": "T2_contextual_no", "fixture": "comparison", "prompt": "No.", "expected": {"outcome": "no_printer"}},
+    {"id": "T3_yes_missing_dimensions", "fixture": "comparison", "prompt": "Yes, I have access to a 3D printer. Design a printed holder for my purchased tips.", "expected": {"outcome": "needs_dimensions"}},
+    {"id": "T4_choose_tipone", "fixture": "comparison", "prompt": "Choose the TipOne 96 Tip Rack 200 µL, SKU 1111-0200. I accept the displayed minimum tip-rack shift; keep every other component and the preparation recipe unchanged.", "expected": {"outcome": "commercial", "profile_id": "tipone_96_tiprack_200ul", "size_mm": [127.76, 63.9, 85.48]}},
+    {"id": "T5_direct_opentrons", "fixture": "original", "prompt": "Replace the tip rack with the Opentrons 96 Tip Rack 300 µL. Keep every other component and the recipe unchanged.", "expected": {"outcome": "placement_confirmation", "profile_id": "opentrons_96_tiprack_300ul", "size_mm": [127.76, 64.49, 85.48]}},
+    {"id": "T6_complete_printed", "fixture": "printer_yes", "prompt": "Design the printed holder for purchased tips using these synthetic test dimensions: maximum body diameter 6 mm, rim diameter minimum 9 mm, rim diameter maximum 10 mm, below-rim height 35 mm, 24 positions, 6 columns. Keep the recipe and other components unchanged.", "expected": {"outcome": "printed", "profile_id": "custom_printed_tip_rack", "spec": {"body_diameter_max_mm": 6, "rim_diameter_min_mm": 9, "rim_diameter_max_mm": 10, "below_rim_height_mm": 35, "count": 24, "columns": 6}}},
+    {"id": "T7_unknown_vendor", "fixture": "selected_tipone", "prompt": "Replace the tip rack with a NebulaLab ZX-700 tip rack instead. I have no dimensions or source for it.", "expected": {"outcome": "unchanged"}},
+    {"id": "T8_invalid_dimensions", "fixture": "selected_tipone_printer_yes", "prompt": "Replace the current tip rack with a printed holder for purchased tips using these synthetic dimensions: maximum body diameter 10 mm, rim diameter minimum 5 mm, rim diameter maximum 6 mm, below-rim height 35 mm, 24 positions, 6 columns.", "expected": {"outcome": "unchanged"}}
+  ]
+}

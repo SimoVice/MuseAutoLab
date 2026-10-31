@@ -1,4 +1,4 @@
-import { Html, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component as ReactComponent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
@@ -128,20 +128,59 @@ function SourceState({ ready, onChange }: { ready: boolean; onChange: (ready: bo
   return null;
 }
 
+// Labels use the same camera projection as the scene without nested React roots.
+function PlateAxisLabel({ position, label }: { position: Vec3; label: string }) {
+  const group = useRef<Group>(null);
+  const { gl, camera, size, events, invalidate } = useThree();
+  const point = useMemo(() => new Vector3(), []);
+  const [element] = useState(() => {
+    const span = document.createElement('span');
+    span.className = 'microplate-axis-label';
+    span.style.position = 'absolute';
+    span.style.left = '0';
+    span.style.top = '0';
+    span.style.pointerEvents = 'none';
+    span.style.zIndex = '100';
+    return span;
+  });
+  useEffect(() => {
+    element.textContent = label;
+    const target = events.connected || gl.domElement.parentElement;
+    target?.appendChild(element);
+    invalidate();
+    return () => { element.remove(); };
+  }, [element, label, events.connected, gl, invalidate]);
+  useFrame(() => {
+    if (!group.current) return;
+    group.current.getWorldPosition(point).project(camera);
+    const x = (point.x + 1) * size.width / 2;
+    const y = (1 - point.y) * size.height / 2;
+    element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+  });
+  return <group ref={group} position={position} />;
+}
+
 type FocusRequest = { position: Vec3; size: Vec3 };
 type Isolation = FocusRequest & { id: string; ids: string[]; mode: 'part' | 'work' | 'arm' };
 
 // Move only in response to an explicit inspection request; orbiting remains manual afterwards.
-function FocusCamera({ request }: { request: FocusRequest | null }) {
+function FocusCamera({ request, focusKey }: { request: FocusRequest | null; focusKey?: string | null }) {
   const camera = useThree((state) => state.camera) as OrthographicCamera;
   const controls = useThree((state) => state.controls) as { target: Vector3; update: () => void; addEventListener: (type: 'start', callback: () => void) => void; removeEventListener: (type: 'start', callback: () => void) => void } | null;
   const viewport = useThree((state) => state.size);
   const invalidate = useThree((state) => state.invalidate);
   const transition = useRef<{ fromPosition: Vector3; toPosition: Vector3; fromTarget: Vector3; toTarget: Vector3; fromZoom: number; toZoom: number; elapsed: number } | null>(null);
+  const previousFocusKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!request || !controls) return;
+    if (!request || !controls) {
+      previousFocusKey.current = null;
+      return;
+    }
     const target = new Vector3(...request.position);
-    const direction = new Vector3(0.45, 1, -1).normalize();
+    const direction = focusKey && focusKey === previousFocusKey.current
+      ? camera.position.clone().sub(controls.target).normalize()
+      : new Vector3(0.45, 1, -1).normalize();
+    previousFocusKey.current = focusKey ?? null;
     const distance = Math.max(4, Math.max(...request.size) * 3);
     const [width, height, depth] = request.size;
     const horizontal = Math.max(0.15, width * 0.91 + depth * 0.41);
@@ -160,7 +199,7 @@ function FocusCamera({ request }: { request: FocusRequest | null }) {
     }
     invalidate();
     return () => { transition.current = null; };
-  }, [request, camera, controls, invalidate, viewport.width, viewport.height]);
+  }, [request, focusKey, camera, controls, invalidate, viewport.width, viewport.height]);
   useEffect(() => {
     if (!controls) return;
     const cancel = () => { transition.current = null; };
@@ -406,7 +445,7 @@ function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }
   );
 }
 
-function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack, labwarePlate, showPlateLabels }: {
+function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack, labwarePlate, hasTipRack, showPlateLabels }: {
   components: Component[];
   center: [number, number, number];
   stepCount: number;
@@ -414,6 +453,7 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
   onSelect: (id: string) => void;
   labwareRack?: LabwareRack | null;
   labwarePlate?: LabwarePlate | null;
+  hasTipRack: boolean;
   showPlateLabels?: boolean;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -516,8 +556,8 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
       <meshStandardMaterial color="#087d7d" side={DoubleSide} transparent opacity={0.75} />
     </mesh>)}
     {showPlateLabels && a1 && <>
-      {Array.from({ length: 12 }, (_, column) => wells.find((well) => well.label === `A${column + 1}`)).map((well) => well && <Html key={`column-${well.label}`} center position={[origin[0] + well.app_x_mm / SCALE, origin[1] + (well.app_y_mm + 0.6) / SCALE, origin[2] + (well.app_z_mm + 7) / SCALE]} style={{ pointerEvents: 'none' }}><span className="microplate-axis-label">{well.label.slice(1)}</span></Html>)}
-      {'ABCDEFGH'.split('').map((row) => wells.find((well) => well.label === `${row}1`)).map((well) => well && <Html key={`row-${well.label}`} center position={[origin[0] + (well.app_x_mm - 7) / SCALE, origin[1] + (well.app_y_mm + 0.6) / SCALE, origin[2] + well.app_z_mm / SCALE]} style={{ pointerEvents: 'none' }}><span className="microplate-axis-label">{well.label[0]}</span></Html>)}
+      {Array.from({ length: 12 }, (_, column) => wells.find((well) => well.label === `A${column + 1}`)).map((well) => well && <PlateAxisLabel key={`column-${well.label}`} position={[origin[0] + well.app_x_mm / SCALE, origin[1] + (well.app_y_mm + 0.6) / SCALE, origin[2] + (well.app_z_mm + 7) / SCALE]} label={well.label.slice(1)} />)}
+      {'ABCDEFGH'.split('').map((row) => wells.find((well) => well.label === `${row}1`)).map((well) => well && <PlateAxisLabel key={`row-${well.label}`} position={[origin[0] + (well.app_x_mm - 7) / SCALE, origin[1] + (well.app_y_mm + 0.6) / SCALE, origin[2] + well.app_z_mm / SCALE]} label={well.label[0]} />)}
       <mesh name="a1-orientation-marker" position={[origin[0] + a1.app_x_mm / SCALE, origin[1] + (a1.app_y_mm + 0.1) / SCALE, origin[2] + a1.app_z_mm / SCALE]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[a1.diameter_mm / SCALE * 0.55, a1.diameter_mm / SCALE * 0.65, 28]} />
         <meshStandardMaterial color="#b16b20" side={DoubleSide} />
@@ -530,7 +570,7 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
     <group>
       {tubeRow(details.sourceRack, 2, 0.06, 0.22, '#2f6f77', 'source-tube')}
       {labwarePlate ? microplateWells() : labwareRack ? customSampleTubes() : tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
-      {tipRow(details.tipRack)}
+      {!hasTipRack && tipRow(details.tipRack)}
     </group>
   );
 }
@@ -571,13 +611,16 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     const retainSampleFocus = isolation?.mode === 'part' && isolation.id === 'sample-rack'
       && selectedId === 'sample-rack' && Boolean(project.labware_plate || project.labware_rack)
       && isolationContext.current.projectId === project.id && isolationContext.current.layoutKey === layoutKey;
-    if (isolation && (isolation.id !== selectedId || (isolatedRevision.current !== revision && !retainSampleFocus))) {
+    const retainTipFocus = isolation?.mode === 'part' && isolation.id === 'tip-rack'
+      && selectedId === 'tip-rack' && Boolean(project.tip_rack)
+      && isolationContext.current.projectId === project.id && isolationContext.current.layoutKey === layoutKey;
+    if (isolation && (isolation.id !== selectedId || (isolatedRevision.current !== revision && !retainSampleFocus && !retainTipFocus))) {
       setIsolation(null);
       setViewKey((value) => value + 1);
     }
     isolatedRevision.current = revision;
     isolationContext.current = { projectId: project.id, layoutKey };
-  }, [isolation, selectedId, project.id, project.revision, project.labware_plate, project.labware_rack, layoutKey]);
+  }, [isolation, selectedId, project.id, project.revision, project.labware_plate, project.labware_rack, project.tip_rack, layoutKey]);
   const bounds = useMemo(() => {
     if (!components.length) return { center: [0, 0, 0] as [number, number, number], height: 0 };
     const min = [0, 1, 2].map((axis) => Math.min(...components.map((part) => part.position[axis] - part.size[axis] / 2), extension?.bounds.min_mm[axis] ?? Infinity));
@@ -719,7 +762,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         <directionalLight position={[-8, 6, -3]} intensity={0.38} color="#e2f1ee" />
         <directionalLight position={[1, 8, 10]} intensity={0.6} color="#fff7e9" />
         <FitCamera enabled={!isolated} width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
-        <FocusCamera request={isolated} />
+        <FocusCamera request={isolated} focusKey={isolated?.mode === 'part' && isolated.id === 'tip-rack' ? `${project.id}:tip-rack` : null} />
         <group>
           {(isolated ? components : staticParts).filter((part) => part.kind !== 'upstream-cad' && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={part}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
@@ -732,7 +775,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
               selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
           </group>
         </Suspense>}
-        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} labwarePlate={project.labware_plate} showPlateLabels={isolated?.mode === 'part' && selectedId === project.labware_plate?.target_component_id} />
+        <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} labwarePlate={project.labware_plate} hasTipRack={Boolean(project.tip_rack)} showPlateLabels={isolated?.mode === 'part' && selectedId === project.labware_plate?.target_component_id} />
         {!isolated && physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh
             key={obstacle.id}
@@ -776,8 +819,8 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
       </Canvas>
     </SceneBoundary>
     {project.design.foundation && sourceLoading && <div className="scene-loading" role="status">Loading source model…</div>}
-    {project.labware_rack && <div className="scene-rack-occupancy">{Math.min(normalizedStepCount, project.labware_rack.spec.count)} / {project.labware_rack.spec.count} positions occupied · tube envelopes</div>}
-    {project.labware_plate && <div className="scene-rack-occupancy">{project.labware_plate.compatibility.occupied_wells.length} / {project.labware_plate.derived.well_count} wells occupied · A1 marked in amber</div>}
+    {project.labware_rack && (!isolated || isolated.ids.includes(project.labware_rack.target_component_id)) && <div className="scene-rack-occupancy">{Math.min(normalizedStepCount, project.labware_rack.spec.count)} / {project.labware_rack.spec.count} positions occupied · tube envelopes</div>}
+    {project.labware_plate && (!isolated || isolated.ids.includes(project.labware_plate.target_component_id)) && <div className="scene-rack-occupancy">{project.labware_plate.compatibility.occupied_wells.length} / {project.labware_plate.derived.well_count} wells occupied · A1 marked in amber</div>}
     <div className="scene-controls" role="group" aria-label="3D view controls">
       <span>View</span>
       {([['left', 'Rotate left', '←'], ['right', 'Rotate right', '→'], ['up', 'Rotate up', '↑'], ['down', 'Rotate down', '↓'], ['in', 'Zoom in', '+'], ['out', 'Zoom out', '−']] as const).map(([action, label, symbol]) =>

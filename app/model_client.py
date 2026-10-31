@@ -26,6 +26,7 @@ from app.quantities import (
     normalize_targets,
     normalize_volume,
 )
+from app.tip_racks import TipRackUpdate, is_tip_only_turn
 from app.workflows import describe_workflow
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -80,6 +81,44 @@ For 'Budget is 5000 EUR.', one valid engineering delta is:
 {"requirements":[{"field":"budget","value":"5000 EUR","source":"5000 EUR"}],
 "options":[],"platform_choice":null,"choice_source":null}.
 These examples illustrate empty versus evidenced updates; always use the actual latest message.
+"""
+
+TIP_RACK_TURN_DELTA_INSTRUCTIONS = """
+Apply this fresh-turn rule to the tip-rack namespace before returning JSON:
+- Recorded state is context, never a list of fields to repeat. An unchanged value
+  must be null, even when its recorded value is yes, no or unknown. Do not write
+  "retained", "existing", a profile name, or another placeholder as a source.
+- A request to compare alternative tip racks uses show_tip_rack_options only.
+  It selects no profile and supplies no dimensions. Set tip_rack.profile_id and
+  source to null, and every tip_rack.spec/spec_sources field to null. Never copy
+  an example, existing rack, catalogue dimension or planned default into this delta.
+- An explicit request to design a printed tip holder uses select_tip_rack with
+  profile_id="custom_printed_tip_rack" and the literal request as source, even
+  when dimensions are incomplete. It is not a comparison-only action: the domain
+  will ask the specific missing interface dimensions or printer question. Do not
+  fill missing inputs to make it executable and do not infer printer ownership.
+- tip_rack is the holder for purchased pipette tips. labware is the separate
+  sample-tube rack. A tip-rack request does not edit labware: all labware values
+  and source_* fields remain null unless the user separately changes sample tubes.
+- tip_rack.printer_available and printer_source are both null unless the latest
+  user message explicitly declares present printer access (or directly answers a
+  pending printer question). Recorded yes needs no reconfirmation and MUST NOT be
+  echoed. Recorded unknown is not a new declaration. Selecting a printed holder
+  does not itself mean the user owns a printer. Let the application ask when needed.
+- For each physical field, use only a new dimension explicitly stated in the
+  latest message, paired with its literal role/number/unit in spec_sources. All
+  eight source fields exist in the strict schema: set unused sources to null.
+  Position count and column count do not supply pitch, clearance or any diameter.
+  Optional pitch_mm and radial_clearance_mm MUST be null unless explicitly given;
+  the deterministic compiler can apply its own labelled assumptions later.
+- Example: "18 positions, 3 columns" changes count=18 and columns=3, with those
+  exact quoted sources. It says nothing about pitch_mm or radial_clearance_mm.
+  Invalid explicitly stated mating dimensions should still be extracted faithfully
+  for deterministic rejection; never repair them by inventing suitable dimensions.
+- An empty tip delta is profile_id/source/printer_available/printer_source=null,
+  all eight spec fields=null and all eight spec_sources fields=null. Preserve the
+  recipe, source platform and other components by returning null for unchanged
+  values. These nulls do not erase recorded project state.
 """
 
 SYSTEM_INSTRUCTIONS = """You are MuseAutoLab's general laboratory automation assistant.
@@ -334,6 +373,29 @@ Pipette range, working volume, holder fit, open access, calibration and hardware
 remain unverified. Operation animation is disabled for this new plate adapter.
 """
 
+SYSTEM_INSTRUCTIONS += """
+Tip-rack alternatives are ordinary chat operations. Use show_tip_rack_options when
+the user asks to compare racks, suppliers or a printable alternative. Reviewed
+tip_rack_options state is the exact allowlist: distinguish a product change from
+another seller of the same SKU. Never invent a SKU, price, geometry or fit.
+For an explicit product choice, set tip_rack.profile_id and source to the literal
+choice and use select_tip_rack. The custom_printed_tip_rack option is a holder for
+purchased disposable tips, never printed tips. Before recommending printing ask
+whether the user has printer access if capability is unknown. Record only an
+explicit present printer declaration as tip_rack.printer_available yes/no/unknown
+with printer_source. A future purchase does not establish access; a contextual
+yes/no answer resolves the pending question. No means propose commercial racks.
+If access is yes, ask for actual mating dimensions: maximum body diameter, minimum
+and maximum supporting-rim diameters, below-rim tip height, position count and
+columns. Put only explicitly supplied values in tip_rack.spec; spec_sources must
+cite each role, number and mm/cm unit literally. Never infer geometry from volume,
+supplier or a generic tip family. Optional pitch/radial clearance also require
+explicit sources. Preserve all preparation quantities and other components unless
+the user changes them. Only Jubilee has a tip-rack placement adapter. A successful
+choice is a draft requiring review; fit, mounting and pipette access are unverified.
+Use previous_tip_rack to restore the original rack when explicitly requested.
+"""
+
 REQUIREMENT_KEYS = (
     "stock_concentration",
     "target_concentrations",
@@ -442,8 +504,26 @@ class ChatAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["develop_layout", "add_inspection", "remove_inspection", "confirm",
                   "show_files", "show_sources", "show_components", "show_photo_check",
-                  "show_build_plan", "develop_labware", "remove_labware", "select_labware"]
+                  "show_build_plan", "develop_labware", "remove_labware", "select_labware",
+                  "select_tip_rack", "show_tip_rack_options"]
     source: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
+class TipRackChatAction(BaseModel):
+    """The focused protocol cannot request unrelated module operations."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["select_tip_rack", "show_tip_rack_options"]
+    source: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
+class TipRackTurn(BaseModel):
+    """Only fresh tip-rack changes; every other project namespace is unavailable."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    assistant_message: Annotated[str, Field(min_length=1, max_length=1200)]
+    actions: Annotated[list[TipRackChatAction], Field(max_length=2)] = Field(default_factory=list)
+    tip_rack: TipRackUpdate = Field(default_factory=TipRackUpdate)
 
 
 class ExtractedTurn(BaseModel):
@@ -459,6 +539,7 @@ class ExtractedTurn(BaseModel):
     engineering: EngineeringUpdate = Field(default_factory=EngineeringUpdate)
     labware: LabwareUpdate = Field(default_factory=LabwareUpdate)
     labware_selection: LabwareSelection = Field(default_factory=LabwareSelection)
+    tip_rack: TipRackUpdate = Field(default_factory=TipRackUpdate)
     stock_concentration: Annotated[str | None, Field(max_length=500)] = None
     target_concentrations: Annotated[str | None, Field(max_length=500)] = None
     final_volume: Annotated[str | None, Field(max_length=500)] = None
@@ -556,10 +637,12 @@ class ExtractedTurn(BaseModel):
             self.final_volume = None
             self.source_final_volume = None
 
-    def verify_sources(self, user_message: str) -> None:
+    def verify_sources(self, user_message: str, project: dict | None = None) -> None:
         """Verify each change against a literal span from the latest user message."""
         self.labware.verify_sources(user_message)
         self.labware_selection.verify_sources(user_message)
+        self.tip_rack.verify_sources(user_message, printer_context=bool(
+            (project or {}).get("tip_rack_request", {}).get("awaiting_printer")))
         for action in self.actions:
             if action.source not in user_message:
                 raise ValueError("Action source must occur literally in this message")
@@ -681,8 +764,8 @@ def _safe_usage(response: dict) -> dict[str, int]:
     }
 
 
-def _strict_schema() -> dict:
-    schema = ExtractedTurn.model_json_schema()
+def _strict_schema(response_model: type[BaseModel] = ExtractedTurn) -> dict:
+    schema = response_model.model_json_schema()
     def require_all(node):
         if isinstance(node, dict):
             node.pop("default", None)
@@ -698,11 +781,12 @@ def _strict_schema() -> dict:
             for item in node:
                 require_all(item)
     require_all(schema)
-    schema["$defs"]["EngineeringUpdate"]["properties"]["requirements"]["description"] = (
-        "Only new requirements explicitly evidenced in the latest user message. Return [] "
-        "when no new requirement is stated, including ordinary questions. Never pad to maxItems. "
-        "Each field may appear at most once and every source must quote that latest message."
-    )
+    if "EngineeringUpdate" in schema.get("$defs", {}):
+        schema["$defs"]["EngineeringUpdate"]["properties"]["requirements"]["description"] = (
+            "Only new requirements explicitly evidenced in the latest user message. Return [] "
+            "when no new requirement is stated, including questions. Never pad to maxItems. "
+            "Each field may appear at most once and every source must quote that latest message."
+        )
     return schema
 
 
@@ -810,6 +894,13 @@ async def generate_turn(
 
     state["reviewed_platforms"] = platform_profiles()
     state["labware_brief"] = deepcopy(project.get("labware_brief"))
+    from app.tip_racks import tip_rack_options
+    state["tip_rack_options"] = tip_rack_options(project)
+    state["tip_rack"] = deepcopy(project.get("tip_rack"))
+    if state["tip_rack"]:
+        state["tip_rack"].pop("geometry", None)
+    state["tip_rack_request"] = deepcopy(project.get("tip_rack_request"))
+    state["fabrication_capabilities"] = deepcopy(project.get("fabrication_capabilities"))
     plate = project.get("labware_plate")
     state["labware_plate"] = ({key: plate.get(key) for key in (
         "kind", "profile_id", "profile", "size_mm", "compatibility", "checks", "provenance",
@@ -847,6 +938,14 @@ async def generate_turn(
                 } if project.get("inspection_extension") else None),
             }
         )
+    focused_tip_turn = is_tip_only_turn(project, user_message)
+    response_model = TipRackTurn if focused_tip_turn else ExtractedTurn
+    focused_instructions = (
+        "\nThis is an isolated tip-rack turn. Your response schema has ONLY assistant_message, "
+        "actions and tip_rack. Do not emit labware, labware_selection, engineering, recipe or "
+        "any other fields. The application preserves those namespaces automatically."
+        if focused_tip_turn else ""
+    )
     messages = [
         {"role": "developer", "content": SYSTEM_INSTRUCTIONS},
         {
@@ -854,7 +953,8 @@ async def generate_turn(
             "content": "Current recorded project state: " + json.dumps(state, ensure_ascii=False),
         },
         *history[-8:],
-        {"role": "developer", "content": TURN_DELTA_INSTRUCTIONS},
+        {"role": "developer", "content":
+         TURN_DELTA_INSTRUCTIONS + TIP_RACK_TURN_DELTA_INSTRUCTIONS + focused_instructions},
         {"role": "user", "content": user_message},
     ]
     payload = {
@@ -867,7 +967,7 @@ async def generate_turn(
             "json_schema": {
                 "name": "requirement_turn",
                 "strict": True,
-                "schema": _strict_schema(),
+                "schema": _strict_schema(response_model),
             },
         },
     }
@@ -908,7 +1008,9 @@ async def generate_turn(
         content = choice["message"]["content"]
         if not isinstance(content, str):
             raise TypeError("invalid message content")
-        result = ExtractedTurn.model_validate_json(content)
+        parsed = response_model.model_validate_json(content)
+        result = (ExtractedTurn.model_validate(parsed.model_dump())
+                  if focused_tip_turn else parsed)
         failure_kind = "source_validation"
         result.normalize_container_volume_scope(user_message)
         for key in BRIEF_KEYS:
@@ -920,7 +1022,7 @@ async def generate_turn(
                 # Correct only an undersized citation of text already copied verbatim.
                 # No new brief value or semantic inference is introduced.
                 setattr(result, f"source_{key}", value)
-        result.verify_sources(user_message)
+        result.verify_sources(user_message, project)
         recorded = state_for(project)
         if (
             result.engineering.platform_choice is not None

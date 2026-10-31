@@ -120,6 +120,16 @@ def _components(project: dict) -> list[dict]:
                 abs(a - b) > 1e-7 for a, b in zip(size, compiled["size_mm"])
             ):
                 raise ValueError("Microplate geometry does not match its pinned profile.")
+        tips = project.get("tip_rack")
+        is_tip_rack = isinstance(tips, dict) and tips.get("target_component_id") == comp["id"]
+        if is_tip_rack:
+            from app.tiprack_geometry import compile_tiprack
+
+            tip_compiled = compile_tiprack(tips)
+            if (comp["kind"] != "tiprack" or geometry != tip_compiled["geometry"] or any(
+                abs(a - b) > 1e-7 for a, b in zip(size, tip_compiled["size_mm"])
+            )):
+                raise ValueError("Tip rack geometry does not match its specification.")
         if geometry.get("schema_version") != "1" or not geometry.get("primitives"):
             raise ValueError(f"Invalid geometry for {comp['id']}.")
         for primitive in geometry["primitives"]:
@@ -166,6 +176,8 @@ def _components(project: dict) -> list[dict]:
                 "geometry": geometry,
                 **({"fabrication_shape": "rim_supported_tube_rack"} if is_parametric_rack else {}),
                 **({"fabrication_shape": "microplate_holder"} if is_microplate else {}),
+                **({"fabrication_shape": "rim_supported_tip_rack"}
+                   if is_tip_rack and tips.get("kind") == "rim_supported_tip_rack" else {}),
                 **({"plate_interfaces": compiled["checks"]["interfaces"]} if is_microplate else {}),
                 **(
                     {"reference_geometry": comp["reference_geometry"]}
@@ -262,12 +274,12 @@ def _build_solid(comp):
         return Compound(children=[_build_plate_part(comp, "holder-"),
                                   _build_plate_part(comp, "reference-")], label=comp["id"])
     parts = [_primitive_solid(comp, p) for p in comp["geometry"]["primitives"]]
-    if comp.get("fabrication_shape") == "rim_supported_tube_rack":
+    if comp.get("fabrication_shape") in ("rim_supported_tube_rack", "rim_supported_tip_rack"):
         solid = parts[0]
         for part in parts[1:]:
             solid = solid.fuse(part)
         if not solid.is_valid or len(solid.solids()) != 1:
-            raise ValueError("Tube rack must form one valid fused solid.")
+            raise ValueError("Rack must form one valid fused solid.")
         solid.label = comp["id"]
         return solid
     return Compound(children=parts, label=comp["id"])
@@ -286,7 +298,8 @@ def _build_rack_fit_coupon(comp):
     coupon = _primitive_solid({"position": [0, thickness / 2, 0]}, primitive)
     if not coupon.is_valid or len(coupon.solids()) != 1:
         raise ValueError("Rack fit coupon must form one valid solid.")
-    coupon.label = "tube-rack-fit-coupon"
+    coupon.label = ("tip-rack-fit-coupon" if comp.get("id") == "tip-rack"
+                    else "tube-rack-fit-coupon")
     return coupon
 
 
@@ -377,6 +390,15 @@ def _deck_model_source(components: list[dict], project_id, revision) -> str:
         + '        coupon = _build_rack_fit_coupon(rack)\n'
         + '        export_step(coupon, output / "tube-rack-fit-coupon.step", unit=Unit.MM)\n'
         + '        export_stl(coupon, output / "tube-rack-fit-coupon.stl")\n'
+        + '    tip_rack = next((c for c in COMPONENTS_MM if c.get("fabrication_shape") '
+        + '== "rim_supported_tip_rack"), None)\n'
+        + '    if tip_rack:\n'
+        + '        tip_solid = _build_solid(tip_rack)\n'
+        + '        export_step(tip_solid, output / "tip-rack.step", unit=Unit.MM)\n'
+        + '        export_stl(tip_solid, output / "tip-rack.stl")\n'
+        + '        tip_coupon = _build_rack_fit_coupon(tip_rack)\n'
+        + '        export_step(tip_coupon, output / "tip-rack-fit-coupon.step", unit=Unit.MM)\n'
+        + '        export_stl(tip_coupon, output / "tip-rack-fit-coupon.stl")\n'
         + '    plate = next((c for c in COMPONENTS_MM if c.get("fabrication_shape") '
         + '== "microplate_holder"), None)\n'
         + '    if plate:\n'
@@ -522,7 +544,9 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                     if imported
                     else (
                         "One fused rack solid."
-                        if comp.get("fabrication_shape") == "rim_supported_tube_rack"
+                        if comp.get("fabrication_shape") in (
+                            "rim_supported_tube_rack", "rim_supported_tip_rack"
+                        )
                         else "Separate fused holder and schematic reference plate."
                         if comp.get("fabrication_shape") == "microplate_holder"
                         else "Sum of primitive solid volumes; overlaps may be counted "
@@ -580,6 +604,23 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
                 rack_files["cad/tube-rack.step"] = fh.read()
             with open(rack_stl_path, "rb") as fh:
                 rack_files["cad/tube-rack.stl"] = fh.read()
+        tip_comp = next(
+            (c for c in components if c.get("fabrication_shape") == "rim_supported_tip_rack"),
+            None,
+        )
+        if tip_comp:
+            for filename, solid, exporter in (
+                ("tip-rack.step", _build_solid(tip_comp),
+                 lambda s, p: export_step(s, p, unit=Unit.MM)),
+                ("tip-rack.stl", _build_solid(tip_comp), export_stl),
+                ("tip-rack-fit-coupon.step", _build_rack_fit_coupon(tip_comp),
+                 lambda s, p: export_step(s, p, unit=Unit.MM)),
+                ("tip-rack-fit-coupon.stl", _build_rack_fit_coupon(tip_comp), export_stl),
+            ):
+                path = os.path.join(tmp, filename)
+                exporter(solid, path)
+                with open(path, "rb") as fh:
+                    rack_files["cad/" + filename] = fh.read()
         plate_comp = next(
             (c for c in components if c.get("fabrication_shape") == "microplate_holder"), None
         )
@@ -615,6 +656,12 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
 
         microplate_source = MICROPLATE_GEOMETRY_SOURCE_SHA256
         plate_details = compile_microplate(project["labware_plate"]["profile_id"])
+    tip_source = None
+    if project.get("tip_rack"):
+        from app.tiprack_geometry import TIPRACK_GEOMETRY_SOURCE_SHA256, compile_tiprack
+
+        tip_source = TIPRACK_GEOMETRY_SOURCE_SHA256
+        tip_details = compile_tiprack(project["tip_rack"])
     report = {
         "project_id": project_id,
         "revision": revision,
@@ -641,6 +688,8 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
         ),
         "engineering_design": project.get("engineering_design"),
         "design_basis": project.get("design_basis"),
+        **({"tip_rack_reference": tip_details.get("profile"),
+            "tip_rack_checks": tip_details["checks"]} if tip_source else {}),
         "process": "not selected; concept only",
         "material": "not selected; concept only",
         "notes": [
@@ -671,6 +720,7 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
             **({"labware_geometry_source_sha256": labware_source} if labware_source else {}),
             **({"microplate_geometry_source_sha256": microplate_source}
                if microplate_source else {}),
+            **({"tiprack_geometry_source_sha256": tip_source} if tip_source else {}),
             "build123d_version": _build123d_version(),
             "input": (
                 "Pinned source STEP and project.design.components primitives (mm, y is UP)"
@@ -701,4 +751,9 @@ def build_cad_files(project: dict) -> dict[str, bytes]:
 
         for name in (PROFILE_ID + ".json", "provenance.json", "LICENSE.txt"):
             files["cad/source/microplate-" + name] = (DATA_DIR / name).read_bytes()
+    if tip_source and project["tip_rack"].get("kind") == "commercial_reference":
+        tip_data_dir = Path(__file__).parent / "data" / "tipracks"
+        profile_id = project["tip_rack"]["profile_id"]
+        for name in (profile_id + ".json", "provenance.json", "LICENSE.txt"):
+            files["cad/source/tiprack-" + name] = (tip_data_dir / name).read_bytes()
     return files

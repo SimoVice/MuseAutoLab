@@ -64,6 +64,14 @@ from app.simulation_jobs import (
     simulation_status,
     start_simulation,
 )
+from app.tip_racks import (
+    TipRackUpdate,
+    declared_printer,
+    reapply_tip_rack,
+    select_tip_rack,
+    tip_rack_options,
+    update_tip_request,
+)
 from app.transcription import MAX_AUDIO_BYTES, TranscriptionError, transcribe_audio
 from app.vision import Box
 from app.vision_jobs import (
@@ -89,6 +97,12 @@ class MessageRequest(BaseModel):
         if not value:
             raise ValueError("Enter a message before sending.")
         return value
+
+
+class TipRackChoiceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: Annotated[int, Field(strict=True, ge=0)]
+    profile_id: Annotated[str, Field(min_length=1, max_length=100)]
 
 
 class ConfigurationRequest(BaseModel):
@@ -515,6 +529,21 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             if turn.labware_selection.profile_id is not None:
                 turn.normalize_container_volume_scope(request.message)
             actions = list(turn.actions)
+            tip_update = getattr(turn, "tip_rack", TipRackUpdate())
+            tip_change = (tip_update.profile_id is not None or
+                          bool(tip_update.spec.model_dump(exclude_none=True)) or
+                          bool(current.get("tip_rack_request", {}).get("profile_id") and
+                               (tip_update.printer_available is not None or
+                                current.get("tip_rack_request", {}).get("awaiting_printer") or
+                                current.get("tip_rack_request", {}).get("awaiting_placement"))))
+            if tip_change and not any(action.kind == "select_tip_rack" for action in actions):
+                actions.append(ChatAction(kind="select_tip_rack", source=request.message[:1000]))
+            elif (current.get("tip_rack_request", {}).get("awaiting_printer")
+                  and declared_printer(request.message, contextual=True) is not None
+                  and not any(action.kind == "show_tip_rack_options" for action in actions)):
+                actions.append(ChatAction(
+                    kind="show_tip_rack_options", source=request.message[:1000]
+                ))
             if (turn.labware_selection.profile_id is not None
                     and not any(action.kind == "select_labware" for action in actions)):
                 actions.append(ChatAction(
@@ -528,6 +557,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 bump=updated["revision"] == current["revision"]
             )
             updated = update_labware_brief(updated, turn.labware, request.message)
+            updated = update_tip_request(updated, tip_update, request.message)
             if (turn.labware.patch() and current.get("labware_rack")
                     and not any(action.kind in ("develop_labware", "remove_labware")
                                 for action in actions)):
@@ -556,9 +586,9 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 actions = [ChatAction(kind="develop_layout", source=request.message[:1000])]
             action_runs = []
             if actions:
-                if any(action.kind == "select_labware" for action in actions):
+                if any(action.kind in ("select_labware", "select_tip_rack") for action in actions):
                     updated, action_runs = await execute_chat_actions(
-                        updated, actions, request.message, turn.labware_selection
+                        updated, actions, request.message, turn.labware_selection, tip_update
                     )
                 else:
                     updated, action_runs = await execute_chat_actions(
@@ -570,6 +600,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 updated = reapply_labware(updated, require_accepted=False)
             if updated.get("labware_plate"):
                 updated = reapply_plate(updated, require_accepted=False)
+            if updated.get("tip_rack"):
+                updated = reapply_tip_rack(updated, require_accepted=False)
         except ModelClientError as exc:
             return JSONResponse(status_code=502, content={
                 "detail": str(exc),
@@ -583,6 +615,10 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ) from None
 
         canonical_reply = canonical_labware_reply(updated, action_runs, patch)
+        tip_runs = [run for run in action_runs if run["kind"] in (
+            "select_tip_rack", "show_tip_rack_options")]
+        if tip_runs:
+            canonical_reply = "\n\n".join(run["message"] for run in tip_runs)
         reply = canonical_reply if canonical_reply is not None else turn.assistant_message
         from app.platform_profiles import engineering_guidance
 
@@ -659,6 +695,37 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 "assistant_message_origin": (
                     "canonical_labware_state" if canonical_reply is not None else "model"
                 )}
+
+
+@app.get("/api/projects/{project_id}/tip-rack-options")
+async def get_tip_rack_options(project_id: str, revision: int) -> dict:
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        return tip_rack_options(session.project)
+
+
+@app.post("/api/projects/{project_id}/tip-rack-options")
+async def choose_tip_rack(project_id: str, request: TipRackChoiceRequest) -> dict:
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, request.revision)
+        current = session.project
+        literal = f"Select tip-rack profile {request.profile_id}"
+        update = TipRackUpdate(profile_id=request.profile_id, source=literal)
+        try:
+            updated = update_tip_request(current, update, literal)
+            updated, run = select_tip_rack(updated, update, literal, accept_placement=True)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422, detail=f"{exc} The project was not changed."
+            ) from None
+        session.project = updated
+        session.history.extend([{"role": "user", "content": literal},
+                                {"role": "assistant", "content": run["message"]}])
+        session.history = session.history[-8:]
+        return {"project": deepcopy(updated), "assistant_message": run["message"],
+                "action_runs": [run]}
 
 
 @app.post("/api/projects/{project_id}/configuration")

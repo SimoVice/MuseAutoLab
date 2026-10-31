@@ -12,3 +12,8 @@
 /docs/examples/microplate-project.json -text
 /docs/examples/microplate/geometry-report.json -text
 /docs/examples/microplate/package-manifest.json -text
+/docs/examples/tip-rack-tipone-project.json -text
+/docs/examples/tip-rack-opentrons-project.json -text
+/docs/examples/tip-rack-printed-project.json -text
+/docs/examples/tip-rack-plate-project.json -text
+/tests/fixtures/tip-rack-source-failures-round2.json -text whitespace=cr-at-eol

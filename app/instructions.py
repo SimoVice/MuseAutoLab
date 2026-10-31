@@ -774,12 +774,76 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
                     )
                 ],
             )
+        tip_rack = project.get("tip_rack")
+        if tip_rack:
+            profile = tip_rack.get("profile")
+            if profile:
+                facts = profile["source"]
+                add(
+                    "selected-tip-rack", "Verify and place the selected commercial tip rack",
+                    ["tip-rack"],
+                    [f"Selected product reference: {profile['display_name']}. Keep this profile "
+                     "identity when checking the supplier's exact package/SKU; a seller change "
+                     "for the same product does not change geometry.",
+                     "Compare the actual rack to the stated envelope and 96-position software "
+                     "pattern. The schematic recesses do not describe molded internal geometry.",
+                     "Place at the canonical tip-rack center below. Design its locating and "
+                     "retention interface on the custom Jubilee insert. Dry-check pipette pickup "
+                     "access and clearance with purchased tips before powered operation."],
+                    ["Actual product identity, package quantity and dimensions recorded.",
+                     "Attachment and pipette compatibility checked against real parts."],
+                    prerequisites=["frame"],
+                    sources=[_source("selected-tip-rack-profile", profile["display_name"],
+                                     facts["source_url"], facts["scope"], facts["revision"])],
+                    tasks=[(
+                        "Confirm the exact purchased tip/rack and engineer deck retention.",
+                        "Retain product identity, measured envelope and pickup/clearance records."
+                    )],
+                )
+            else:
+                spec, derived = tip_rack["spec"], tip_rack["derived"]
+                add(
+                    "tip-rack-coupon", "Print and measure a tip-holder fit coupon first",
+                    ["tip-rack"],
+                    ["This part is a holder for purchased disposable tips. Never print disposable "
+                     "tips from these files. Printer access was declared by the user; printer "
+                     "model, build envelope, material, settings and cleaning need review.",
+                     "Use tip-rack-fit-coupon.stl from this revision's CAD package before the full "
+                     "holder. Print the top face on the bed and inspect the slicer preview.",
+                     f"Declared body maximum {spec['body_diameter_max_mm']:g} mm; supporting rim "
+                     f"minimum {spec['rim_diameter_min_mm']:g} mm and maximum "
+                     f"{spec['rim_diameter_max_mm']:g} mm; below-rim height "
+                     f"{spec['below_rim_height_mm']:g} mm. Nominal volume was not used for fit.",
+                     f"Assumed bore {derived['bore_diameter_mm']:g} mm, pitch "
+                     f"{derived['pitch_mm']:g} mm. Verify coupon retention, clearance and bearing "
+                     "with the actual tip. Revise dimensions if it binds, falls through or rocks."],
+                    ["Coupon dimensions and tip fit recorded before printing the full holder.",
+                     "Printer/material/settings and cleaning requirements reviewed."],
+                    prerequisites=["design-review"],
+                    tasks=[("Check the coupon and record actual fit on the intended printer.",
+                            "A measured coupon, tip identity and fit record exist.")],
+                )
+                add(
+                    "printed-tip-rack", "Fabricate and dry-check the full tip holder", ["tip-rack"],
+                    ["After coupon acceptance, print tip-rack.stl with the same validated setup. "
+                     "Inspect all holes/supports; dry-fit bought tips in all positions.",
+                     "Use the canonical tip-rack placement below. Design locating/retention on "
+                     "the Jubilee insert; check actual pipette pickup, strength and clearances. "
+                     "This design does not verify sterility, fit or laboratory suitability."],
+                    ["All-position retention, deck attachment and tool access physically checked."],
+                    prerequisites=["tip-rack-coupon", "frame"],
+                    tasks=[(
+                        "Verify the printed holder/deck interface with actual tips and pipette.",
+                        "Retain all-position dry-fit, attachment and pickup/clearance checks."
+                    )],
+                )
         rack_ids = [
             cid
             for cid in ("source-rack", "sample-rack", "tip-rack", "tip-waste")
             if cid in index
             and (not has_parametric_rack or cid != rack_component)
             and (not has_microplate or cid != plate_component)
+            and (not tip_rack or cid != "tip-rack")
         ]
         rack_prerequisite = "ot2-calibration" if route == "opentrons-ot2" else "frame"
         add(
@@ -947,6 +1011,8 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         "labware_brief": deepcopy(project.get("labware_brief")),
         "labware_rack": deepcopy(project.get("labware_rack")),
         "labware_plate": deepcopy(project.get("labware_plate")),
+        "tip_rack": deepcopy(project.get("tip_rack")),
+        "fabrication_capabilities": deepcopy(project.get("fabrication_capabilities")),
         "preparation": deepcopy(project.get("plan")) if project.get("labware_plate") else None,
         "readiness_scope": "Review-ready document; not an assembly completion or "
         "physical validation record",

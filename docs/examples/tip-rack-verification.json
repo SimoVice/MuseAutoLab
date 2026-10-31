@@ -1,0 +1,425 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-31T13:43:14.531203+00:00",
+  "scope": "Developer-defined repeated feature acceptance and regression checks. Not independent generalization, external-user research, physical fit or laboratory performance evidence.",
+  "last_live_round_workspace_source_sha256": "a29468d8d5184dd703c4b26b4e37bb1047f962a420d0852bbf9aae69597ccfdf",
+  "source_hash_scope": "Raw app/web workspace bytes, including local line endings; not a Git commit hash. Git may normalize text line endings on publication.",
+  "model": "muse-spark-1.3-contributor",
+  "dataset": "docs/examples/tip-options-evaluation-cases.json",
+  "live_rounds": [
+    {
+      "round": "live",
+      "raw_result_sha256": "ddbf723f2899474329d88fa48624b1dd3fbd5ed3e417909d2c27576da1cb809b",
+      "recorded_at": "2026-10-31T13:02:00.333111+00:00",
+      "workspace_source_sha256": "b4e014556be1e0fe5ca2cc85d09c89e4c6f57752a72b16f6c7a9ff219719978c",
+      "frozen_source_unchanged": true,
+      "dataset_sha256": "dab2be3e66e4d4fc4d78e3cefbbec61641095f6fd1ca01dd371d0802afffd202",
+      "physical_provider_attempts": 8,
+      "reported_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "calls_with_incomplete_usage": 8
+      },
+      "abort_reason": null,
+      "raw_cases": [
+        {
+          "id": "T1_alternatives_unknown",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T2_contextual_no",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T3_yes_missing_dimensions",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T4_choose_tipone",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T5_direct_opentrons",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T6_complete_printed",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T7_unknown_vendor",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T8_invalid_dimensions",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        }
+      ]
+    },
+    {
+      "round": "live-round2",
+      "raw_result_sha256": "bce9a4db1c7685416314b37f64397a1e7995da37ffa25ac5c56aaf135f419827",
+      "recorded_at": "2026-10-31T13:08:38.676914+00:00",
+      "workspace_source_sha256": "50e1ae3555df44fe28654e3d6e48370ee89498d1eee4fa3fd409344d6593ff4a",
+      "frozen_source_unchanged": true,
+      "dataset_sha256": "dab2be3e66e4d4fc4d78e3cefbbec61641095f6fd1ca01dd371d0802afffd202",
+      "physical_provider_attempts": 8,
+      "reported_usage": {
+        "prompt_tokens": 184869,
+        "completion_tokens": 13808,
+        "total_tokens": 198677,
+        "calls_with_incomplete_usage": 0
+      },
+      "abort_reason": null,
+      "raw_cases": [
+        {
+          "id": "T1_alternatives_unknown",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T2_contextual_no",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T3_yes_missing_dimensions",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T4_choose_tipone",
+          "status": "failed",
+          "error": "Portable reopen changed tip_rack_request",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T5_direct_opentrons",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T6_complete_printed",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T7_unknown_vendor",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T8_invalid_dimensions",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        }
+      ]
+    },
+    {
+      "round": "live-round3",
+      "raw_result_sha256": "97fd1bd990af4c7a0b673cd43dcd9a6e96163d1531e1204ba7bcf5a2c19bef2b",
+      "recorded_at": "2026-10-31T13:15:25.210350+00:00",
+      "workspace_source_sha256": "e9d724664b9f80fbe9000d2ac4978cf6c70160783843bb156a10edb0fcbffffd",
+      "frozen_source_unchanged": true,
+      "dataset_sha256": "dab2be3e66e4d4fc4d78e3cefbbec61641095f6fd1ca01dd371d0802afffd202",
+      "physical_provider_attempts": 6,
+      "reported_usage": {
+        "prompt_tokens": 132675,
+        "completion_tokens": 7439,
+        "total_tokens": 140114,
+        "calls_with_incomplete_usage": 0
+      },
+      "abort_reason": "Product source validation failed; remaining cases blocked by fail-fast gate. No automatic retry was sent.",
+      "raw_cases": [
+        {
+          "id": "T1_alternatives_unknown",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T2_contextual_no",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T3_yes_missing_dimensions",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T4_choose_tipone",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T5_direct_opentrons",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T6_complete_printed",
+          "status": "failed",
+          "error": "HTTP 502 is not acceptance",
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T7_unknown_vendor",
+          "status": "not_run",
+          "error": null,
+          "execution_route": null
+        },
+        {
+          "id": "T8_invalid_dimensions",
+          "status": "not_run",
+          "error": null,
+          "execution_route": null
+        }
+      ]
+    },
+    {
+      "round": "live-round4",
+      "raw_result_sha256": "f082261ab4d21a484fde42b21bca842e0c8ca60ec8d9a7de71bbe8eab941c02a",
+      "recorded_at": "2026-10-31T13:26:15.925801+00:00",
+      "workspace_source_sha256": "a29468d8d5184dd703c4b26b4e37bb1047f962a420d0852bbf9aae69597ccfdf",
+      "frozen_source_unchanged": true,
+      "dataset_sha256": "dab2be3e66e4d4fc4d78e3cefbbec61641095f6fd1ca01dd371d0802afffd202",
+      "physical_provider_attempts": 8,
+      "reported_usage": {
+        "prompt_tokens": 172238,
+        "completion_tokens": 4111,
+        "total_tokens": 176349,
+        "calls_with_incomplete_usage": 0
+      },
+      "abort_reason": null,
+      "raw_cases": [
+        {
+          "id": "T1_alternatives_unknown",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T2_contextual_no",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T3_yes_missing_dimensions",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T4_choose_tipone",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T5_direct_opentrons",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T6_complete_printed",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T7_unknown_vendor",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        },
+        {
+          "id": "T8_invalid_dimensions",
+          "status": "passed",
+          "error": null,
+          "execution_route": "model_assisted"
+        }
+      ]
+    }
+  ],
+  "reviewed_round2": {
+    "complete_cases": [
+      "T2_contextual_no",
+      "T4_choose_tipone",
+      "T7_unknown_vendor"
+    ],
+    "audit_corrections": [
+      "T4 was a false failure: portable reopening expands inert optional defaults. Strict replay passed after schema-normalizing only that saved-request field.",
+      "T3 initially passed a weak state-only check, but did not ask for six missing measurements. It does not satisfy the original conversational requirement; the final evaluator requires the real question and pending printed request."
+    ]
+  },
+  "final_strict_replay": {
+    "passed": 8,
+    "new_provider_calls": 0,
+    "raw_result_sha256": "0a2bf8faf412a024a4fae958a20fdbb122a0c387c17a8125974d3d27cd1c8f37"
+  },
+  "usage": {
+    "physical_attempts": 30,
+    "reported_token_sum": 515140,
+    "attempts_without_usage": 8,
+    "interpretation": "Reported sum covers only the 22 HTTP200 responses. Eight initial HTTP400 responses had no usage; actual total consumption and monetary cost remain unknown. No automatic retries.",
+    "physical_attempts_including_interactive_check": 31,
+    "interactive_response_usage_captured": false,
+    "interactive_note": "One additional real browser request succeeded; its usage was not captured. It is separate from the 30 frozen-round attempts and their reported sum."
+  },
+  "checks": [
+    {
+      "name": "Regular suite after structured-schema repair",
+      "passed": 904,
+      "seconds": 162.52,
+      "scope": "Before the subsequent focused response protocol; source geometry and frontend unchanged afterward."
+    },
+    {
+      "name": "Final focused model, tip, storage and domain regressions",
+      "passed": 338,
+      "seconds": 10.51,
+      "record": "tip-rack-focused-protocol-verification.json"
+    },
+    {
+      "name": "Evaluator and outbound-schema guard",
+      "passed": 21
+    },
+    {
+      "name": "Actual tip-rack geometry and source packaging",
+      "passed": 5
+    },
+    {
+      "name": "Actual browser",
+      "result": "passed",
+      "scope": "Both supplier choices on the existing demo layout; disclosed movement; recipe/foundation/other modules retained; choice rollback; printer unknown/no/yes; six supplied dimensions; guide; Save/Open for commercial and printed variants; mobile; selected focus/orientation retained. Offline language-extraction fixture, not live-model evidence."
+    },
+    {
+      "name": "Frontend production build",
+      "result": "passed",
+      "warning": "Existing large-bundle advisory."
+    },
+    {
+      "name": "Ruff and whitespace",
+      "result": "passed"
+    }
+  ],
+  "cad": {
+    "full_jubilee_export": "passed; original source assembly included, 13 CAD files generated",
+    "synthetic_spec": {
+      "body_diameter_max_mm": 5,
+      "rim_diameter_min_mm": 8,
+      "rim_diameter_max_mm": 8.5,
+      "below_rim_height_mm": 45,
+      "count": 6,
+      "columns": 3
+    },
+    "rack": {
+      "valid": true,
+      "solids": 1,
+      "size_xyz_mm": [
+        36.9,
+        21.5,
+        48
+      ],
+      "volume_mm3": 8148.00802415953
+    },
+    "coupon": {
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 1193.5413373599197
+    },
+    "checks": "Reopened STEP solids, hole/material probes, standalone generation and tamper rejection. Commercial references retain exact source envelopes/opening locations and package raw definition/provenance/Apache-2.0 licence; no standalone commercial-rack STL is offered.",
+    "note": "The six-position CAD probe fixture differs from the 24-position browser/live example; both use synthetic dimensions."
+  },
+  "retained_failures": [
+    "Windows restricted socketpair/TEMP prevented early test startup; workspace TEMP and scoped local execution resolved it.",
+    "Early fixed-position choices rejected the original deck-edge location; the final product previews the minimum rack-only translation before acceptance.",
+    "Visual review found four unmeasured tip cones obscuring openings and focus reset on revision; both corrected and browser-rechecked.",
+    "Initial model schema rejected by provider; eight failures retained, followed by explicit nullable source fields.",
+    "Subsequent real responses copied old measurements or proposed unrelated state; hard validation preserved the project. Final focused tip response contract rejects unrelated fields structurally.",
+    "Initial automatic approval review blocked external testing before any request. Prepared public/synthetic payload review and explicit existing user authorization supported the normal approved reattempt.",
+    "A full-source CAD fixture initially omitted profile_id and failed before export; corrected fixture then completed actual export."
+  ],
+  "artifact_sha256": {
+    "docs/images/tip-rack-opentrons.png": "5e29b9792d67e26acbec2de7592067daa6a18164a6f3e3901637663982bc5881",
+    "docs/images/tip-rack-options-mobile.png": "667b5391303c8b880368eeeb05ef53205ed04839fa93885120bf9bcbf400e762",
+    "docs/images/tip-rack-plate-labels.png": "7275cee0f4c33d926fa25aea22da7309150f2b977e0e20a87aa4cf7b5a58f1c3",
+    "docs/images/tip-rack-printed.png": "9b4487ed6684744c30e7e3280db4311b7fd4429c5b5f608ad779568d278e09ac",
+    "docs/images/tip-rack-tipone.png": "17c46186ff08a57f84daddd63ad27b0c21fc648e2140f7ef8d5bbb9226316a7b",
+    "docs/examples/tip-rack-opentrons-project.json": "a06481883052885bc26ce660be89bb407f6b23934fd81b422510e1ac3faa7a7d",
+    "docs/examples/tip-rack-plate-project.json": "5ed7b7a68cfe57c5b96795358ef0d5fa6c32908595fee9bc677aa80cdc6acbcc",
+    "docs/examples/tip-rack-printed-project.json": "0a18cf537054bbf3ea4da4788e8c42a556d458fb7a67befab27ad78d6de58f56",
+    "docs/examples/tip-rack-tipone-project.json": "4c4630b3ef7f6a5de37e3c77e1e3a3a604f74841549e511694bce3992b602734"
+  },
+  "limits": [
+    "Only two reviewed commercial profiles and the declared-dimension holder on Jubilee are supported.",
+    "Supplier references are schematic software definitions, not manufacturer CAD or verified purchasing/compatibility data.",
+    "Unknown current price, stock, pack identity and total printing cost remain unknown.",
+    "Actual printer, material, fit, stability, cleaning, fixation and pipette coupling remain unverified. Disposable tips must be purchased.",
+    "No new dependency, physical test, purchase, event submission or video edition is part of this feature release."
+  ],
+  "interactive_browser_check": {
+    "scope": "One actual Italian browser request on the public synthetic r16 plate example, followed by two explicit UI supplier choices. Separate from the frozen eight-case evaluation.",
+    "model": "muse-spark-1.3-contributor",
+    "physical_provider_calls": 1,
+    "status": "passed",
+    "final_revision": 20,
+    "final_profile": "opentrons_96_tiprack_300ul",
+    "recipe_preserved": true,
+    "plate_preserved": true,
+    "other_components_preserved": true,
+    "source_foundation_preserved": true,
+    "printer_available": "unknown",
+    "usage": "The UI response usage was not captured; do not count it as zero.",
+    "model_request": "Mostrami alternative di portapuntali da fornitori diversi per questa workstation. Mantieni invariati piastra, ricetta e altri componenti.",
+    "retained_check_failure": "Initial local comparison read nonexistent project.inputs; corrected to portable inputs and canonical plan. No additional model call."
+  },
+  "release_workspace_source_sha256": "7f6e8eeade5395bd4898829a353ea8e46c479b19d2e2cff35246dceffc5fb766",
+  "post_live_visual_followup": {
+    "scope": "Only Scene label presentation changed after the final live round; the Meta protocol, accepted geometry and backend remained unchanged.",
+    "observed_defects": [
+      "Plate occupancy remained visible while only the tip rack was shown.",
+      "Switching back to the plate lost column1 of20 labels and emitted a nested React unmount warning."
+    ],
+    "repair": "Plate overlays follow component visibility; camera-projected DOM labels replace twenty separate nested Html roots.",
+    "checks": [
+      "Mixed plate/tip sequence:20/20 correct visible labels, camera alignment, pointer passthrough, zero page errors/unmount warnings.",
+      "Existing presentation browser checks pass on desktop/mobile, expanded view, resize, reduced motion and saved state.",
+      "Final production build and typecheck pass."
+    ],
+    "regression": "tests/browser_plate_tip_visibility.py",
+    "screenshots": [
+      "docs/images/tip-rack-plate-labels.png"
+    ]
+  }
+}

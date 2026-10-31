@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-31T13:13:08.709166+00:00",
+  "scope": "Offline prompt/schema-description repair after the second frozen live tip-option round. Actual recorded failures remain failures; no new live outcome is claimed here.",
+  "source_sha256": {
+    "app/model_client.py": "0b4aee335c0115376e323058748efada2827983cbf10157374800c4f73f71866",
+    "app/tip_racks.py": "e14b7e1b6a3bdfe0c7c3eb28e1615296643927f38318a9c83d5eae05abe30244",
+    "tests/test_tip_rack_turn_delta.py": "a6de8102c7c4c7eb55084fbe7b31f9ba74d024cbde73f0bbf932f5b30dde6b5a",
+    "tests/fixtures/tip-rack-source-failures-round2.json": "5cd80a168695d5e257d879f1b834e3ad2f03f506eb82267b36e5b68c7a73e4c0"
+  },
+  "behavior_change": "Fresh-turn instructions and schema descriptions only. Hard source and intent validation unchanged; no normalization of unsupported facts.",
+  "recorded_failures": [
+    "T1_alternatives_unknown",
+    "T5_direct_opentrons",
+    "T6_complete_printed",
+    "T8_invalid_dimensions"
+  ],
+  "recorded_fixture": "tests/fixtures/tip-rack-source-failures-round2.json",
+  "checks": [
+    {
+      "command": ".venv/Scripts/python.exe -m pytest tests/test_model_client.py tests/test_tip_racks.py tests/test_tip_rack_turn_delta.py -q",
+      "passed": 76,
+      "elapsed_seconds": 3.91,
+      "warning": "Existing Starlette TestClient httpx deprecation warning."
+    },
+    {
+      "command": ".venv/Scripts/ruff.exe check app/model_client.py app/tip_racks.py tests/test_tip_rack_turn_delta.py",
+      "result": "passed"
+    }
+  ],
+  "live_requests_from_repair_agent": 0
+}

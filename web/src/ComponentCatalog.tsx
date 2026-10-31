@@ -82,6 +82,7 @@ export default function ComponentCatalog({ sourcing, busy, onChoose, onHighlight
               </select>
               {selected && (
                 <div className="catalog-selected">
+                  {selected.geometry && <p className="catalog-compat">{selected.geometry.size_mm ? `${selected.geometry.size_mm.join(' × ')} mm (width × height × depth). ` : ''}{selected.geometry.effect === 'supplier_only' ? 'Supplier choice; the product geometry stays the same.' : selected.geometry.effect === 'requires_dimensions' ? 'Continue in chat with actual mating dimensions before changing the model.' : 'This product choice updates the actual tip-rack model.'} {selected.geometry.basis}</p>}
                   <div className="catalog-meta">
                     <span>{selected.supplier}</span>
                     <span>{!selected.checked_on || selected.checked_on === 'Not researched' ? 'Sourcing pending' : `Checked ${selected.checked_on}`}</span>

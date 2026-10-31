@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-31T12:53:06.743642+00:00",
+  "scope": "Offline backend product-choice, contextual printer capability, coherent canonical state, instructions and portable rebuild checks. No live model/supplier calls, actual printing or physical fit validation.",
+  "source_sha256": {
+    "app/tip_racks.py": "38af8be0fc266b2300a31dc9a3bd143402be9d942cd4885c53258000525f9078",
+    "app/api.py": "f697363170bab5f530f6a09ad70c915b96e47a213f6437209240ddbd6338bb15",
+    "app/chat_actions.py": "aea7939fe0d5fda0b465c3407560c21a4509e919df0f47c2ea114deb561470f8",
+    "app/design_sources.py": "11ff3b0fa73c6f020c7975c8327824e63d62e9e6f5ae39bdd9e0d3c9c8d6613a",
+    "app/domain.py": "20dcc69addee1d9c1e78f270cd3fcc38d884a669d5dab303863500587c4d8531",
+    "app/instructions.py": "4b70e19c83c3273c3abc7e061ec9afba620126eb183d078a1e6ed5344c7c149c",
+    "app/labware.py": "9c20fdaa16798dd85f32ca43f16f0639d5607989d11ceedce2006f03cf878215",
+    "app/model_client.py": "11d6c3377137008955abdc21ed12a9e55ca79fd259c1ac769095d3ddb1d470f4",
+    "app/project_storage.py": "ba58929d02e5115178f1f4568048fbb4bab8c9966b96e837db540e53a8c4aec9",
+    "tests/test_tip_racks.py": "bb36c0d1fd7427120b0b6db3bdae46a8e36b8e96220f6d2749b47aa26253a559"
+  },
+  "checks": [
+    {
+      "command": ".venv/Scripts/python.exe -m pytest tests/test_tip_racks.py tests/test_microplates.py tests/test_microplates_api.py tests/test_labware.py tests/test_model_client.py tests/test_project_storage.py tests/test_instructions.py tests/test_chat_foundation.py tests/test_domain.py tests/test_empty_engineering_delta.py -q",
+      "result": "passed",
+      "passed": 199,
+      "warnings": [
+        "Existing Starlette TestClient httpx deprecation warning"
+      ],
+      "elapsed_seconds": 7.6
+    },
+    {
+      "command": ".venv/Scripts/ruff.exe check app/tip_racks.py app/api.py app/chat_actions.py app/design_sources.py app/domain.py app/instructions.py app/labware.py app/model_client.py app/project_storage.py tests/test_tip_racks.py",
+      "result": "passed"
+    }
+  ],
+  "retained_failures": [
+    {
+      "stage": "initial regular test invocation",
+      "observation": "Windows sandbox blocked local asyncio socketpair startup before API request execution; interrupted the three affected test runs and reran scoped tests with local loopback permission.",
+      "resolution": "199 tests passed with scoped execution permission; no remote model or supplier requests."
+    },
+    {
+      "stage": "first new offline tests",
+      "observation": "Synthetic unsupported-platform fixture assumed an engineering field existed; fixture now uses state_for. Italian massimo word order was initially rejected by maximum-rim source validation.",
+      "resolution": "Fixture and Italian max/min source matching corrected; final 31 new tests passed."
+    }
+  ],
+  "contracts": {
+    "snapshot_compiler": "7",
+    "commercial_profiles": [
+      "tipone_96_tiprack_200ul",
+      "opentrons_96_tiprack_300ul"
+    ],
+    "printed_profile": "custom_printed_tip_rack",
+    "printer_capability": [
+      "unknown",
+      "yes",
+      "no"
+    ],
+    "placement": "Minimum translation of the tip rack only; preview precedes contextual Choose. Unshown movement requires direct-chat confirmation. Explicit fixed-position requests reject incompatible geometry."
+  },
+  "limits": [
+    "Commercial racks are schematic pinned software references, not manufacturer CAD or validated compatible labware.",
+    "Prices, availability, package quantities, exact purchase SKU and tool compatibility remain unverified as marked.",
+    "Printed parts are holders and fit coupons for purchased tips; disposable tips are never printed.",
+    "No physical manufacturing, fit, sterility or liquid handling result is established."
+  ]
+}

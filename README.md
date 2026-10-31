@@ -110,6 +110,17 @@ The fixed source envelope is approximately **483.1 × 612.7 × 564.4 mm** (width
 
 The OT-2 enclosure is **630 × 570 × 660 mm** (width × depth × height). Manufacturer instructions require **200 mm ventilation clearance around the instrument**, so the width check requires at least **1030 mm**. Other operating-space needs still require installation review. Exact labware capacities and throughput are not established by the schematic. Price, availability and delivery remain unknown; its checklist never inherits Jubilee's motors/frame BOM.
 
+### Choose a supplier product or a printed tip holder
+
+Ask **“Compare tip racks from different suppliers.”** On Jubilee, the conversation
+offers reviewed TipOne and Opentrons references and asks about printer access.
+Choosing a different product changes its source-bound openings/envelope, parts
+record and instructions. Any required tip-rack translation is shown before
+acceptance. With printer access confirmed, declared tip dimensions can produce
+a custom holder and fit coupon for purchased tips. Unknown prices, fit and
+unsupported products remain explicit. See the [tip-rack walkthrough](docs/tip-rack-options.md)
+for exact scope, synthetic example inputs and checks.
+
 ## Save and export
 
 **Save project / Open project** use a portable JSON file, capped at 256 KB, and rebuild canonical geometry without a Meta call. Compiler 4 retains engineering requirements, platform choice, source pose and accepted proposals; compiler 5 adds declared tube-rack inputs, and compiler 6 adds the pinned plate profile and reversible previous-rack state. Old projects retain their supported geometry. Files accept no arbitrary mesh URLs, CAD paths or executable code. Version-3 Jubilee designs retain geometry and acquire their existing platform choice. Version-1/2 files preserve inputs/history, clear incompatible designs/extensions and require a new design. New openings get a fresh runtime ID and retain lineage; old jobs/results are not restored. Browser-local resume is convenience, not cloud storage or a backup.

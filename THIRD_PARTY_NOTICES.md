@@ -64,6 +64,25 @@ The original definition is not edited. It is software reference data, not
 manufacturer CAD, a verified exact commercial SKU, working-volume validation or
 endorsement. Plate exports include the definition, provenance and license.
 
+## Opentrons software tip-rack definitions
+
+`app/data/tipracks/` contains two unmodified definitions from the same pinned
+Opentrons revision `95a8a37922cfd5f46ad26c983bcc1659fa13b6e1`, under Apache License
+2.0. The adjacent `LICENSE.txt` and `provenance.json` retain the licence, URLs,
+consultation date and raw hashes. The definitions identify products by USA
+Scientific / TipOne and Opentrons; these names do not imply endorsement.
+
+- `tipone_96_tiprack_200ul.json`: `c077e81c6539d40a7c936ea8729aa0e4442240e8980551fc6ae82c662312b31a`
+- `opentrons_96_tiprack_300ul.json`: `b2f4fc74c370dfd31d0de6f320ac5c09d6098d02feef51f58091db24718c402c`
+
+MuseAutoLab derives schematic envelopes and opening positions from these software
+references. The shallow recess and illustrative finish are application choices,
+not manufacturer construction details. The commercial references are not offered
+as standalone fabrication parts. Source data does not establish current stock,
+exact purchase variant, price, pipette compatibility, deck fixation or physical
+fit. Commercial-reference exports retain the selected source, licence and
+provenance. The separate custom holder uses user-declared dimensions.
+
 ## Multimodal demonstration media
 
 `docs/images/multimodal-reference.png` is an actual view of the attributed Jubilee

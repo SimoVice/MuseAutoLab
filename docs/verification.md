@@ -1,5 +1,78 @@
 # Delivery verification — 2026-10-31
 
+## Latest feature: supplier-specific tip racks
+
+The Jubilee project now supports two reviewed commercial rack references and a
+custom holder for purchased tips. Product selection changes canonical geometry,
+sources, placement, instructions and saved state. Printer availability is asked
+before offering the custom option; actual mating dimensions are required. A
+proposed rack-only movement is displayed before acceptance. See the
+[walkthrough and saved examples](tip-rack-options.md) and the
+[curated test record](examples/tip-rack-verification.json).
+
+The final frozen real-Meta round passed **8/8** developer-defined cases using
+Spark Contributor, followed by strict replay of the same responses with no new
+inference. It covers alternatives, contextual no, yes with missing measurements,
+both commercial references, a 24-position custom holder, an unsupported product
+and impossible dimensions. The Opentrons direct request asks for movement
+confirmation; the evaluator records the subsequent explicit API choice separately.
+These repeated cases are regression evidence, not an independent generalization
+benchmark or human usability study.
+
+Four bounded rounds made **30 provider attempts**. The first eight returned
+HTTP 400 because the new source dictionary was not a closed response schema.
+After repair, the second round still had real source-validation failures and two
+audit defects: inert saved defaults caused a false failure, and a vague promise
+was incorrectly accepted as a useful measurement question. Reviewed completion
+was 3/8. The third round passed T1–T5, then stopped on an invented unrelated plate
+selection in T6; T7/T8 were not run. Hard validation preserved accepted designs.
+The final fix restricts unambiguous tip conversations to tip-specific response
+fields while retaining the general contract for actual mixed changes. No invented
+data is silently accepted. All initial failures and audit corrections are retained.
+
+The 22 HTTP 200 responses reported **515,140 tokens** in total. The initial eight
+errors reported no usage, so actual total consumption and monetary cost remain
+unknown. No automatic retries were used. Request bodies were reviewed as public
+product data plus synthetic inputs; private startup/thesis records were excluded.
+
+One additional real Italian request in the existing plate demo also passed. The
+two subsequent supplier-card choices changed the rack while a saved-state
+comparison confirmed identical recipe, plate, source foundation and every other
+component. Printer access remains unknown for the user to answer. This separate
+interactive check brings the feature work to 31 provider attempts. Its response
+usage was not captured and is not counted as zero or added to the reported sum.
+
+Local checks passed: 904 regular tests after the schema repair; 338 targeted tests
+on the final focused protocol and state/negative paths; 21 evaluator tests; five
+actual geometry/source-packaging tests; the browser flow; production build; Ruff
+and whitespace checks. Counts overlap and must not be summed. Later changes were
+limited to the model contract and intent guards; geometry and UI retained their
+checked versions. The existing frontend bundle-size advisory and Starlette test
+deprecation warning remain.
+
+The browser check uses offline language extraction with the actual API/compiler:
+both suppliers on the normal demo layout, announced translation, rollback,
+recipe/source/other-module preservation, printer unknown/no/yes, guide, Save/Open
+for both commercial and custom choices, mobile layout and retained viewing angle.
+Visual review removed unmeasured decorative tips that obscured real openings.
+An actual full Jubilee CAD export also passed: original source assembly retained,
+synthetic rack and coupon reopened as valid single solids. Six-hole probes check
+openings and support material; the browser/live example has 24 positions. The
+commercial package retains its raw definition, provenance and Apache-2.0 licence.
+Physical fit, printer accuracy, material, cleaning, fixation, tip pickup, supplier
+stock and exact purchasing price remain unverified.
+
+The additional plate/tip interaction exposed a visual defect after the model
+round: the plate occupancy badge remained on a hidden plate, and switching back
+lost the first of 20 coordinate labels with a nested React unmount warning.
+The badge now follows visibility and labels use camera-projected DOM elements
+without separate nested React roots. The repeatable mixed-module check verifies
+20/20 correct visible labels, camera alignment, pointer passthrough and no page
+errors or unmount warning. The existing presentation test also passed again on
+desktop/mobile, including resize and reduced motion. The final frontend build
+passed. These rendering changes did not alter the backend, geometry or Meta
+contract; their later workspace fingerprint is recorded separately.
+
 ## Latest interface: expanded 3D presentation
 
 The viewer now offers an expanded workspace, locally generated studio reflections,

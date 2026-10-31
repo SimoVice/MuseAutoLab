@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "Actual Muse Spark Contributor responses from the frozen second tip-option round; all four were rejected by source validation. Test replay performs no network requests.",
+  "original_record": "live-round2 recorded 2026-10-31; original provider envelopes retained in this fixture",
+  "cases": [
+    {
+      "id": "T1_alternatives_unknown",
+      "message": "Show me alternative tip rack products for this workstation.",
+      "printer_available": "unknown",
+      "provider_response_sha256": "94ec678e0164f44a8f2ab2a0256416026673ee3f06ddf4a006edf3e98349fd88",
+      "response": {
+        "id": "chatcmpl-01a19211-8481-7588-b016-4d833e820b23",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "{\"actions\": [{\"kind\": \"show_tip_rack_options\", \"source\": \"alternative tip rack products\"}], \"assistant_message\": \"Showing the reviewed tip-rack alternatives for your Jubilee workstation. Compare the two pinned profiles there \\u2014 fit and pipette compatibility are still unverified.\", \"brief_constraints\": null, \"brief_equipment\": null, \"brief_materials\": null, \"brief_objective\": null, \"brief_process\": null, \"cooling_enabled\": null, \"cooling_target_c\": null, \"engineering\": {\"choice_source\": null, \"options\": [], \"platform_choice\": null, \"requirements\": []}, \"equipment\": null, \"final_volume\": null, \"labware\": {\"below_rim_height_mm\": 40.0, \"body_diameter_max_mm\": 12.0, \"cap_diameter_max_mm\": 18.0, \"columns\": 4, \"count\": 12, \"max_depth_mm\": 56.7, \"max_height_mm\": 43.0, \"max_width_mm\": 81.5, \"pitch_mm\": 18.8, \"radial_clearance_mm\": 0.4, \"rim_diameter_min_mm\": 15.0, \"source_below_rim_height_mm\": \"retained\", \"source_body_diameter_max_mm\": \"retained\", \"source_cap_diameter_max_mm\": \"retained\", \"source_columns\": \"retained\", \"source_count\": \"retained\", \"source_max_depth_mm\": \"retained\", \"source_max_height_mm\": \"retained\", \"source_max_width_mm\": \"retained\", \"source_pitch_mm\": \"retained\", \"source_radial_clearance_mm\": \"retained\", \"source_rim_diameter_min_mm\": \"retained\"}, \"labware_selection\": {\"profile_id\": null, \"source\": null}, \"recommendations\": [], \"source_brief_constraints\": null, \"source_brief_equipment\": null, \"source_brief_materials\": null, \"source_brief_objective\": null, \"source_brief_process\": null, \"source_cooling_enabled\": null, \"source_cooling_target_c\": null, \"source_equipment\": null, \"source_final_volume\": null, \"source_stock_concentration\": null, \"source_target_concentrations\": null, \"source_workflow_kind\": null, \"source_workspace_width_mm\": null, \"stock_concentration\": null, \"target_concentrations\": null, \"tip_rack\": {\"printer_available\": \"unknown\", \"printer_source\": null, \"profile_id\": null, \"source\": null, \"spec\": {\"below_rim_height_mm\": 20.0, \"body_diameter_max_mm\": 6.0, \"columns\": 12, \"count\": 96, \"pitch_mm\": 9.0, \"radial_clearance_mm\": 0.4, \"rim_diameter_max_mm\": 6.0, \"rim_diameter_min_mm\": 5.0}, \"spec_sources\": {\"below_rim_height_mm\": \"retained\", \"body_diameter_max_mm\": \"retained\", \"columns\": \"retained\", \"count\": \"retained\", \"pitch_mm\": \"retained\", \"radial_clearance_mm\": \"retained\", \"rim_diameter_max_mm\": \"retained\", \"rim_diameter_min_mm\": \"retained\"}}, \"workflow_kind\": null, \"workspace_width_mm\": null}",
+              "refusal": null,
+              "role": "assistant"
+            },
+            "logprobs": null
+          }
+        ],
+        "created": 1793451983,
+        "model": "muse-spark-1.3-contributor",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 1655,
+          "prompt_tokens": 20560,
+          "total_tokens": 22215,
+          "completion_tokens_details": {
+            "reasoning_tokens": 920
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "T5_direct_opentrons",
+      "message": "Replace the tip rack with the Opentrons 96 Tip Rack 300 µL. Keep every other component and the recipe unchanged.",
+      "printer_available": "unknown",
+      "provider_response_sha256": "348931443ded712a03b57efd7223f4e89529548c6607d4598b1f9b1ac79b718f",
+      "response": {
+        "id": "chatcmpl-01a19212-a91d-7454-8a12-000d7335d1bd",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "{\"actions\": [{\"kind\": \"select_tip_rack\", \"source\": \"Opentrons 96 Tip Rack 300 \\u00b5L\"}], \"assistant_message\": \"Switching to Opentrons 96 Tip Rack 300 \\u00b5L as a draft; other components and recipe stay fixed. Fit and pipette access still need review.\", \"brief_constraints\": null, \"brief_equipment\": null, \"brief_materials\": null, \"brief_objective\": null, \"brief_process\": null, \"cooling_enabled\": null, \"cooling_target_c\": null, \"engineering\": {\"choice_source\": null, \"options\": [], \"platform_choice\": null, \"requirements\": []}, \"equipment\": null, \"final_volume\": null, \"labware\": {\"below_rim_height_mm\": null, \"body_diameter_max_mm\": null, \"cap_diameter_max_mm\": null, \"columns\": null, \"count\": null, \"max_depth_mm\": null, \"max_height_mm\": null, \"max_width_mm\": null, \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_min_mm\": null, \"source_below_rim_height_mm\": null, \"source_body_diameter_max_mm\": null, \"source_cap_diameter_max_mm\": null, \"source_columns\": null, \"source_count\": null, \"source_max_depth_mm\": null, \"source_max_height_mm\": null, \"source_max_width_mm\": null, \"source_pitch_mm\": null, \"source_radial_clearance_mm\": null, \"source_rim_diameter_min_mm\": null}, \"labware_selection\": {\"profile_id\": null, \"source\": null}, \"recommendations\": [], \"source_brief_constraints\": null, \"source_brief_equipment\": null, \"source_brief_materials\": null, \"source_brief_objective\": null, \"source_brief_process\": null, \"source_cooling_enabled\": null, \"source_cooling_target_c\": null, \"source_equipment\": null, \"source_final_volume\": null, \"source_stock_concentration\": null, \"source_target_concentrations\": null, \"source_workflow_kind\": null, \"source_workspace_width_mm\": null, \"stock_concentration\": null, \"target_concentrations\": null, \"tip_rack\": {\"printer_available\": \"unknown\", \"printer_source\": null, \"profile_id\": \"opentrons_96_tiprack_300ul\", \"source\": \"Opentrons 96 Tip Rack 300 \\u00b5L\", \"spec\": {\"below_rim_height_mm\": null, \"body_diameter_max_mm\": null, \"columns\": null, \"count\": null, \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_max_mm\": null, \"rim_diameter_min_mm\": null}, \"spec_sources\": {\"below_rim_height_mm\": null, \"body_diameter_max_mm\": null, \"columns\": null, \"count\": null, \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_max_mm\": null, \"rim_diameter_min_mm\": null}}, \"workflow_kind\": null, \"workspace_width_mm\": null}",
+              "refusal": null,
+              "role": "assistant"
+            },
+            "logprobs": null
+          }
+        ],
+        "created": 1793452058,
+        "model": "muse-spark-1.3-contributor",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 2386,
+          "prompt_tokens": 20581,
+          "total_tokens": 22967,
+          "completion_tokens_details": {
+            "reasoning_tokens": 1699
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "T6_complete_printed",
+      "message": "Design the printed holder for purchased tips using these synthetic test dimensions: maximum body diameter 6 mm, rim diameter minimum 9 mm, rim diameter maximum 10 mm, below-rim height 35 mm, 24 positions, 6 columns. Keep the recipe and other components unchanged.",
+      "printer_available": "yes",
+      "provider_response_sha256": "95e76e1d2043fe011db990fc1036a4b758212e4acdb295311f22709f9dcd8764",
+      "response": {
+        "id": "chatcmpl-01a19212-ef1a-75af-b614-2df8b68eedb7",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "{\"actions\": [], \"assistant_message\": \"Recorded your test printed holder: 24 positions in 6 columns, 6 mm body, 9-10 mm rim, 35 mm below-rim. Recipe and other components unchanged. Share pitch if you need exact spacing, otherwise I can draft the holder for review.\", \"brief_constraints\": null, \"brief_equipment\": null, \"brief_materials\": null, \"brief_objective\": null, \"brief_process\": null, \"cooling_enabled\": null, \"cooling_target_c\": null, \"engineering\": {\"choice_source\": null, \"options\": [], \"platform_choice\": null, \"requirements\": []}, \"equipment\": null, \"final_volume\": null, \"labware\": {\"below_rim_height_mm\": null, \"body_diameter_max_mm\": null, \"cap_diameter_max_mm\": null, \"columns\": null, \"count\": null, \"max_depth_mm\": null, \"max_height_mm\": null, \"max_width_mm\": null, \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_min_mm\": null, \"source_below_rim_height_mm\": null, \"source_body_diameter_max_mm\": null, \"source_cap_diameter_max_mm\": null, \"source_columns\": null, \"source_count\": null, \"source_max_depth_mm\": null, \"source_max_height_mm\": null, \"source_max_width_mm\": null, \"source_pitch_mm\": null, \"source_radial_clearance_mm\": null, \"source_rim_diameter_min_mm\": null}, \"labware_selection\": {\"profile_id\": null, \"source\": null}, \"recommendations\": [], \"source_brief_constraints\": null, \"source_brief_equipment\": null, \"source_brief_materials\": null, \"source_brief_objective\": null, \"source_brief_process\": null, \"source_cooling_enabled\": null, \"source_cooling_target_c\": null, \"source_equipment\": null, \"source_final_volume\": null, \"source_stock_concentration\": null, \"source_target_concentrations\": null, \"source_workflow_kind\": null, \"source_workspace_width_mm\": null, \"stock_concentration\": null, \"target_concentrations\": null, \"tip_rack\": {\"printer_available\": \"yes\", \"printer_source\": null, \"profile_id\": \"custom_printed_tip_rack\", \"source\": \"printed holder for purchased tips\", \"spec\": {\"below_rim_height_mm\": 35.0, \"body_diameter_max_mm\": 6.0, \"columns\": 6, \"count\": 24, \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_max_mm\": 10.0, \"rim_diameter_min_mm\": 9.0}, \"spec_sources\": {\"below_rim_height_mm\": \"below-rim height 35 mm\", \"body_diameter_max_mm\": \"maximum body diameter 6 mm\", \"columns\": \"6 columns\", \"count\": \"24 positions\", \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_max_mm\": \"rim diameter maximum 10 mm\", \"rim_diameter_min_mm\": \"rim diameter minimum 9 mm\"}}, \"workflow_kind\": null, \"workspace_width_mm\": null}",
+              "refusal": null,
+              "role": "assistant"
+            },
+            "logprobs": null
+          }
+        ],
+        "created": 1793452076,
+        "model": "muse-spark-1.3-contributor",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 1757,
+          "prompt_tokens": 22048,
+          "total_tokens": 23805,
+          "completion_tokens_details": {
+            "reasoning_tokens": 1049
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "T8_invalid_dimensions",
+      "message": "Replace the current tip rack with a printed holder for purchased tips using these synthetic dimensions: maximum body diameter 10 mm, rim diameter minimum 5 mm, rim diameter maximum 6 mm, below-rim height 35 mm, 24 positions, 6 columns.",
+      "printer_available": "yes",
+      "provider_response_sha256": "60578d3a93516fa4502595083b83beebc083d99f82cd3106b864d418808e12ea",
+      "response": {
+        "id": "chatcmpl-01a19213-795d-733a-9bb1-a24f4f85f1c6",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "{\"actions\": [], \"assistant_message\": \"Using your 10 mm body, 5-6 mm rim, 35 mm height, 24 positions in 6 columns for a printed holder for purchased tips. Still need explicit pitch and clearance to finalize the holder \\u2014 what pitch and radial clearance should I use? Recipe, platform, cooling and arm stay unchanged.\", \"brief_constraints\": null, \"brief_equipment\": null, \"brief_materials\": null, \"brief_objective\": null, \"brief_process\": null, \"cooling_enabled\": null, \"cooling_target_c\": null, \"engineering\": {\"choice_source\": null, \"options\": [], \"platform_choice\": null, \"requirements\": []}, \"equipment\": null, \"final_volume\": null, \"labware\": {\"below_rim_height_mm\": null, \"body_diameter_max_mm\": null, \"cap_diameter_max_mm\": null, \"columns\": null, \"count\": null, \"max_depth_mm\": null, \"max_height_mm\": null, \"max_width_mm\": null, \"pitch_mm\": null, \"radial_clearance_mm\": null, \"rim_diameter_min_mm\": null, \"source_below_rim_height_mm\": null, \"source_body_diameter_max_mm\": null, \"source_cap_diameter_max_mm\": null, \"source_columns\": null, \"source_count\": null, \"source_max_depth_mm\": null, \"source_max_height_mm\": null, \"source_max_width_mm\": null, \"source_pitch_mm\": null, \"source_radial_clearance_mm\": null, \"source_rim_diameter_min_mm\": null}, \"labware_selection\": {\"profile_id\": null, \"source\": null}, \"recommendations\": [], \"source_brief_constraints\": null, \"source_brief_equipment\": null, \"source_brief_materials\": null, \"source_brief_objective\": null, \"source_brief_process\": null, \"source_cooling_enabled\": null, \"source_cooling_target_c\": null, \"source_equipment\": null, \"source_final_volume\": null, \"source_stock_concentration\": null, \"source_target_concentrations\": null, \"source_workflow_kind\": null, \"source_workspace_width_mm\": null, \"stock_concentration\": null, \"target_concentrations\": null, \"tip_rack\": {\"printer_available\": \"yes\", \"printer_source\": \"Replace the current tip rack with a printed holder\", \"profile_id\": \"custom_printed_tip_rack\", \"source\": \"Replace the current tip rack with a printed holder for purchased tips\", \"spec\": {\"below_rim_height_mm\": 35.0, \"body_diameter_max_mm\": 10.0, \"columns\": 6, \"count\": 24, \"pitch_mm\": 18.0, \"radial_clearance_mm\": 0.4, \"rim_diameter_max_mm\": 6.0, \"rim_diameter_min_mm\": 5.0}, \"spec_sources\": {\"below_rim_height_mm\": \"below-rim height 35 mm\", \"body_diameter_max_mm\": \"maximum body diameter 10 mm\", \"columns\": \"6 columns\", \"count\": \"24 positions\", \"pitch_mm\": \"24 positions, 6 columns\", \"radial_clearance_mm\": \"24 positions, 6 columns\", \"rim_diameter_max_mm\": \"rim diameter maximum 6 mm\", \"rim_diameter_min_mm\": \"rim diameter minimum 5 mm\"}}, \"workflow_kind\": null, \"workspace_width_mm\": null}",
+              "refusal": null,
+              "role": "assistant"
+            },
+            "logprobs": null
+          }
+        ],
+        "created": 1793452112,
+        "model": "muse-spark-1.3-contributor",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 1463,
+          "prompt_tokens": 28181,
+          "total_tokens": 29644,
+          "completion_tokens_details": {
+            "reasoning_tokens": 711
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    }
+  ]
+}

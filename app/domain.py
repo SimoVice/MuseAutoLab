@@ -435,6 +435,10 @@ def apply_update(project: dict, patch: dict) -> dict:
     if summary_noop and brief_noop and kind_noop and selections_noop:
         result = deepcopy(project)
         result["workflow"] = describe_workflow(result)
+        if result.get("tip_rack"):
+            from app.tip_racks import reapply_tip_rack
+
+            result = reapply_tip_rack(result, require_accepted=False)
         return result
 
     # Validate selections (even while inactive) before mutating.
@@ -558,6 +562,10 @@ def apply_update(project: dict, patch: dict) -> dict:
         result["revision"] = project["revision"] + 1
         result["status"] = "draft"
         result["workflow"] = describe_workflow(result)
+        if result.get("tip_rack"):
+            from app.tip_racks import reapply_tip_rack
+
+            result = reapply_tip_rack(result, require_accepted=False)
         if result.get("labware_plate"):
             from app.microplates import reapply_plate
 
@@ -608,6 +616,10 @@ def confirm_project(project: dict) -> dict:
         result = reapply_labware(project)
     else:
         result = deepcopy(project)
+    if result.get("tip_rack"):
+        from app.tip_racks import reapply_tip_rack
+
+        result = reapply_tip_rack(result)
     if result["plan"]["status"] != "ready":
         raise ValueError(f"Dilution plan needs attention: {result['plan']['message']}")
     if result["status"] != "confirmed":

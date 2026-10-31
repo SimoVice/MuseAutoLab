@@ -10,6 +10,7 @@ import AgentActivity, { finishAgentReveal } from './AgentActivity';
 import ProjectResources from './ProjectResources';
 import LabwareRackPanel from './LabwareRackPanel';
 import MicroplatePanel from './MicroplatePanel';
+import TipRackOptions, { tipDimensions } from './TipRackOptions';
 import ProjectFiles from './ProjectFiles';
 import PhysicsPanel from './PhysicsPanel';
 import CameraPanel from './CameraPanel';
@@ -254,7 +255,7 @@ export default function App() {
   const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && hasEngineeringDesign;
   const acceptedLayoutId = project?.engineering_design?.provenance.run_id;
   useEffect(() => {
-    if (actionRuns.some((run) => run.status === 'ready' && run.kind !== 'show_build_plan') && details.current) {
+    if (actionRuns.some((run) => run.status === 'ready' && !['show_build_plan', 'show_tip_rack_options'].includes(run.kind)) && details.current) {
       details.current.open = true;
     }
   }, [actionRuns]);
@@ -462,6 +463,7 @@ export default function App() {
   }
 
   async function chooseOption(groupId: string, optionId: string) {
+    if (groupId === 'tip-rack-options') { await chooseTipRack(optionId); return; }
     if (!project || uiBusy) return;
     setBusy(true);
     setError(null);
@@ -473,6 +475,24 @@ export default function App() {
       if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The component choice could not be applied.');
+    } finally { setBusy(false); }
+  }
+
+  async function chooseTipRack(profileId: string) {
+    if (!project || uiBusy) return;
+    setBusy(true); setError(null);
+    try {
+      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/tip-rack-options`, {
+        revision: project.revision, profile_id: profileId,
+      }) as ChatResponse;
+      setProject(result.project);
+      setActionRuns(result.action_runs ?? []);
+      if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
+      const failed = result.action_runs?.find((run) => run.status === 'failed' || run.status === 'rejected');
+      if (failed) setError(failed.message ?? 'That rack could not be applied. Revise the request in chat.');
+      if (JSON.stringify(project.tip_rack) !== JSON.stringify(result.project.tip_rack)) setSelectedId('tip-rack');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The tip rack choice could not be applied. Try again.');
     } finally { setBusy(false); }
   }
 
@@ -587,7 +607,7 @@ export default function App() {
 
               <div className="below-viewer">
                 <div className="cost-block"><span>Fresh listed parts subtotal · USD</span><strong>{costText}</strong><small>{currentProcurement ? `${currentProcurement.coverage.fresh_priced_count}/${currentProcurement.coverage.row_count} groups freshly priced · ${currentProcurement.coverage.unpriced_count} without fresh prices · Complete machine cost unknown. Excludes shipping and taxes.` : 'Open Parts & pricing to check US catalogs. Complete machine cost is unknown.'}</small></div>
-                <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${part.size.map(formatDimension).join(' × ')} mm · schematic dimensions` : 'Select an item in the model or list.'}</small></div>
+                <div className="selection-block"><span>{part ? 'Selected component' : 'Explore the design'}</span><strong>{part ? part.label : 'Select a component'}</strong><small>{part ? `${tipDimensions(part.size)} · ${part.id === 'tip-rack' && project?.tip_rack ? project.tip_rack.kind === 'commercial_reference' ? 'Pinned product reference; fit unverified' : 'Custom printable geometry; fit unverified' : 'schematic dimensions'}` : 'Select an item in the model or list.'}</small></div>
               </div>
 
               {project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
@@ -682,6 +702,7 @@ export default function App() {
               {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
               <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
             </div>)}
+            {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && !agentPhase && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
             {agentPhase && <AgentActivity phase={agentPhase} fillRef={revealRef} />}
             <div ref={lastMessage} />
             {showLiquidParams && (

@@ -51,6 +51,20 @@ See the actual [rack detail](images/presentation-rack.png),
 [browser verification](verification.md#latest-interface-expanded-3d-presentation).
 The captures are direct browser screenshots, not generated illustrations.
 
+## Compare supplier-specific tip racks
+
+On the accepted Jubilee project, ask **“Compare tip racks from different
+suppliers.”** Review the two named products, then choose one. The alternative
+card explains any required rack movement before acceptance. In the expanded
+view, select the tip rack and inspect its real opening pattern; changing product
+preserves the selected-part view and observation direction.
+
+The agent first asks about printer availability. If available, ask for a printed
+holder and provide the mating dimensions requested in chat. The same choice
+updates instructions and Save/Open. The [full walkthrough](tip-rack-options.md)
+contains synthetic example dimensions and the limits of the commercial references
+and custom holder. Do not present this as arbitrary supplier CAD or validated fit.
+
 ## One-message labware change
 
 The Jubilee sample module can change from the stored tube rack to a named

@@ -544,6 +544,10 @@ def _sourcing(project: dict) -> None:
         )
         sourcing["unpriced_count"] += 1
     project["sourcing"] = sourcing
+    if project.get("tip_rack"):
+        from app.tip_racks import _sourcing as tip_sourcing
+
+        tip_sourcing(project)
 
 
 def reapply_labware(project: dict, *, require_accepted: bool = True) -> dict:

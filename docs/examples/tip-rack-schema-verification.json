@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-31T13:04:29.124870+00:00",
+  "scope": "Offline regression for strict structured-output payload compatibility after eight live HTTP400 responses before inference. This is not a successful live model result.",
+  "failure_retained_at": ".local/tip-options-20261031/live/results.json",
+  "cause": "TipRackUpdate.spec_sources previously used an arbitrary typed string dictionary, emitting additionalProperties as a schema rather than false.",
+  "repair": "Closed TipRackSources with eight nullable source fields; only non-null source fields participate in existing exact source/spec-key and full-message provenance validation.",
+  "source_sha256": {
+    "app/tip_racks.py": "21e5c0f39b4a9b8f0741d0a9d8085f547a9717c7c08a94469b9bbe0807f471fe",
+    "tests/test_model_client.py": "e8660bade1192a40d859413516070f1663935408a8d13194d6c603a26f545d35"
+  },
+  "schema_sha256": "92d253ec1fc2a30d1abb460c143ab94d7ff16e0b2dd6d5a10d5d7e669039a626",
+  "schema_object_paths": [
+    "$",
+    "$/$defs/ChatAction",
+    "$/$defs/EngineeringOption",
+    "$/$defs/EngineeringRequirement",
+    "$/$defs/EngineeringUpdate",
+    "$/$defs/LabwareSelection",
+    "$/$defs/LabwareUpdate",
+    "$/$defs/SourceRecommendation",
+    "$/$defs/TipRackSources",
+    "$/$defs/TipRackSpec",
+    "$/$defs/TipRackUpdate"
+  ],
+  "checks": [
+    {
+      "command": ".venv/Scripts/python.exe -m pytest tests/test_model_client.py tests/test_tip_racks.py -q",
+      "passed": 70,
+      "elapsed_seconds": 3.36,
+      "warning": "Existing Starlette TestClient httpx deprecation warning."
+    },
+    {
+      "command": ".venv/Scripts/ruff.exe check app/tip_racks.py tests/test_model_client.py",
+      "result": "passed"
+    }
+  ],
+  "live_requests_from_repair_agent": 0
+}

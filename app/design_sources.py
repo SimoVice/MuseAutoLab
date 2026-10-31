@@ -72,6 +72,16 @@ def project_source_basis(project: dict) -> dict:
             bindings.append({"component_id": pid, "basis": "imported_open_hardware_cad",
                              "reference_id": "jubilee-hardware",
                              "detail": "Pinned original STEP; fixed frame and explicit bed pose."})
+        elif pid == "tip-rack" and project.get("tip_rack"):
+            module = project["tip_rack"]
+            profile = module.get("profile")
+            bindings.append({"component_id": pid,
+                             "basis": "pinned_software_reference" if profile
+                             else "user_dimensioned_custom_holder",
+                             "reference_id": module["profile_id"],
+                             "source": deepcopy(profile["source"]) if profile else None,
+                             "detail": "Software rack reference; vendor CAD and fit unverified."
+                             if profile else "Declared-dimension holder; print fit unverified."})
         elif pid == "carriage" and pid in specs:
             motor = specs[pid]["motor"]
             bindings.append(

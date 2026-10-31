@@ -1,0 +1,32 @@
+{
+  "repository": "https://github.com/Opentrons/opentrons",
+  "revision": "95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+  "checked_on": "2026-10-31",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE",
+  "scope": "Unmodified software labware definitions, not manufacturer CAD or measured mating interfaces. Envelope, opening locations and diameters inform a schematic reference. Molded walls, cavities, lids, current purchase variants, prices, availability, pipette coupling and fixation are not established.",
+  "profiles": [
+    {
+      "id": "tipone_96_tiprack_200ul",
+      "file": "tipone_96_tiprack_200ul.json",
+      "source_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/labware/definitions/2/tipone_96_tiprack_200ul/1.json",
+      "sha256": "c077e81c6539d40a7c936ea8729aa0e4442240e8980551fc6ae82c662312b31a",
+      "supplier": "USA Scientific / TipOne",
+      "source_brand_ids": ["1111-0200"],
+      "current_product_family_url": "https://www.usascientific.com/tipone-stacks/p/tipone-stacks",
+      "sku_reference_url": "https://www.usascientific.com/act",
+      "purchase_scope": "The current ACT index identifies 1111-0200 as 200 microliter natural tips in stack racks. The current family page covers multiple variants and multi-layer stacks; its starting price is not a verified price for one modeled 96-position reference."
+    },
+    {
+      "id": "opentrons_96_tiprack_300ul",
+      "file": "opentrons_96_tiprack_300ul.json",
+      "source_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/labware/definitions/2/opentrons_96_tiprack_300ul/1.json",
+      "sha256": "b2f4fc74c370dfd31d0de6f320ac5c09d6098d02feef51f58091db24718c402c",
+      "supplier": "Opentrons",
+      "source_brand_ids": [],
+      "current_product_family_url": "https://opentrons.com/products/categories/tips-&-labware",
+      "compatibility_reference_url": "https://docs.opentrons.com/ot-2/labware/types/",
+      "purchase_scope": "The current category lists OT-2 300 microliter tips, but its starting price is not a verified price for one rack. The exact purchase variant, pack size and stock remain unknown. OT-2-specific compatibility is not Jubilee pipette compatibility."
+    }
+  ]
+}

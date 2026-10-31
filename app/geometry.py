@@ -202,6 +202,12 @@ def add_geometry(project: dict) -> dict:
         from app.microplate_geometry import compile_microplate
 
         plate_geometry = compile_microplate(plate.get("profile_id"))
+    tips = result.get("tip_rack")
+    tip_geometry = None
+    if isinstance(tips, dict):
+        from app.tiprack_geometry import compile_tiprack
+
+        tip_geometry = compile_tiprack(tips)
     reference_specs = component_geometry_specs(result)
     for comp in result["design"]["components"]:
         if comp.get("kind") == "upstream-cad":
@@ -217,7 +223,14 @@ def add_geometry(project: dict) -> dict:
                 max(1, min(6, len(result.get("plan", {}).get("steps", []))))
             )
         canonical = inspection.get(comp["id"])
-        if plate_geometry and comp["id"] == plate.get("target_component_id"):
+        if tip_geometry and comp["id"] == tips.get("target_component_id"):
+            if comp["kind"] != "tiprack" or len(comp["size"]) != 3 or any(
+                abs(float(a) - b) > 1e-7
+                for a, b in zip(comp["size"], tip_geometry["size_mm"])
+            ):
+                raise ValueError("Tip rack component does not match its compiled dimensions.")
+            comp["geometry"] = deepcopy(tip_geometry["geometry"])
+        elif plate_geometry and comp["id"] == plate.get("target_component_id"):
             if comp["kind"] != "rack" or len(comp["size"]) != 3 or any(
                 abs(float(a) - b) > 1e-7
                 for a, b in zip(comp["size"], plate_geometry["size_mm"])

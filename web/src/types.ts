@@ -94,6 +94,30 @@ export type SourcingOption = {
   pros: string[];
   cons: string[];
   compatibility_note: string;
+  geometry?: {
+    profile_id: string;
+    effect: 'product_geometry' | 'supplier_only' | 'requires_dimensions' | 'printable_geometry';
+    size_mm?: [number, number, number] | null;
+    basis?: string; scope?: string; source_url?: string | null;
+    source?: { source_url: string; scope?: string; revision?: string; checked_on?: string; sha256?: string; license?: string; license_url?: string };
+    details?: { positions?: number; bore_diameter_mm?: number; first_center_xz_mm?: [number, number] };
+    placement?: { status: 'fits' | 'requires_shift' | 'unavailable'; position_xz_mm?: [number, number];
+      shift_xz_mm?: [number, number]; shift_mm?: number; message: string };
+  };
+};
+
+export type TipRackOptions = {
+  revision: number; component_id: 'tip-rack'; selected_profile_id: string | null;
+  printer_available: 'unknown' | 'yes' | 'no'; supported: boolean;
+  options: SourcingOption[];
+};
+
+export type TipRack = {
+  schema_version: number; kind: 'commercial_reference' | 'rim_supported_tip_rack';
+  profile_id: string; target_component_id?: string; size_mm: [number, number, number];
+  geometry: ComponentGeometry; spec?: Record<string, unknown>; derived?: Record<string, unknown>;
+  profile?: { display_name?: string; source?: { source_url?: string; scope?: string; revision?: string } };
+  provenance?: Record<string, unknown>; checks?: Record<string, unknown> | DesignCheck[];
 };
 
 export type SourcingGroup = {
@@ -156,6 +180,9 @@ export type Project = {
   labware_brief?: LabwareBrief | null;
   labware_rack?: LabwareRack | null;
   labware_plate?: LabwarePlate | null;
+  tip_rack?: TipRack | null;
+  tip_rack_request?: { alternatives_requested?: boolean } | null;
+  fabrication_capabilities?: { printer_available: 'unknown' | 'yes' | 'no'; source?: string | null };
   status: 'draft' | 'confirmed';
   brief: ProjectBrief;
   workflow: ProjectWorkflow;

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-31T13:24:21.241713+00:00",
+  "scope": "Offline focused tip-rack response protocol and selected-product intent guards after frozen live round3. No new live success is claimed.",
+  "hash_scope": "SHA-256 of raw workspace file bytes, including their current line endings; not normalized Git blob hashes.",
+  "workspace_source_sha256": {
+    "app/model_client.py": "d78300e8b50f5f6e48672f9684c2b29e38ff7a5f06695ce6bcc575d84a41c688",
+    "app/tip_racks.py": "29a7f9bffe282c1b3fa97ea6e41a3db1a6abf61af80873de52c58952fd8407a1",
+    "tests/test_tip_rack_turn_delta.py": "69f82a70e2c6ff01cde5f8f00c2ea3e90588fae58a057488c163c32cccfbf733"
+  },
+  "interface": {
+    "focused_fields": [
+      "assistant_message",
+      "actions",
+      "tip_rack"
+    ],
+    "focused_actions": [
+      "select_tip_rack",
+      "show_tip_rack_options"
+    ],
+    "scope": "Unambiguous dedicated tip-rack/holder requests, or relevant pending printer, dimension or placement answers. Explicit preservation clauses leave other namespaces untouched.",
+    "broad_protocol": "Actual mixed edits to recipe, sample labware, platform/layout, camera, budget or other modules retain the full existing response schema.",
+    "validation": "Focused schema rejects unrelated output fields before promotion into full ExtractedTurn defaults; no unsupported fields are silently discarded. Literal source/spec correspondence and full-message source intent remain checked.",
+    "variant_guard": "Explicit conflicting tip volume or SKU cannot be mapped to a different reviewed tip-rack profile."
+  },
+  "checks": [
+    {
+      "command": ".venv/Scripts/python.exe -m pytest tests/test_model_client.py tests/test_tip_racks.py tests/test_tip_rack_turn_delta.py tests/test_project_storage.py tests/test_foundation_storage.py tests/test_microplates.py tests/test_microplates_api.py tests/test_labware.py tests/test_labware_api.py tests/test_labware_grounding.py tests/test_empty_engineering_delta.py tests/test_plate_volume_scope.py tests/test_microplate_reply.py tests/test_chat_foundation.py -q",
+      "passed": 338,
+      "elapsed_seconds": 10.51,
+      "warning": "Existing Starlette TestClient httpx deprecation warning."
+    },
+    {
+      "command": ".venv/Scripts/ruff.exe check app/model_client.py app/tip_racks.py tests/test_tip_rack_turn_delta.py",
+      "result": "passed"
+    },
+    {
+      "command": "git diff --check -- app/model_client.py app/tip_racks.py tests/test_tip_rack_turn_delta.py",
+      "result": "passed",
+      "warning": "Git line-ending conversion warning for app/model_client.py; no unrelated files normalized."
+    }
+  ],
+  "historical_response_replay": "Original broad round2 response fixtures remain unchanged. Under the new focused protocol these unrelated broad keys are rejected at response_format, earlier than their original source_validation failures. This does not change the historical live results.",
+  "live_requests_from_repair_agent": 0
+}
