@@ -131,7 +131,10 @@ def test_immediate_files_match_package_and_do_not_need_confirmation_or_cad(monke
     assert project["status"] == "draft"
     immediate = build_instruction_files(project)
     packaged = build_document_files(project)
-    assert set(immediate) == {"assembly-guide.html", "assembly-guide.md", "assembly.json"}
+    assert set(immediate) == {
+        "assembly-guide.html", "assembly-guide.md", "assembly.json",
+        "protocol-template.json", "protocol-preview.py",
+    }
     assert all(packaged[name] == payload for name, payload in immediate.items())
     guide = json.loads(immediate["assembly.json"])
     assert guide["steps"] == assembly_steps(project)

@@ -1,5 +1,5 @@
 .project-resources { margin-top: 18px; color: #31565c; }
-.resource-entries { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.resource-entries { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .resource-entries > button { text-align: left; min-height: 64px; padding: 12px 15px; border: 1px solid #c9dfdc; border-radius: 9px; background: #fff; color: #21575d; font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
 .resource-entries > button[aria-expanded="true"] { border-color: #087d7d; background: #eff8f6; }
 .resource-entries small { display: block; margin-top: 5px; font-size: 11px; font-weight: 400; color: #55757b; }

@@ -327,7 +327,7 @@ def _source_basis_html(project: dict) -> str:
 
 
 def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = None) -> bytes:
-    from app.instructions import procurement_html, step_details_html
+    from app.instructions import procurement_html, software_guidance_html, step_details_html
 
     pid = html.escape(_project_id(project))
     rev = _revision(project)
@@ -565,7 +565,9 @@ STEPS
         )
         page = page.replace("</main>", table + "</main>")
     if guide is not None:
-        page = page.replace("</main>", procurement_html(guide) + "</main>")
+        page = page.replace(
+            "</main>", software_guidance_html(guide) + procurement_html(guide) + "</main>"
+        )
     return page.encode("utf-8")
 
 

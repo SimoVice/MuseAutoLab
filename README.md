@@ -8,6 +8,16 @@ Save/Open. The check found and fixed recognition of “length below the rim 40 m
 the original request now passes. See the [results and reopenable project](docs/presentation-flow.md)
 for the retained failure, real price coverage and verification limits.
 
+**Software & protocols** separates the reusable workstation from its current
+recipe, recommends the selected route's programming tools and provides a
+revision-bound JSON template plus a standalone Python schedule preview. Assistant
+replies render safe Markdown, and design-update status follows actual accepted
+changes. See [reuse the workstation and preview another recipe](docs/software-and-protocols.md).
+The [recorded second recipe](docs/examples/software-protocol-project.json) uses
+the same hardware with three 150 µL preparations; its
+[verification record](docs/examples/software-protocol-verification.json) separates
+the two actual Meta API calls from the offline browser checks.
+
 ### Workspace usability update — 2026-10-31
 
 The preparation plan has one stable place beside the cost summary below the 3D

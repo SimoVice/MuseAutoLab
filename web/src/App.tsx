@@ -6,7 +6,9 @@ import ModelSelector from './ModelSelector';
 import type { ImageCapability, VoiceCapability } from './ModelSelector';
 import IllustrationPanel from './IllustrationPanel';
 import VoiceDictation from './VoiceDictation';
-import AgentActivity, { finishAgentReveal } from './AgentActivity';
+import AgentActivity, { activityCopy, nextDesignPaint } from './AgentActivity';
+import type { AgentPhase } from './AgentActivity';
+import AssistantMessage from './AssistantMessage';
 import ProjectResources from './ProjectResources';
 import CostSummary from './CostSummary';
 import LabwareRackPanel from './LabwareRackPanel';
@@ -26,7 +28,6 @@ const LOCAL_PROJECT = 'museautolab.workspace.v1';
 type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assistant'; content: string }[] };
 type ActionRun = { kind: string; status: 'accepted' | 'rejected' | 'failed' | 'ready'; message?: string; model?: string };
 type ChatResponse = ProjectResponse & { action_runs?: ActionRun[] };
-type AgentPhase = 'pending' | 'complete' | null;
 type WorkspaceRecovery = { project: Project; messages: ConversationEntry[]; input: string; notice: string | null; snapshot: string | null };
 
 function restoredMessages(data: OpenedProject): ConversationEntry[] {
@@ -105,8 +106,17 @@ function briefEntries(brief: ProjectBrief | null | undefined): { key: keyof Proj
 }
 
 function sameDesign(a: Project | null, b: Project): boolean {
-  return JSON.stringify(a?.engineering_design ?? null) === JSON.stringify(b.engineering_design ?? null)
-    && JSON.stringify(a?.inspection_extension ?? null) === JSON.stringify(b.inspection_extension ?? null);
+  const renderedDesign = (project: Project | null) => project ? {
+    available: Boolean(project.engineering_design),
+    components: project.design.components.map(({ label: _label, ...component }) => component),
+    foundation: project.design.foundation,
+    platform: project.design.platform?.id,
+    rack: project.labware_rack ? { geometry: project.labware_rack.geometry, spec: project.labware_rack.spec } : null,
+    plate: project.labware_plate ? { profile: project.labware_plate.profile_id, geometry: project.labware_plate.geometry, wells: project.labware_plate.derived.wells } : null,
+    tips: project.tip_rack ? { profile: project.tip_rack.profile_id, geometry: project.tip_rack.geometry, size: project.tip_rack.size_mm } : null,
+    inspection: project.inspection_extension ? { components: project.inspection_extension.components, poses: project.inspection_extension.pose_frames } : null,
+  } : null;
+  return JSON.stringify(renderedDesign(a)) === JSON.stringify(renderedDesign(b));
 }
 
 export default function App() {
@@ -135,7 +145,8 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [physicsView, setPhysicsView] = useState<PhysicsView | null>(null);
   const [physicsActive, setPhysicsActive] = useState(false);
-  const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [agentPhase, setAgentPhase] = useState<AgentPhase | null>(null);
+  const [pendingActivityTitle, setPendingActivityTitle] = useState<string | null>(null);
   const [actionRuns, setActionRuns] = useState<ActionRun[]>([]);
   const lastMessage = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
@@ -150,7 +161,6 @@ export default function App() {
   const skipRestore = useRef(false);
   const projectFile = useRef<HTMLInputElement>(null);
   const chatAbort = useRef<AbortController | null>(null);
-  const revealRef = useRef<HTMLSpanElement | null>(null);
   const sessionRef = useRef(0);
   const projectRef = useRef<Project | null>(null);
   projectRef.current = project;
@@ -404,6 +414,30 @@ export default function App() {
     });
   }
 
+  useEffect(() => {
+    if (agentPhase !== 'ready') return;
+    const timer = window.setTimeout(() => setAgentPhase(null), 1800);
+    return () => window.clearTimeout(timer);
+  }, [agentPhase]);
+
+  async function presentProject(next: Project, signal: AbortSignal, session: number) {
+    const active = () => !signal.aborted && sessionRef.current === session;
+    if (!active()) return false;
+    const changed = !sameDesign(projectRef.current, next);
+    if (changed) {
+      setAgentPhase('updating');
+      await nextDesignPaint(signal);
+      if (!active()) return false;
+    }
+    setProject(next);
+    if (changed) {
+      await nextDesignPaint(signal);
+      if (!active()) return false;
+    }
+    setAgentPhase(changed ? 'ready' : null);
+    return true;
+  }
+
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const message = input.trim();
@@ -411,11 +445,11 @@ export default function App() {
     if (message.length > 4000) { setError('The message exceeds 4,000 characters. Shorten it before sending; your draft is kept.'); return; }
     setMobileView('chat');
     const session = sessionRef.current;
-    const base = projectRef.current;
     chatAbort.current?.abort();
     const controller = new AbortController();
     chatAbort.current = controller;
     setBusy(true);
+    setPendingActivityTitle(null);
     setAgentPhase('pending');
     setError(null);
     setInput('');
@@ -424,15 +458,7 @@ export default function App() {
       const raw = await request(`/api/projects/${encodeURIComponent(project.id)}/messages`, { message }, controller.signal) as ChatResponse;
       if (controller.signal.aborted || sessionRef.current !== session) return;
       const runs = Array.isArray(raw.action_runs) ? raw.action_runs : [];
-      const changed = !sameDesign(base, raw.project);
-      if (changed) {
-        setAgentPhase('complete');
-        await finishAgentReveal(controller.signal, revealRef.current);
-        if (controller.signal.aborted || sessionRef.current !== session) return;
-      } else {
-        setAgentPhase(null);
-      }
-      setProject(raw.project);
+      if (!await presentProject(raw.project, controller.signal, session)) return;
       setActionRuns(runs);
       const failed = runs.find((run) => run.status === 'rejected' || run.status === 'failed');
       if (raw.assistant_message) {
@@ -450,7 +476,6 @@ export default function App() {
     } finally {
       if (!controller.signal.aborted && sessionRef.current === session) {
         setBusy(false);
-        setAgentPhase(null);
       }
     }
   }
@@ -471,35 +496,51 @@ export default function App() {
   async function chooseOption(groupId: string, optionId: string) {
     if (groupId === 'tip-rack-options') { await chooseTipRack(optionId); return; }
     if (!project || uiBusy) return;
+    const session = sessionRef.current;
+    const controller = new AbortController();
+    chatAbort.current?.abort();
+    chatAbort.current = controller;
+    setPendingActivityTitle(null);
+    setAgentPhase('pending');
     setBusy(true);
     setError(null);
     try {
       const result = await request(`/api/projects/${encodeURIComponent(project.id)}/configuration`, {
         selections: { [groupId]: optionId },
-      });
-      setProject(result.project);
+      }, controller.signal);
+      if (!await presentProject(result.project, controller.signal, session)) return;
       if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
     } catch (reason) {
+      if (controller.signal.aborted || sessionRef.current !== session) return;
+      setAgentPhase(null);
       setError(reason instanceof Error ? reason.message : 'The component choice could not be applied.');
-    } finally { setBusy(false); }
+    } finally { if (!controller.signal.aborted && sessionRef.current === session) setBusy(false); }
   }
 
   async function chooseTipRack(profileId: string) {
     if (!project || uiBusy) return;
+    const session = sessionRef.current;
+    const controller = new AbortController();
+    chatAbort.current?.abort();
+    chatAbort.current = controller;
+    setPendingActivityTitle('Updating tip rack');
+    setAgentPhase('pending');
     setBusy(true); setError(null);
     try {
       const result = await request(`/api/projects/${encodeURIComponent(project.id)}/tip-rack-options`, {
         revision: project.revision, profile_id: profileId,
-      }) as ChatResponse;
-      setProject(result.project);
+      }, controller.signal) as ChatResponse;
+      if (!await presentProject(result.project, controller.signal, session)) return;
       setActionRuns(result.action_runs ?? []);
       if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
       const failed = result.action_runs?.find((run) => run.status === 'failed' || run.status === 'rejected');
       if (failed) setError(failed.message ?? 'That rack could not be applied. Revise the request in chat.');
       if (JSON.stringify(project.tip_rack) !== JSON.stringify(result.project.tip_rack)) setSelectedId('tip-rack');
     } catch (reason) {
+      if (controller.signal.aborted || sessionRef.current !== session) return;
+      setAgentPhase(null);
       setError(reason instanceof Error ? reason.message : 'The tip rack choice could not be applied. Try again.');
-    } finally { setBusy(false); }
+    } finally { if (!controller.signal.aborted && sessionRef.current === session) setBusy(false); }
   }
 
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -631,6 +672,7 @@ export default function App() {
         <button type="button" aria-pressed={mobileView === 'design' && (hasBrief || hasEngineeringDesign)} aria-controls="design-workspace" disabled={!hasBrief && !hasEngineeringDesign} onClick={() => setMobileView('design')}>Design</button>
         <button type="button" aria-pressed={mobileView === 'chat' || (!hasBrief && !hasEngineeringDesign)} aria-controls="chat-workspace" onClick={() => setMobileView('chat')}>Chat</button>
       </nav>
+      <span className="sr-only" role="status" aria-live="polite">{agentPhase ? agentPhase === 'pending' && pendingActivityTitle ? pendingActivityTitle : activityCopy[agentPhase].title : ''}</span>
       <main className={`workspace mobile-view-${mobileView}${!hasBrief && !hasEngineeringDesign ? ' workspace-start' : ''}`}>
         <section id="design-workspace" className={`design-panel${isConfirmed && hasEngineeringDesign ? ' design-panel-confirmed' : ''}`} aria-labelledby="design-title">
           <div className="design-heading">
@@ -677,8 +719,9 @@ export default function App() {
               <PresentationStage viewerRef={viewer} compact={isConfirmed} title={hasFoundation ? 'Jubilee workstation' : hasPlatform ? 'OT-2 setup' : 'Interactive 3D concept'}
                 sourceNote={hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'}
                 components={project?.design.components ?? []} selectedPart={part} onSelect={setSelectedId}>
-                <div className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
+                <div aria-busy={agentPhase === 'pending' || agentPhase === 'updating'} className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
                   {project ? <Scene captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} scene />}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
                   <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
                 </div>
@@ -786,10 +829,10 @@ export default function App() {
             <div className="chat-date">Your design conversation</div>
             {messages.map((message) => <div key={message.id} className={`message-row ${message.role}`}>
               {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
-              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
+              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.role === 'assistant' ? <AssistantMessage text={message.text} /> : message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
             </div>)}
-            {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && !agentPhase && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
-            {agentPhase && <AgentActivity phase={agentPhase} fillRef={revealRef} />}
+            {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && (!agentPhase || agentPhase === 'ready') && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
+            {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} />}
             <div ref={lastMessage} />
 
           </div>

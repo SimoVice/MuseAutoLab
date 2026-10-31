@@ -1,5 +1,35 @@
 # Delivery verification — 2026-10-31
 
+## Reusable protocols and conversation feedback
+
+The [software and protocol guide](software-and-protocols.md) adds route-specific
+programming guidance, a revision-bound recipe template and a standalone logical
+preview. Safe Markdown fixes literal emphasis markers in assistant replies.
+The model area now shows request/update feedback without remounting its canvas;
+recipe-only or pricing changes do not claim a geometry update.
+
+The final targeted regression run passed **48 tests** across software guidance,
+preview validation, whole-API preservation, instructions, procurement downloads
+and conversational foundation updates. Browser checks separately passed Markdown
+rendering and unsafe-content rejection, desktop/mobile layout, reduced motion,
+failure/reset cleanup, supplier selection and unchanged canvas identity. Build,
+typecheck and Ruff passed. The final Impeccable source scan retained the same six
+context-reviewed findings, with no new finding.
+
+Two actual Muse Spark Contributor API calls passed through the isolated real
+application: a software question preserved the entire current recipe and design;
+a second recipe preserved hardware and suppliers while changing A1/B1/C1 to
+30/6/3 µL stock plus 120/144/147 µL diluent. Observed request times were 10.750 s
+and 9.219 s, with **54,933 total reported tokens**. There were no automatic model
+retries. These were API checks; the browser checks used explicit synthetic model
+responses. The [curated record](examples/software-protocol-verification.json)
+and [reopenable project](examples/software-protocol-project.json) preserve that
+distinction. Downloaded preview execution passed without hardware connections.
+
+This demonstrates another supported recipe on the same proposed workstation.
+It does not implement arbitrary pipetting workflows, an upstream robot-control
+adapter, physical calibration or measured laboratory performance.
+
 ## Full presentation journey
 
 The [presentation-flow record](presentation-flow.md) covers the fresh-start

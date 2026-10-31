@@ -1,0 +1,184 @@
+{
+  "date": "2026-10-31",
+  "status": "passed",
+  "scope": "Two actual bounded Meta calls with a public synthetic saved project; local real API/compiler and standalone logical preview. Separate browser captures use synthetic offline model transports. No physical or hardware-control validation.",
+  "model": "muse-spark-1.3-contributor",
+  "fixture": {
+    "path": "docs/examples/presentation-flow-project.json",
+    "public_baseline_commit": "b823415f4588bd3cdca6b9227c5175cb726f19c1",
+    "sha256": "dea1468baf3160129ecdc1f5ac69068cf41303064049418eec618c421d3e7435",
+    "byte_identical_to_public_baseline": true
+  },
+  "live_calls": [
+    {
+      "call": 1,
+      "input": "Can I reuse this workstation for other pipetting recipes? What software should I use and how do I write and check a protocol? Show the programming guide. Keep my current hardware, suppliers and preparation unchanged.",
+      "http_status": 200,
+      "elapsed_seconds": 10.75,
+      "usage": {
+        "model": "muse-spark-1.3-contributor",
+        "prompt_tokens": 26156,
+        "completion_tokens": 1293,
+        "total_tokens": 27449
+      },
+      "assertions": [
+        "hardware_geometry_and_supplier_groups_preserved",
+        "software_inquiry_preserves_recipe_and_revision"
+      ],
+      "action_runs": [
+        {
+          "kind": "show_build_plan",
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "call": 2,
+      "input": "Keep the same Jubilee workstation, Corning 96-well plate and Opentrons tip rack, and keep the machine layout unchanged. Change only the preparation recipe: stock concentration 5 mg/mL, target concentrations 1, 0.2 and 0.1 mg/mL, with 150 uL final volume per well. Do not change suppliers or components.",
+      "http_status": 200,
+      "elapsed_seconds": 9.219,
+      "usage": {
+        "model": "muse-spark-1.3-contributor",
+        "prompt_tokens": 26208,
+        "completion_tokens": 1276,
+        "total_tokens": 27484
+      },
+      "assertions": [
+        "hardware_geometry_and_supplier_groups_preserved",
+        "new_recipe_exact_current_wells_and_volumes",
+        "fresh_downloads_standalone_local_preview_pass"
+      ],
+      "action_runs": []
+    }
+  ],
+  "actual_meta_calls": 2,
+  "total_tokens": 54933,
+  "local_tests": {
+    "command": "python -m pytest tests/test_software_guidance.py tests/test_protocol_preview.py tests/test_software_guidance_integration.py tests/test_instructions.py tests/test_procurement_api.py tests/test_chat_foundation.py -q",
+    "passed": 48,
+    "scope": "Offline deterministic tests, including actual extraction parsing through in-memory HTTP transport and whole-API state preservation; no model requests."
+  },
+  "browser_evidence": {
+    "chat_and_revision_feedback": {
+      "status": "passed",
+      "scope": "Synthetic chat transport; real React/browser; no model calls",
+      "checks": [
+        "CommonMark structure",
+        "safe links",
+        "HTML/media disabled",
+        "literal user text",
+        "mobile no overflow",
+        "truthful phases",
+        "same canvas node",
+        "failure cleanup",
+        "reduced motion",
+        "navigation cancellation"
+      ],
+      "errors": []
+    },
+    "software_guidance": {
+      "status": "passed",
+      "scope": "Offline real browser/API/compiler; no inference",
+      "read_only_project_preserved": true,
+      "download_matches_guide": true,
+      "mobile_no_document_overflow": true,
+      "page_errors": []
+    },
+    "images": {
+      "docs/images/chat-markdown.png": "Synthetic offline browser fixture: safe assistant Markdown and literal user text; includes deliberately unsafe-link labels used for rejection checks.",
+      "docs/images/design-updated.png": "Synthetic offline browser fixture: accepted geometry revision feedback, not a real model response.",
+      "docs/images/software-protocols.png": "Offline real browser/API/compiler: reusable platform software guidance and downloads, no inference."
+    }
+  },
+  "recipe": {
+    "stock": "5 mg/mL",
+    "targets": [
+      "1 mg/mL",
+      "0.2 mg/mL",
+      "0.1 mg/mL"
+    ],
+    "wells": [
+      "A1",
+      "B1",
+      "C1"
+    ],
+    "stock_ul": [
+      30,
+      6,
+      3
+    ],
+    "diluent_ul": [
+      120,
+      144,
+      147
+    ],
+    "total_ul": [
+      150,
+      150,
+      150
+    ],
+    "platform": "jubilee",
+    "plate_profile_id": "corning_96_wellplate_360ul_flat",
+    "tip_rack_profile_id": "opentrons_96_tiprack_300ul"
+  },
+  "artifacts": {
+    "docs/examples/software-protocol-project.json": {
+      "sha256": "6b7039d2ac517a29e444b44dfc0e5e8da2ebd82e846ab86b97c0c714ba07ec71",
+      "bytes": 26993
+    },
+    "docs/examples/software-protocol-guide.html": {
+      "sha256": "d3f3458e67723ec51479a80b12e08e157fe3920920182b81d1decfb06cd9770b",
+      "bytes": 108166
+    },
+    "docs/examples/reusable-protocol/protocol-template.json": {
+      "sha256": "8352616aca4d6d37a0ed7d4c0b86fe080593539243e92343fcba20fe94f74d9d",
+      "bytes": 4840
+    },
+    "docs/examples/reusable-protocol/protocol-preview.py": {
+      "sha256": "0e6fc663d23ecd6bd39ed212a2f3d6dc4c130b673e6d63a3eb1b9ef18e1ed631",
+      "bytes": 6885
+    },
+    "docs/images/chat-markdown.png": {
+      "sha256": "f427ecacd24d25eb0e51581714779fa504c4b098e2118151794ea2236ca867b4",
+      "bytes": 198525
+    },
+    "docs/images/design-updated.png": {
+      "sha256": "665868ba64e5a00fe3270b1a7e4a80e0047ddda9153428920bfbf281fb82fce8",
+      "bytes": 184871
+    },
+    "docs/images/software-protocols.png": {
+      "sha256": "57cc043f610a944a54d60d01f27fbf872a15c7376a75ba5c1504d863fc1aafd0",
+      "bytes": 91759
+    }
+  },
+  "source_sha256": {
+    "app/software_guidance.py": "e700abe70c7e015d9db9ddb37fdf6217a7cc63d2afb9c798f050aeb50413413c",
+    "app/protocol_preview.py": "0e6fc663d23ecd6bd39ed212a2f3d6dc4c130b673e6d63a3eb1b9ef18e1ed631",
+    "app/instructions.py": "6b214672feb1530ebe48f2a545bf7373ac093a8d9559bc79395a19b31350dfab",
+    "app/model_client.py": "f5037514a7969f0d6eb9591bd1e47e6ff947d5da09aa6153d18d9e36418f1b00",
+    "app/api.py": "e0ce5d39abb20930a7268cf99870693f48f9d0049db21c87d64ef14643df005f",
+    "web/src/App.tsx": "3d4d119295749ce7d14946359d30cf813c7e34706bab406f54a0b7f58135f402",
+    "web/src/ProjectResources.tsx": "b3d65145c54777e3698b42e510c0b844aafdf898635b477e189e659c3a68d260",
+    "web/src/chat-workspace.css": "4e8ebf1aa1cde794e202b31015abe93a70736ce41b3d98f927f3f7f366c27c94",
+    "tests/test_software_guidance_integration.py": "bdd15d018c1666f27617706906c36af56425c28969cce5fec49808b277f93cc5",
+    "web/src/AssistantMessage.tsx": "ac5f62958fbacec2085fc9ac953e9087b717f400befc615c7a05ae1f3e0c002b",
+    "web/src/AgentActivity.tsx": "20fc41c734e1aeb19e42d4bd3df2855e8dadb3a81a28c25f354105eff10678f4",
+    "web/src/types.ts": "0e1bbc69e6bb00c5d894b59823f520de925db5eb48af3af391041020045f1284",
+    "web/src/project-resources.css": "282833ab8da68aa024854c9a8774ff508783ff3cf0987b9d392c535730990c6e",
+    "web/package.json": "78fe1902f8fb3a335af906bac45f44515db2976deff0aaa84275262b79af0c3a",
+    "web/package-lock.json": "a82f7cd5b4199823451b3685e5faedd06ad308a2607f22b80d5a3135477315c6",
+    "tests/browser_chat_feedback.py": "50f903f26ab81caea50ea1b6ed460fb87ddecc2550c92822ffcc958dd90a3093",
+    "tests/browser_software_guidance.py": "c92e355adbc6912270a5e81865b8a2eef6f17651ba48a3e12cafbc67f5561891",
+    "tests/test_software_guidance.py": "1960e22673cdc957e7cd935dc367b54e074f0f22ea2697bcd82c9f0457d2a11c",
+    "tests/test_protocol_preview.py": "086763dcb39f5d98d5bf5009fb0dd04d9452c92adf76b1a7fc4763b2cc315c17"
+  },
+  "limits": [
+    "The saved project, logical template and preview do not execute hardware.",
+    "Upstream Science Jubilee configuration and a separately authored protocol still require actual controller/tool/labware commissioning and review.",
+    "Arithmetic and supplied reference bindings do not establish calibrated positions, physical fit, transfer performance, material suitability or real liquid handling.",
+    "Two successful synthetic requests are bounded integration evidence, not a measured usability study or broad live-model reliability estimate.",
+    "The portable snapshot preserves logical lineage while reopening with a new runtime project ID.",
+    "Protocol downloads are the exact files checked in the live rehearsal; the HTML guide is regenerated from the actual second-call project using the recorded source hashes."
+  ],
+  "hash_basis": "Normalized Git index blobs for all artifact and source hashes; public fixture hash is the previously verified baseline Git blob."
+}

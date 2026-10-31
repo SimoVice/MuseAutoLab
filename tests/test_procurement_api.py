@@ -185,3 +185,22 @@ def test_instruction_preview_downloads_bind_current_revision_and_report(client):
         == 409
     )
     assert client.get(url + "/instructions", params={"revision": revision + 1}).status_code == 409
+
+
+def test_protocol_template_and_standalone_preview_downloads_are_revision_bound(client):
+    project = machine(client)
+    url = f"/api/projects/{project['id']}/instructions/download"
+    params = {"revision": project["revision"], "format": "protocol"}
+    response = client.get(url, params=params)
+    assert response.status_code == 200
+    configuration = response.json()
+    assert configuration["execution_enabled"] is False
+    assert configuration["binding"]["project_id"] == project["id"]
+    assert configuration["binding"]["project_revision"] == project["revision"]
+    preview = client.get(url, params={**params, "format": "preview"})
+    assert preview.status_code == 200
+    assert 'filename="protocol-preview.py"' in preview.headers["content-disposition"]
+    assert "def validate_protocol" in preview.text
+    assert (
+        client.get(url, params={**params, "revision": project["revision"] + 1}).status_code == 409
+    )

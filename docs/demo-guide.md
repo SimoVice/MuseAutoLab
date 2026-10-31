@@ -220,6 +220,26 @@ questions before moving to the next step.
    **Build instructions**, then **Save project** and reopen it. Confirm only after
    reviewing the final design. Generate the full CAD package last; it can take
    several minutes.
+8. **Plan reuse.** “I want to reuse this workstation for aliquoting and other
+   pipetting protocols. What software should I use, and how would I program a
+   new protocol? Keep the current design and preparation unchanged.” Open
+   **Software & protocols**, or use its direct button in **Build instructions**.
+   Download the protocol template and local Python preview; they describe a
+   logical schedule, not hardware commands.
+9. **Try a second recipe.** “Keep the stock at 5 mg/mL. Use target concentrations
+   of 1, 0.2 and 0.1 mg/mL with 150 µL per preparation. Keep the selected platform,
+   plate, tip rack, suppliers and layout unchanged.” Review the same A1/B1/C1
+   destinations with stock/diluent pairs 30/120, 6/144 and 3/147 µL. Download the
+   new revision's template and compare the local schedules. Check the actual
+   pipette's transfer range before interpreting either recipe as a practical
+   protocol. The [recorded second recipe](examples/software-protocol-project.json)
+   preserves the successful live API result; its
+   [verification record](examples/software-protocol-verification.json) separates
+   actual model calls from offline browser checks.
+
+The [software and protocol guide](software-and-protocols.md) gives the paired
+download command, official route documentation and the distinction between
+offline checks and any separately recorded live-model outcome.
 
 For the optional printable-holder branch, answer the printer-access question
 truthfully, then follow the [holder measurement example](tip-rack-options.md#printing-a-holder-for-purchased-tips).

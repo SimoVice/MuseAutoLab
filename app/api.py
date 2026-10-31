@@ -518,9 +518,13 @@ async def download_instructions(
             raise HTTPException(
                 status_code=409, detail="Download instructions for the current report."
             )
-    names = {"html": "assembly-guide.html", "md": "assembly-guide.md", "json": "assembly.json"}
+    names = {"html": "assembly-guide.html", "md": "assembly-guide.md", "json": "assembly.json",
+             "protocol": "protocol-template.json", "preview": "protocol-preview.py"}
     if format not in names:
-        raise HTTPException(status_code=422, detail="Choose HTML, Markdown or JSON instructions.")
+        raise HTTPException(
+            status_code=422,
+            detail="Choose HTML, Markdown, JSON instructions or a protocol template/local preview."
+        )
     name = names[format]
     return Response(
         content=build_instruction_files(current)[name], media_type=media_type_for(name),

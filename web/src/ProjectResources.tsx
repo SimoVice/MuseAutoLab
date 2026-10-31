@@ -54,8 +54,33 @@ function Step({ step, guide, onSelect }: { step: InstructionStep; guide: Instruc
   </article>;
 }
 
+function SoftwareGuide({ guide, base, downloadsAvailable }: {
+  guide: InstructionGuide; base: string; downloadsAvailable: boolean;
+}) {
+  const software = guide.software_guidance;
+  if (!software) return <p>Software guidance is not available for this project.</p>;
+  const download = `${base}/instructions/download?revision=${guide.project_revision}`;
+  return <div>
+    <p>{software.reusable_hardware}</p><p>{software.current_preparation}</p>
+    {software.recommendations.map(item => <div key={item.title}><h3>{item.title}</h3><p>{item.description}</p></div>)}
+    <h3>Create another pipetting protocol</h3>
+    <ol className="instruction-actions">{software.authoring_steps.map(step => <li key={step}>{step}</li>)}</ol>
+    <p className="resource-note">The template records this revision's recipe and labware. The local preview prints a logical transfer schedule; it does not connect to a robot.</p>
+    {downloadsAvailable && <div className="resource-downloads" aria-label="Protocol downloads">
+      <a href={`${download}&format=protocol`} download>Download protocol template</a>
+      <a href={`${download}&format=preview`} download>Download local preview</a>
+    </div>}
+    <p>Preview locally: <code>python protocol-preview.py protocol-template.json</code></p>
+    <details className="resource-detail"><summary>Parameters to complete before hardware use</summary><ul>{software.protocol_template.unresolved_parameters.map(item => <li key={item}>{item}</li>)}</ul></details>
+    <details className="resource-detail"><summary>Scope and source documentation</summary>
+      <ul>{software.limitations.map(item => <li key={item}>{item}</li>)}</ul>
+      <div className="instruction-sources">{software.sources.map(source => <div key={source.id}><a href={sourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a><small>{source.scope} · checked {source.checked_on}</small></div>)}</div>
+    </details>
+  </div>;
+}
+
 export default function ProjectResources({ project, busy, onSelect, onChoose, onReport, instructionRequest }: Props) {
-  const [panel, setPanel] = useState<'parts' | 'instructions' | null>(null);
+  const [panel, setPanel] = useState<'parts' | 'instructions' | 'software' | null>(null);
   const [procurement, setProcurement] = useState<ProcurementResponse>({ state: 'not_refreshed', report: null });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,7 +146,7 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
 
   useEffect(() => {
     setGuide(null); setGuideError(null); setStepIndex(0);
-    if (panel !== 'instructions') return;
+    if (panel !== 'instructions' && panel !== 'software') return;
     const controller = new AbortController();
     setGuideLoading(true);
     fetch(`${base}/instructions?revision=${revision}`, { signal: controller.signal })
@@ -154,6 +179,7 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
     <div className="resource-entries">
       <button type="button" aria-expanded={panel === 'parts'} aria-controls="parts-pricing-panel" onClick={() => setPanel(panel === 'parts' ? null : 'parts')}>Parts &amp; pricing <small>US catalog · USD</small></button>
       <button type="button" aria-expanded={panel === 'instructions'} aria-controls="build-instructions-panel" onClick={() => setPanel(panel === 'instructions' ? null : 'instructions')}>Build instructions <small>Revision {revision} · preview and downloads</small></button>
+      <button type="button" aria-expanded={panel === 'software'} aria-controls="software-protocols-panel" onClick={() => setPanel(panel === 'software' ? null : 'software')}>Software &amp; protocols <small>Reuse the workstation · preview a recipe</small></button>
     </div>
     {panel === 'parts' && <div id="parts-pricing-panel" className="resource-body">
       <div className="resource-heading"><div><h2>Parts &amp; pricing</h2><p>Selected parts for revision {revision}. US market, prices in USD.</p></div><button className="resource-primary" type="button" disabled={busy || refreshing || loading} onClick={() => void refresh()}>{refreshing ? 'Checking supplier catalogs…' : 'Refresh US prices'}</button></div>
@@ -186,6 +212,8 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
     {panel === 'instructions' && <div id="build-instructions-panel" className="resource-body" ref={resourceBody} tabIndex={-1}>
       <div className="resource-heading"><div><h2>Build instructions</h2><p>Technical review guide for the current design, revision {revision}.</p></div></div>
       <p className="resource-note">These steps combine source assembly references with your selected layout. Resolve design tasks before building; a preview does not establish hardware compatibility or tested operation.</p>
+      <button type="button" onClick={() => setPanel('software')}>Open software &amp; protocols</button>
+      {guide?.software_guidance && <details className="resource-detail"><summary>Software &amp; protocols</summary><SoftwareGuide guide={guide} base={base} downloadsAvailable={downloadsAvailable} /></details>}
       {guideLoading && <p role="status">Preparing instructions from the current project…</p>}
       {guideError && <div className="resource-error" role="alert">{guideError} <button type="button" onClick={() => setGuideAttempt((attempt) => attempt + 1)}>Try instructions again</button></div>}
       {guide && <>
@@ -195,6 +223,12 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
         <div className="instruction-pagination"><button type="button" disabled={stepIndex === 0} onClick={() => setStepIndex((index) => index - 1)}>Previous step</button><span>Step {guide.steps.length ? stepIndex + 1 : 0} of {guide.steps.length}</span><button type="button" disabled={stepIndex >= guide.steps.length - 1} onClick={() => setStepIndex((index) => index + 1)}>Next step</button></div>
         {downloadsAvailable && <div className="resource-downloads" aria-label="Instruction downloads">{['html', 'md', 'json'].map((format) => <a key={format} href={`${base}/instructions/download?revision=${revision}${guide.procurement_report_id ? `&report_id=${encodeURIComponent(guide.procurement_report_id)}` : ''}&format=${format}`} download>Download guide {format === 'md' ? 'Markdown' : format.toUpperCase()}</a>)}</div>}
       </>}
+    </div>}
+    {panel === 'software' && <div id="software-protocols-panel" className="resource-body">
+      <div className="resource-heading"><div><h2>Software &amp; protocols</h2><p>Selected platform and labware · revision {revision}</p></div></div>
+      {guideLoading && <p role="status">Preparing software guidance…</p>}
+      {guideError && <div className="resource-error" role="alert">{guideError} <button type="button" onClick={() => setGuideAttempt(attempt => attempt + 1)}>Try guidance again</button></div>}
+      {guide && <SoftwareGuide guide={guide} base={base} downloadsAvailable={downloadsAvailable} />}
     </div>}
   </section>;
 }

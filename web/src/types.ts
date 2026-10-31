@@ -471,4 +471,14 @@ export type InstructionGuide = {
   parts: InstructionPart[]; steps: InstructionStep[]; sources: InstructionSource[];
   summary: { ready_steps: number; reference_steps: number; needs_design_steps: number; total_steps: number };
   coordinate_system: string;
+  software_guidance?: SoftwareGuidance;
+};
+
+export type SoftwareGuidance = {
+  project_id: string; project_revision: number; platform: string;
+  status: 'needs_integration' | 'planning_only'; reusable_hardware: string; current_preparation: string;
+  recommendations: { title: string; description: string }[];
+  authoring_steps: string[]; limitations: string[]; sources: InstructionSource[];
+  protocol_template: { status: 'needs_review' | 'needs_recipe'; execution_enabled: false;
+    current_preparation: { target_count: number }; unresolved_parameters: string[] };
 };

@@ -1,45 +1,31 @@
-import type { RefObject } from 'react';
+export type AgentPhase = 'pending' | 'updating' | 'ready';
 
-export async function finishAgentReveal(signal: AbortSignal, element: HTMLSpanElement | null): Promise<void> {
-  if (!element || signal.aborted) return;
-  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const animation = element.animate(
-    [{ width: '30%' }, { width: '100%' }],
-    { duration: 650, easing: 'ease', fill: 'forwards' },
-  );
-  const cancel = () => { try { animation.cancel(); } catch { /* reset cancels */ } };
-  signal.addEventListener('abort', cancel, { once: true });
-  try {
-    await animation.finished;
-  } catch { /* abort or reset cancels the presentation */ }
-  finally {
-    signal.removeEventListener('abort', cancel);
-  }
+export const activityCopy = {
+  pending: { title: 'Reviewing your request', detail: 'The assistant is checking your request.' },
+  updating: { title: 'Updating design', detail: 'Applying the accepted changes to the model.' },
+  ready: { title: 'Design updated', detail: 'Review the accepted changes in the model.' },
+} satisfies Record<AgentPhase, { title: string; detail: string }>;
+
+/** Yield to the browser paint; no estimated work percentage or artificial progress delay. */
+export function nextDesignPaint(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) { resolve(); return; }
+    let frame = 0;
+    const finish = () => { cancelAnimationFrame(frame); signal.removeEventListener('abort', finish); resolve(); };
+    signal.addEventListener('abort', finish, { once: true });
+    frame = requestAnimationFrame(() => { frame = requestAnimationFrame(finish); });
+  });
 }
 
-type Props = {
-  phase: 'pending' | 'complete';
-  fillRef: RefObject<HTMLSpanElement | null>;
-};
-
-export default function AgentActivity({ phase, fillRef }: Props) {
-  return (
-    <div className="agent-activity" aria-live="polite">
-      <div className="agent-activity-heading">
-        <strong>{phase === 'complete' ? 'Update accepted' : 'Working on your request'}</strong>
-        <span>{phase === 'complete' ? 'Opening the updated view…' : 'Interpreting and checking…'}</span>
-      </div>
-      <div
-        className={`agent-activity-track${phase === 'complete' ? ' complete' : ' waiting'}`}
-        role="progressbar"
-        aria-label={phase === 'complete' ? 'Update accepted' : 'Assistant working'}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        {...(phase === 'complete' ? { 'aria-valuenow': 100 as number } : {})}
-      >
-        <span ref={fillRef} />
-      </div>
-    </div>
-  );
+export default function AgentActivity({ phase, pendingTitle, scene = false }: { phase: AgentPhase; pendingTitle?: string | null; scene?: boolean }) {
+  const copy = phase === 'pending' && pendingTitle
+    ? { title: pendingTitle, detail: 'Checking the selected product and placement.' }
+    : activityCopy[phase];
+  return <div className={scene ? `design-activity design-activity-${phase}` : 'agent-activity'} aria-hidden="true" data-phase={phase}>
+    <span className={`activity-indicator${phase === 'ready' ? ' activity-ready' : ''}`}>
+      {phase === 'ready' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg> : <span />}
+    </span>
+    <div className="agent-activity-heading"><strong>{copy.title}</strong><span>{copy.detail}</span></div>
+    {!scene && phase !== 'ready' && <span className="sr-only" role="progressbar" aria-label={copy.title} />}
+  </div>;
 }

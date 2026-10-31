@@ -9,9 +9,11 @@ from __future__ import annotations
 import html
 import json
 from copy import deepcopy
+from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from app.design_sources import project_source_basis, resolve_reference
+from app.software_guidance import build_software_guidance
 
 CHECKED_ON = "2026-10-30"
 JUBILEE_DOCS = "https://jubilee3d.github.io/machines/jubilee_2/"
@@ -1060,6 +1062,7 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         "procurement_report_id": report["report_id"] if report else None,
         "procurement": report,
         "cost_estimate": cost_estimate,
+        "software_guidance": build_software_guidance(project),
         "parts": parts,
         "steps": steps,
         "sources": list(sources.values()),
@@ -1214,6 +1217,39 @@ def cost_estimate_html(guide: dict) -> str:
         + "</div><p>"
         + esc("; ".join(estimate["exclusions"]))
         + "</p></section>"
+    )
+
+
+def software_guidance_html(guide: dict) -> str:
+    """Keep software and the current declarative configuration in the same guide."""
+    software = guide.get("software_guidance")
+    if not software:
+        return ""
+
+    def esc(value):
+        return html.escape(str(value), quote=True)
+
+    recommendations = "".join(
+        f"<h3>{esc(item['title'])}</h3><p>{esc(item['description'])}</p>"
+        for item in software["recommendations"]
+    )
+    steps = "".join(f"<li>{esc(step)}</li>" for step in software["authoring_steps"])
+    sources = "".join(
+        f'<li><a href="{esc(_safe_url(source["url"]))}">{esc(source["title"])}</a>'
+        f" — {esc(source['scope'])}; checked {esc(source['checked_on'])}</li>"
+        for source in software["sources"]
+    )
+    limits = "".join(f"<li>{esc(limit)}</li>" for limit in software["limitations"])
+    configuration = esc(json.dumps(software["protocol_template"], indent=2, sort_keys=True))
+    return (
+        '<section class="card"><h2>Software &amp; protocols</h2>'
+        f"<p>{esc(software['reusable_hardware'])}</p>"
+        f"<p>{esc(software['current_preparation'])}</p>{recommendations}"
+        f"<h3>Create another pipetting protocol</h3><ol>{steps}</ol>"
+        f"<h3>Scope and checks</h3><ul>{limits}</ul><ul>{sources}</ul>"
+        "<details><summary>Current protocol configuration (not executable)</summary>"
+        f'<pre style="white-space:pre-wrap;overflow-wrap:anywhere">{configuration}</pre>'
+        "</details></section>"
     )
 
 
@@ -1497,6 +1533,24 @@ def build_guide_markdown(guide: dict) -> bytes:
                 ]
             )
         lines.extend(["", "Exclusions: " + plain("; ".join(estimate["exclusions"])), ""])
+    software = guide.get("software_guidance")
+    if software:
+        lines.extend(["## Software & protocols", "", plain(software["reusable_hardware"]),
+                      "", plain(software["current_preparation"]), ""])
+        for item in software["recommendations"]:
+            lines.extend(["### " + plain(item["title"]), "", plain(item["description"]), ""])
+        lines.extend(["### Create another pipetting protocol", ""])
+        lines.extend(f"{index}. {plain(step)}" for index, step in
+                     enumerate(software["authoring_steps"], 1))
+        lines.extend(["", "### Scope and sources", ""])
+        lines.extend("- " + plain(limit) for limit in software["limitations"])
+        lines.extend(f"- {plain(source['title'])}: {_safe_url(source['url'])} "
+                     f"(checked {plain(source['checked_on'])}; {plain(source['scope'])})"
+                     for source in software["sources"])
+        lines.extend(["", "### Current protocol configuration (not executable)", "",
+                      "```json",
+                      json.dumps(software["protocol_template"], indent=2, sort_keys=True),
+                      "```", ""])
     return "\n".join(lines).encode("utf-8")
 
 
@@ -1509,4 +1563,8 @@ def build_instruction_files(project: dict, procurement: dict | None = None) -> d
         "assembly-guide.html": build_guide_html(project, guide["steps"], guide=guide),
         "assembly-guide.md": build_guide_markdown(guide),
         "assembly.json": json.dumps(guide, indent=2, sort_keys=True).encode("utf-8"),
+        "protocol-template.json": json.dumps(
+            guide["software_guidance"]["protocol_template"], indent=2, sort_keys=True
+        ).encode("utf-8"),
+        "protocol-preview.py": Path(__file__).with_name("protocol_preview.py").read_bytes(),
     }

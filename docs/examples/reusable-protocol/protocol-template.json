@@ -1,0 +1,155 @@
+{
+  "binding": {
+    "component_ids": [
+      "foundation-jubilee",
+      "base",
+      "carriage",
+      "pipette",
+      "source-rack",
+      "sample-rack",
+      "tip-rack",
+      "tip-waste",
+      "controller"
+    ],
+    "component_slots": {},
+    "geometry_scope": "Reference/model coordinates only; not calibrated robot positions.",
+    "labware_geometry": [
+      {
+        "id": "source-rack",
+        "position": [
+          -71.57118753,
+          279.36690226,
+          -71.13189038
+        ],
+        "size": [
+          95,
+          44,
+          70
+        ],
+        "slot_id": null
+      },
+      {
+        "id": "sample-rack",
+        "position": [
+          68.42881247,
+          265.72690226000003,
+          -71.13189038
+        ],
+        "size": [
+          135.36,
+          16.72,
+          93.08
+        ],
+        "slot_id": null
+      },
+      {
+        "id": "tip-rack",
+        "position": [
+          -71.57118753,
+          289.61190226,
+          28.62810961999999
+        ],
+        "size": [
+          127.76,
+          64.49,
+          85.48
+        ],
+        "slot_id": null
+      }
+    ],
+    "plate_profile_id": "corning_96_wellplate_360ul_flat",
+    "plate_source_binding": {
+      "source_revision": "95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+      "source_sha256": "c13f112e52893e781c59ced9e6418ff10a5e2cc4b4877fd9559045f2f475558d"
+    },
+    "plate_wells": [
+      {
+        "app_x_mm": -49.5,
+        "app_y_mm": 8.36,
+        "app_z_mm": 31.504999999999995,
+        "label": "A1",
+        "total_liquid_volume_ul": 360
+      },
+      {
+        "app_x_mm": -49.5,
+        "app_y_mm": 8.36,
+        "app_z_mm": 22.504999999999995,
+        "label": "B1",
+        "total_liquid_volume_ul": 360
+      },
+      {
+        "app_x_mm": -49.5,
+        "app_y_mm": 8.36,
+        "app_z_mm": 13.505000000000003,
+        "label": "C1",
+        "total_liquid_volume_ul": 360
+      }
+    ],
+    "platform": "jubilee",
+    "project_id": "135c68c5-51b9-4071-b2c7-b54041eb3363",
+    "project_revision": 13,
+    "tip_rack_profile_id": "opentrons_96_tiprack_300ul",
+    "tip_rack_source_binding": {
+      "checked_on": "2026-10-31",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/LICENSE",
+      "revision": "95a8a37922cfd5f46ad26c983bcc1659fa13b6e1",
+      "scope": "Pinned labware software reference rendered schematically; not manufacturer CAD, fabrication dimensions or verified drop-in fit. Well depths and coordinates are software parameters.",
+      "sha256": "b2f4fc74c370dfd31d0de6f320ac5c09d6098d02feef51f58091db24718c402c",
+      "source_url": "https://github.com/Opentrons/opentrons/blob/95a8a37922cfd5f46ad26c983bcc1659fa13b6e1/shared-data/labware/definitions/2/opentrons_96_tiprack_300ul/1.json"
+    }
+  },
+  "current_preparation": {
+    "stock_concentration": "5 mg/mL",
+    "target_concentrations": "1 mg/mL, 0.2 mg/mL, 0.1 mg/mL",
+    "target_count": 3,
+    "transfers": [
+      {
+        "destination_component_id": "sample-rack",
+        "destination_well": "A1",
+        "diluent_volume_ul": 120.0,
+        "stock_volume_ul": 30.0,
+        "target": "1 mg/mL",
+        "total_volume_ul": 150.0
+      },
+      {
+        "destination_component_id": "sample-rack",
+        "destination_well": "B1",
+        "diluent_volume_ul": 144.0,
+        "stock_volume_ul": 6.0,
+        "target": "0.2 mg/mL",
+        "total_volume_ul": 150.0
+      },
+      {
+        "destination_component_id": "sample-rack",
+        "destination_well": "C1",
+        "diluent_volume_ul": 147.0,
+        "stock_volume_ul": 3.0,
+        "target": "0.1 mg/mL",
+        "total_volume_ul": 150.0
+      }
+    ],
+    "workflow_kind": "liquid_preparation"
+  },
+  "execution_enabled": false,
+  "kind": "declarative_pipetting_protocol",
+  "limits": [
+    "MuseAutoLab currently checks the arithmetic of its supported dilution plan; it does not execute hardware protocols.",
+    "Aliquoting, transfers and serial dilutions are possible upstream programming tasks, not automatically validated MuseAutoLab protocols or verified performance claims.",
+    "Recheck tool, labware, deck, reach, transfer range and materials for each new task. A compatible recipe can reuse hardware; changed interfaces need a reviewed design revision."
+  ],
+  "schema_version": 1,
+  "status": "needs_review",
+  "units": {
+    "geometry": "mm",
+    "volume": "uL"
+  },
+  "unresolved_parameters": [
+    "physical source-stock and diluent positions",
+    "pipette model, channels and supported transfer range",
+    "calibrated labware/tool offsets and approach depths",
+    "liquid properties, aspiration/dispense rates and mixing",
+    "tip reuse/change policy and contamination controls",
+    "firmware/controller mapping, homing and stop/recovery behavior"
+  ]
+}
