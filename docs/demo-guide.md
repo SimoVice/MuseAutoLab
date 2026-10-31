@@ -21,8 +21,8 @@ records are not the script for the English demonstration.
 | Inspect the 96-well switch | [Confirmed plate project](examples/microplate-project.json), [small holder/reference CAD](examples/microplate/README.md) and [actual test record](examples/microplate-verification.json) | CAD and screenshots need no setup; reopen in the local app without inference |
 | Inspect the new tube rack | [Confirmed project](examples/parametric-tube-rack-project.json), [rack STEP](examples/tube-rack/tube-rack.step), [rack STL](examples/tube-rack/tube-rack.stl) and [fit coupon](examples/tube-rack/tube-rack-fit-coupon.stl) | CAD downloads need no account, setup or inference; the interactive viewer needs the local app |
 | Reopen a recorded project | Real 3D, accepted layout, cold bay, inspection sweep and local exports from the example below | Locked setup and local servers; no Meta key or new inference |
-| Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](../README.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
-| Use the product with Meta | Natural conversation, platform choice, design and revisions | [Local configuration](../README.md#local-meta-configuration), your own account access/allowance, then [two local servers](../README.md#run-locally) |
+| Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](getting-started.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
+| Use the product with Meta | Natural conversation, platform choice, design and revisions | [Local configuration](getting-started.md#local-meta-configuration), your own account access/allowance, then [two local servers](getting-started.md#run-locally) |
 
 The interactive product runs locally. Offline fixtures test software behavior;
 they are not fresh model responses. A saved project rebuilds
@@ -132,8 +132,8 @@ or a physical test. The temperature is requested, not measured.
 Real app view after reopening the recorded synthetic Meta result. This capture made
 no new inference; it shows the digital proposal, not assembled laboratory hardware.
 
-1. Follow the [locked setup](../README.md#setup-on-windows-powershell), then start the
-   [two local servers](../README.md#run-locally). An API key and `.env` are unnecessary
+1. Follow the [locked setup](getting-started.md#setup-on-windows-powershell), then start the
+   [two local servers](getting-started.md#run-locally). An API key and `.env` are unnecessary
    for this recorded-project review.
 2. In the app, choose **Open project** and select `docs/examples/demo-video-project.json`
    from the checkout. Geometry is rebuilt locally; the new runtime ID differs from
@@ -317,7 +317,7 @@ They are separate from the earlier core journey and from testing with external u
 | [Current platform-choice example](examples/engineering-choice-live.json) | 2026-10-29; actual Contributor responses on synthetic needs, both routes and late quantities; retains earlier failures and reported usage |
 | [Source-CAD chat example](examples/chat-foundation-live.json) | 2026-10-28; actual Contributor source-layout, bed and inspection requests, with rejection evidence; predates the current needs/choice flow |
 | [Historical layout implementation](meta-design.md) and [project evolution](project-evolution.md) | 2026-10-28; older architecture/UI records, not instructions for today's interface |
-| [Product-check commands](../README.md#verify-the-product) | Reproducible checks, explicitly separated into regular, heavy source export and offline browser scopes |
+| [Product-check commands](development.md#verify-the-product) | Reproducible checks, explicitly separated into regular, heavy source export and offline browser scopes |
 
 These examples document particular integration runs, not a benchmark, current release
 certificate, physical experiment or reliability percentage. Run the relevant checks

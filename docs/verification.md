@@ -437,7 +437,7 @@ temporary-file permission failures. These environment failures remain in local l
 A FastAPI/Starlette HTTPX deprecation warning and Vite bundle-size warning remain;
 they did not fail the checks. No dependency versions were changed for this delivery.
 
-Reproduction commands are in [Verify the product](../README.md#verify-the-product).
+Reproduction commands are in [Verify the product](development.md#verify-the-product).
 The browser project-files test uses controlled export fixtures to exercise reconnect,
 guide display and revision guards. A final desktop check at 1440 × 1000 verifies that
 opening the guide disables the overlapping sticky model and closing it restores the
