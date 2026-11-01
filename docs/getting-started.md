@@ -128,18 +128,45 @@ Contributor is the default for suitable tests; use `muse-wonder-1.0` when comple
 
 ## Run locally
 
-After setup, run in two PowerShell terminals. A Meta key is only needed for new conversation and other model-backed actions; opening a saved project and inspecting its 3D does not send inference.
+After setup, open two PowerShell terminals **in the repository root** (the `MuseAutoLab` folder containing `web` and `.venv`). A Meta key is only needed for new conversation and other model-backed actions; opening a saved project and inspecting its 3D does not send inference.
+
+**Terminal 1 — backend API at `127.0.0.1:8000`.**
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000
 ```
 
+**Terminal 2 — frontend website at `127.0.0.1:5173`.**
+
 ```powershell
-Set-Location web
-npm.cmd run dev
+$env:MUSEAUTOLAB_API_TARGET = "http://127.0.0.1:8000"
+npm.cmd --prefix web run dev -- --port 5173 --strictPort
 ```
 
-Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/). The frontend proxies `/api` to the backend. Meta requests consume the configured allowance; credentials stay in the backend. Active sessions and generated jobs are process-local. Stop each server with Ctrl+C; save the project first if needed.
+Keep both terminals running, then **open [http://127.0.0.1:5173/](http://127.0.0.1:5173/) in your browser**. Port 8000 is the API, while port 5173 is the website you use. The frontend forwards `/api` requests to `http://127.0.0.1:8000`; the explicit target above also clears any different target inherited by that terminal. `--strictPort` makes the frontend stop with an error if 5173 is occupied instead of silently selecting another port.
+
+Meta requests consume the configured allowance; credentials stay in the backend. Active sessions and generated jobs are process-local. Save the project before stopping a server, then use Ctrl+C in its terminal.
+
+### If a port is already in use
+
+If you recognize an earlier server you started, save its project first and stop it with Ctrl+C in its own terminal, then retry. Do not stop an unknown process. Alternatively, choose explicit free ports for the new pair of servers.
+
+For example, if **8001 and 5174 are free**, start the backend in Terminal 1:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8001
+```
+
+Then set the matching API target **in the same PowerShell terminal that starts the frontend** (Terminal 2):
+
+```powershell
+$env:MUSEAUTOLAB_API_TARGET = "http://127.0.0.1:8001"
+npm.cmd --prefix web run dev -- --port 5174 --strictPort
+```
+
+Open [http://127.0.0.1:5174/](http://127.0.0.1:5174/). If only the website port changes, keep the API target at 8000. If the backend port changes, set the matching target before starting or restarting the frontend; an already running frontend does not pick up a changed terminal variable.
+
+To return to the standard ports, save the project and stop your alternative servers, then repeat the standard commands above. Explicitly setting `$env:MUSEAUTOLAB_API_TARGET = "http://127.0.0.1:8000"` before restarting the frontend resets its target to the backend on 8000.
 
 ## Open an example first
 

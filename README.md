@@ -112,15 +112,25 @@ npm.cmd --prefix web ci
 
 Then run each server in its own terminal from the repository root:
 
+**Terminal 1 — backend API at `127.0.0.1:8000`.** Keep this terminal running.
+
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000
 ```
 
+**Terminal 2 — frontend website at `127.0.0.1:5173`.** Keep this terminal running too.
+
 ```powershell
-npm.cmd --prefix web run dev
+$env:MUSEAUTOLAB_API_TARGET = "http://127.0.0.1:8000"
+npm.cmd --prefix web run dev -- --port 5173 --strictPort
 ```
 
-Open [127.0.0.1:5173](http://127.0.0.1:5173/). Keep an existing `.venv` and synchronize
+**Open the website in your browser: [http://127.0.0.1:5173/](http://127.0.0.1:5173/).**
+Port 8000 serves the API; port 5173 serves the interface and forwards `/api` requests
+to port 8000. If either port is occupied, follow the
+[port troubleshooting guide](docs/getting-started.md#if-a-port-is-already-in-use).
+
+Keep an existing `.venv` and synchronize
 it rather than recreating it. The [complete setup guide](docs/getting-started.md)
 includes version checks, a local npm fallback, safe `.env` setup and installation
 verification. For chat-only use, the CAD/simulation extras are optional.
