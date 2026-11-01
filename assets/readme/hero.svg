@@ -1,109 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="304" viewBox="0 0 1200 304" role="img" aria-labelledby="title desc">
-  <title id="title">MuseAutoLab — laboratory automation, shaped around your workflow</title>
-  <desc id="desc">MuseAutoLab title beside a schematic 96-well plate with three amber wells, recalling the dilution and aliquoting demonstrator.</desc>
+  <title id="title">MuseAutoLab — custom laboratory automation</title>
+  <desc id="desc">Design laboratory automation around your needs. A shared project connects a setup design, components and build guidance.</desc>
   <rect width="1200" height="304" fill="#f5f3eb"/>
   <g id="title-block" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-    <text x="56" y="66" fill="#087d7d" font-size="20" font-weight="600" letter-spacing="2">LABORATORY AUTOMATION</text>
+    <text x="56" y="66" fill="#087d7d" font-size="20" font-weight="600" letter-spacing="2">CUSTOM LABORATORY AUTOMATION</text>
     <text x="50" y="161" fill="#214a52" font-size="88" font-weight="650" letter-spacing="-4">MuseAutoLab</text>
-    <text x="56" y="214" fill="#214a52" font-size="28">Shaped around your workflow.</text>
+    <text x="56" y="214" fill="#214a52" font-size="28">Your task. Your tools. Your setup.</text>
   </g>
-  <g id="microplate-motif">
-    <path d="M801 47 H1123 A8 8 0 0 1 1131 55 V265 H801 A8 8 0 0 1 793 257 V55 A8 8 0 0 1 801 47 Z" fill="none" stroke="#087d7d" stroke-width="2"/>
-    <circle cx="824" cy="76" r="7" fill="#c88938" stroke="#c88938" stroke-width="2"/>
-    <circle cx="849" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="76" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="100" r="7" fill="#c88938" stroke="#c88938" stroke-width="2"/>
-    <circle cx="849" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="100" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="124" r="7" fill="#c88938" stroke="#c88938" stroke-width="2"/>
-    <circle cx="849" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="124" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="849" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="148" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="849" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="172" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="849" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="196" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="849" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="220" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="824" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="849" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="874" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="899" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="924" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="949" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="974" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="999" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1024" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1049" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1074" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
-    <circle cx="1099" cy="244" r="7" fill="#f5f3eb" stroke="#c2d6d2" stroke-width="2"/>
+  <g id="project-connections" fill="none" stroke="#9bbcb5" stroke-width="2.5">
+    <path d="M837 150 H886 V67 H950 M886 150 H950 M886 150 V233 H950"/>
+  </g>
+  <g id="shared-project" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect x="737" y="114" width="100" height="72" rx="8" fill="#087d7d"/>
+    <path d="M758 132 H815 M758 145 H799" stroke="#f5f3eb" stroke-width="3"/>
+    <text x="787" y="171" fill="#ffffff" font-size="19" text-anchor="middle">Project</text>
+  </g>
+  <g id="connected-outputs" fill="#214a52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="22">
+    <g id="design">
+      <path d="M957 59 L974 49 L991 59 V79 L974 89 L957 79 Z M957 59 L974 69 L991 59 M974 69 V89" fill="none" stroke="#087d7d" stroke-width="2.5" stroke-linejoin="round"/>
+      <text x="1010" y="76">Design</text>
+    </g>
+    <g id="components">
+      <rect x="956" y="132" width="15" height="15" rx="2" fill="none" stroke="#087d7d" stroke-width="2.5"/>
+      <rect x="976" y="132" width="15" height="15" rx="2" fill="#c88938"/>
+      <rect x="956" y="152" width="15" height="15" rx="2" fill="none" stroke="#087d7d" stroke-width="2.5"/>
+      <rect x="976" y="152" width="15" height="15" rx="2" fill="none" stroke="#087d7d" stroke-width="2.5"/>
+      <text x="1010" y="158">Parts</text>
+    </g>
+    <g id="guidance">
+      <path d="M958 214 H984 L991 221 V251 H958 Z M983 214 V223 H991 M965 232 H983 M965 241 H979" fill="none" stroke="#087d7d" stroke-width="2.5" stroke-linejoin="round"/>
+      <text x="1010" y="241">Build guide</text>
+    </g>
   </g>
 </svg>
