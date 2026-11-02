@@ -45,6 +45,9 @@ def run(url):
             page.wait_for_timeout(1000)
             assert canvas.screenshot() != before, "The working area should show more than one part"
             page.set_viewport_size({"width": 390, "height": 844})
+            page.get_by_role("navigation", name="Workspace view").get_by_role(
+                "button", name="Design", exact=True
+            ).click()
             label_box = view.bounding_box()
             button_box = page.get_by_role("button", name="Show full model").bounding_box()
             assert label_box and button_box

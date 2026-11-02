@@ -747,7 +747,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     <SceneBoundary key={viewKey} onError={() => { sourceReady.current = false; setSourceLoading(false); }}>
       <Canvas
         orthographic
-        camera={{ position: project.design.foundation ? [8, 9, -15] : [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
+        camera={{ position: project.design.foundation ? [4, 9, -16.4] : [10, 9, 12], zoom: 65, near: 0.01, far: 100 }}
         dpr={[1, 1.5]}
         shadows="percentage"
         frameloop="demand"

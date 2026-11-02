@@ -125,6 +125,64 @@ def initial_procurement_rows(project: dict) -> list[dict]:
     return [_row(group) for group in procurement_groups(project)]
 
 
+def purchase_scope(project: dict, row: dict) -> dict:
+    """Purchase identity and geometry, excluding recipe, pose and display text."""
+    keys = ("group_id", "selected_id", "supplier", "sku", "quantity", "currency",
+            "pack_size", "pack_count", "price_source_url", "component_ids",
+            "parent_group_id", "source_bom_url", "source_bom_row", "source_project_revision")
+    parts = {part["id"]: part for part in project.get("design", {}).get("components", [])}
+    return {
+        **{key: deepcopy(row.get(key)) for key in keys},
+        "geometry": [{key: deepcopy(parts[cid].get(key)) for key in
+                      ("id", "size", "geometry", "profile_id", "source", "source_binding",
+                       "foundation_asset_id", "labware_module_id", "rack_slot_count")}
+                     for cid in row.get("component_ids", []) if cid in parts],
+        "modules": {
+            name: {key: deepcopy(module.get(key)) for key in
+                   ("spec", "profile_id", "profile_binding", "size_mm", "geometry")}
+            for name, component in (("labware_rack", "sample-rack"),
+                                    ("labware_plate", "sample-rack"), ("tip_rack", "tip-rack"))
+            if component in row.get("component_ids", [])
+            and isinstance(module := project.get(name), dict)
+        },
+    }
+
+
+def rebind_report(before: dict, after: dict, report: dict | None) -> dict | None:
+    """Carry only unchanged purchase facts across an explicit trusted transition.
+
+    This does not fetch, renew observations, or relax the read-time revision guard.
+    """
+    current = report_for_project(before, report)
+    if current is None:
+        return None
+    old_rows = {row["group_id"]: row for row in current["rows"]}
+    previous = {row["group_id"]: row for row in initial_procurement_rows(before)}
+    rows, retained = [], []
+    for row in initial_procurement_rows(after):
+        group = row["group_id"]
+        if (group in old_rows and group in previous
+                and purchase_scope(before, previous[group]) == purchase_scope(after, row)):
+            # Compare the observation's identity too; a mismatched injected sidecar
+            # must not inherit the trusted project's purchase scope.
+            identity = ("selected_id", "supplier", "sku", "quantity", "pack_size",
+                        "pack_count", "price_source_url")
+            if all(old_rows[group].get(key) == row.get(key) for key in identity):
+                row = deepcopy(old_rows[group])
+                retained.append(group)
+        rows.append(row)
+    if not retained:
+        return None
+    current.update(project_id=after["id"], project_revision=after["revision"], rows=rows)
+    current["revision_binding"] = {
+        "source_project_id": before["id"], "source_revision": before["revision"],
+        "retained_group_ids": retained,
+        "reason": "Unchanged purchase scopes; original observation times and expiry retained.",
+    }
+    _recount(current)
+    return current
+
+
 def _row(group: dict) -> dict:
     selected = next(o for o in group["options"] if o["id"] == group["selected_id"])
     quantity = group["quantity"]

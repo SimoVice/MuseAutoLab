@@ -16,6 +16,7 @@ from app.domain import apply_update
 from app.microplates import PROFILE_ID, LabwareSelection
 from app.model_client import ChatAction, ExtractedTurn, generate_turn
 from app.procurement import refresh_procurement
+from app.project_exports import ExportError, _check_coherence
 from app.project_storage import restore_snapshot
 
 
@@ -181,7 +182,7 @@ def test_unsupported_destination_does_not_replace_any_state(client, monkeypatch)
     assert response.json()["project"] == original
 
 
-def test_previous_pricing_report_becomes_stale_for_changed_labware(client, monkeypatch):
+def test_empty_pricing_report_is_discarded_for_changed_labware(client, monkeypatch):
     project = before()
     no_rows = deepcopy(project)
     no_rows["sourcing"]["groups"] = []
@@ -191,9 +192,13 @@ def test_previous_pricing_report_becomes_stale_for_changed_labware(client, monke
     model_turn(monkeypatch, MESSAGE)
     result = client.post(url + "/messages", json={"message": MESSAGE}).json()["project"]
     assert client.get(url + "/procurement", params={"revision": result["revision"]}).json() == {
-        "state": "stale_revision",
+        "state": "not_refreshed",
         "report": None,
     }
+    assert api._sessions[project["id"]].procurement_report is None
+    with pytest.raises(ExportError) as error:
+        _check_coherence(result, {"project_id": project["id"], "revision": project["revision"]})
+    assert error.value.status_code == 409
 
 
 def test_published_two_ml_rack_switches_reversibly_and_quantity_example_keeps_geometry():

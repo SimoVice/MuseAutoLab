@@ -14,8 +14,37 @@ from decimal import Decimal
 from pathlib import Path
 from xml.etree import ElementTree
 
-from app.assembly import assembly_steps, build_document_files
+import pytest
+
+from app.assembly import assembly_steps, build_document_files, build_extensions_md
 from app.domain import apply_update, confirm_project, new_project
+
+
+@pytest.mark.parametrize("route", ["jubilee", "opentrons-ot2", "legacy"])
+def test_extension_document_reports_only_the_route_simulation_scope(route):
+    from app.commercial_design import adopt_commercial
+    from app.foundation_design import adopt_foundation
+
+    project = _confirmed()
+    if route == "jubilee":
+        project = adopt_foundation(project)
+    elif route == "opentrons-ot2":
+        project = adopt_commercial(project)
+    # A small extension envelope isolates document routing from arm generation.
+    project["inspection_extension"] = {"limitations": ["Physical validation remains open."]}
+    document = build_extensions_md(project).decode()
+    if route == "legacy":
+        assert "legacy XYZ MuJoCo adapter covers nominal liquid preparation only" in document
+        assert "inspection extension is excluded" in document
+    else:
+        assert "This platform has no simulation adapter" in document
+        assert "Neither the workstation nor the inspection extension" in document
+        assert "covers nominal liquid preparation" not in document
+    if route == "opentrons-ot2":
+        project.pop("inspection_extension")
+        exported = build_document_files(project)["extensions.md"].decode()
+        assert "This platform has no simulation adapter" in exported
+        assert "no MuJoCo validation result is claimed" in exported
 
 
 def _confirmed(cooling: bool = False) -> dict:
@@ -116,7 +145,8 @@ def test_escaping_and_preparation_and_preview_runs():
 
 
 def test_expected_file_set_and_extension_plan():
-    files = build_document_files(_confirmed())
+    project = _confirmed()
+    files = build_document_files(project)
     assert set(files) == {
         "assembly-guide.html",
         "assembly-guide.md",
@@ -127,7 +157,17 @@ def test_expected_file_set_and_extension_plan():
         "README.md",
         "extension-plan.json",
         "extensions.md",
+        "protocol-preview.py",
+        "protocol-template.json",
     }
+    protocol = json.loads(files["protocol-template.json"])
+    assert protocol["execution_enabled"] is False
+    assert protocol["binding"]["project_id"] == project["id"]
+    assert protocol["binding"]["project_revision"] == project["revision"]
+    assert protocol["binding"]["component_ids"] == [
+        part["id"] for part in project["design"]["components"]
+    ]
+    assert protocol["current_preparation"]["target_count"] == len(project["plan"]["steps"])
     plan = json.loads(files["extension-plan.json"].decode())
     assert plan["robot_arm"]["installed"] is False and plan["camera"]["installed"] is False
     assert (

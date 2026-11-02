@@ -863,9 +863,21 @@ def build_extension_plan(project: dict) -> bytes:
 
 
 def build_extensions_md(project: dict) -> bytes:
+    from app.commercial_design import PLATFORM_ID
+    from app.foundation_design import is_source_based
+
     cooling = _cooling(project)
     extension = project.get("inspection_extension")
     if extension:
+        simulation_scope = (
+            "This platform has no simulation adapter. Neither the workstation nor the "
+            "inspection extension has a MuJoCo validation result.\n\n"
+            if is_source_based(project)
+            or project.get("design", {}).get("platform", {}).get("id") == PLATFORM_ID
+            else "The legacy XYZ MuJoCo adapter covers nominal liquid preparation only; "
+            "the inspection extension is excluded. "
+            "This does not establish physical performance.\n\n"
+        )
         text = (
             "# Inspection extension — digital concept\n\n"
             f"Project {_project_id(project)} revision {_revision(project)}.\n\n"
@@ -877,9 +889,9 @@ def build_extensions_md(project: dict) -> bytes:
             "components retain their original IDs and geometry.\n\n"
             "## Image evidence and simulation\n\n"
             "The sweep is a geometric illustration, not a camera acquisition. Browser photo "
-            "capture/upload, Meta analysis and human review are separate actions. MuJoCo "
-            "covers liquid_preparation_only; the extension is excluded.\n\n"
-            "## Open design items\n\n"
+            "capture/upload, Meta analysis and human review are separate actions. "
+            + simulation_scope
+            + "## Open design items\n\n"
             + "\n".join(f"- {v}" for v in extension["limitations"])
             + "\n"
         )
@@ -1012,6 +1024,7 @@ def build_document_files(project: dict, procurement: dict | None = None) -> dict
         files["extensions.md"] = (
             b"# Integration scope\n\nCustom inspection/cooling "
             b"integration on the assembled platform is not implemented. Discuss requirements "
-            b"in chat; no compatible mount or hardware control is claimed.\n"
+            b"in chat; no compatible mount or hardware control is claimed. "
+            b"This platform has no simulation adapter; no MuJoCo validation result is claimed.\n"
         )
     return files

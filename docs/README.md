@@ -19,6 +19,8 @@ use the engineering references for the adapters relevant to your project.
 - [Project evolution](project-evolution.md) — revision and extension behavior, with its recorded version scope.
 - [Models, voice and illustrations](multimodal-demo.md) — account access, editable dictation and presentation artwork.
 - [Verification](verification.md) — actual software, model, supplier and export outcomes with limitations.
+- [Revision consistency](revision-consistency.md) — what stays aligned across design edits, recipes, sourcing and exports.
+- [Workspace quality](workspace-quality-review.md) — browser checks, visual refinements and their measured scope.
 - [Development](development.md) — test commands and deliberate dependency updates.
 - [Third-party notices](../THIRD_PARTY_NOTICES.md) and [software acknowledgements](software-acknowledgements.md).
 

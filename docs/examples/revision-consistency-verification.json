@@ -1,0 +1,106 @@
+{
+  "review_date": "2026-11-02",
+  "scope": "General laboratory automation platform; liquid-handling adapter exercise.",
+  "laboratory_inputs": "Synthetic; real application, model responses and supplier retrieval.",
+  "corrected_live_result": {
+    "status": "passed",
+    "project_id": "b1481111-501b-43c7-9061-17f56bdc4b60",
+    "revision": 18,
+    "explicit_chat_requests": 2,
+    "supplier_refreshes": 1,
+    "initial_cost_estimate_requests": "Captured separately",
+    "checks": [
+      "Two recipe changes preserve geometry, profiles and supplier scopes",
+      "Fresh observations/reused model ranges retain original timestamps and TTL",
+      "No extra price inference on recipes or Save/Open",
+      "800x800 bench constraints preserved; depth remains unvalidated"
+    ],
+    "errors": []
+  },
+  "revision": 18,
+  "verification": {
+    "regular_regression_tests_passed": 1043,
+    "regular_regression_seconds": 169.95,
+    "source_cad_suite_excluded_from_regular_run": "tests/test_foundation_exports.py",
+    "separate_actual_cad_export": true,
+    "ruff_scope": "app tests scripts",
+    "ruff_result": "passed",
+    "production_build_and_typecheck": "passed",
+    "independent_captured_data_assertions": 2145,
+    "independent_archive_assertions": 306,
+    "assertion_scope": "Digital data and archive consistency; not independent physical validation."
+  },
+  "export": {
+    "revision": 18,
+    "original_api_export": {
+      "file_count": 40,
+      "elapsed_seconds": 228.969,
+      "sha256": "6b29c081a8ed7fc4c87d87fdb087f6841d167f40dff87ab99f01f9e78307307e"
+    },
+    "corrected_document_archive": {
+      "file_count": 41,
+      "sha256": "a56c0547d8ca948daa7b5ab992c4e8f7f453b0bb52106b2748d0ff8617a4614c",
+      "all_manifest_sizes_and_hashes_checked": true,
+      "unchanged_cad_simulation_project_files": 21,
+      "semantic_document_change": "extensions.md accurately states the selected platform has no simulation adapter.",
+      "format_only_changes": [
+        "cost-estimate.json",
+        "procurement-report.json"
+      ],
+      "provenance": "Explicit document-only derivative of the original API export; no additional CAD generation or inference."
+    }
+  },
+  "cost": {
+    "market": "US",
+    "currency": "USD",
+    "estimate_id": "76849872-fd45-40ae-8820-04514b41520d",
+    "generated_at": "2026-11-01T23:18:20.572972Z",
+    "expires_at": "2026-11-02T23:18:20.572972Z",
+    "verified_supplier_groups": 4,
+    "verified_supplier_subtotal": 386.97,
+    "model_allowance_groups": 11,
+    "model_allowance_range": [
+      1320,
+      5290
+    ],
+    "covered_planning_range": [
+      1706.97,
+      5676.97
+    ],
+    "scope_note": "Dated observations and unverified allowances, not a complete machine quotation."
+  },
+  "provider_usage": {
+    "actual_calls": 27,
+    "observed_total_tokens": 461044,
+    "missing_usage": [],
+    "kind_counts": {
+      "explicit_chat": 13,
+      "secondary_design_proposal": 2,
+      "automatic_cost_estimate": 12
+    },
+    "kind_tokens": {
+      "explicit_chat": 316902,
+      "secondary_design_proposal": 6152,
+      "automatic_cost_estimate": 137990
+    },
+    "rejected_application_responses": 1,
+    "note": "Counts actual provider responses once; reused estimates do not count as new calls."
+  },
+  "retained_failures": [
+    "A development reload interrupted a browser attempt after its model response succeeded.",
+    "Two harness stops concerned an ambiguous software button and a collapsed preparation panel.",
+    "Recipe-only edits discarded fresh prices before the purchase-scope continuity correction.",
+    "One post-fix model response failed literal-source validation; the exact prompt passed once after instruction reinforcement."
+  ],
+  "limitations": [
+    "Width-only automatic bench constraint; 483.1 x 832.7 mm assembly exceeds the declared 800 mm bench depth.",
+    "No physical fit, calibrated pipetting, collision validation or hardware control result.",
+    "Browser checks are developer checks, not an independent human usability study."
+  ],
+  "artifacts": [
+    {
+      "path": "docs/examples/revision-consistency-project.json",
+      "sha256": "f3ddc12a2425853558804e006caaff437a494dfc02d9a733c20e15c2ee78c467"
+    }
+  ]
+}

@@ -76,7 +76,8 @@ def run(url):
                     page.get_by_role("button", name="Save project", exact=True).click()
                 saved = download.value.path()
                 snapshot = json.loads(Path(saved).read_text(encoding="utf8"))
-                assert snapshot["compiler_version"] == ("8" if route == "open-source buildable" else "4")
+                expected_compiler = "8" if route == "open-source buildable" else "4"
+                assert snapshot["compiler_version"] == expected_compiler
                 page.get_by_label("Open saved project").set_input_files(saved)
                 expect(page.locator(".storage-notice")).to_contain_text("rebuilt")
                 expect(page.locator("canvas")).to_have_count(1)

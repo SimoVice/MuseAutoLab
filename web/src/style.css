@@ -95,7 +95,7 @@ a { color: inherit; text-decoration: none; }
 .origin-x { background: #f9e9e6; color: #b26e64; }.origin-y { background: #e4f1e9; color: #5c9671; }.origin-z { background: #e4edf7; color: #6b8fb8; }
 .viewer-bottomline { padding: 13px 20px; min-height: 65px; background: #f8fbfa; border-top: 1px solid #e0eae8; }
 .footprint { display: flex; align-items: baseline; gap: 12px; }
-.footprint > span, .viewer-status { font-size: 11px; color: #849a9d; }
+.footprint > span, .viewer-status { font-size: 11px; color: #55757b; }
 .footprint strong { font-size: 14px; font-weight: 650; color: #2c515a; font-variant-numeric: tabular-nums; }
 .footprint small { font-size: 10px; font-weight: 500; color: #8aa0a1; }
 .viewer-status { display: flex; align-items: center; gap: 8px; text-align: right; }
@@ -103,9 +103,9 @@ a { color: inherit; text-decoration: none; }
 .below-viewer { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 21px 2px 16px; }
 .cost-block, .selection-block { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .selection-block { padding-left: 22px; border-left: 1px solid #dbe8e6; }
-.cost-block > span, .selection-block > span { font-size: 11px; color: #7d9497; }
+.cost-block > span, .selection-block > span { font-size: 11px; color: #55757b; }
 .cost-block strong, .selection-block strong { color: #224b54; font-size: 17px; letter-spacing: -.025em; font-weight: 650; overflow-wrap: anywhere; }
-.cost-block small, .selection-block small { color: #91a3a5; font-size: 11px; line-height: 1.45; }
+.cost-block small, .selection-block small { color: #55757b; font-size: 11px; line-height: 1.45; }
 .part-list { border-top: 1px solid #e1ebea; padding: 15px 2px 0; }
 .part-list > span { display: block; color: #718b8f; font-size: 11px; font-weight: 650; margin-bottom: 9px; }
 .part-list > div { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -115,7 +115,7 @@ a { color: inherit; text-decoration: none; }
 .chat-heading { display: flex; align-items: center; gap: 12px; padding: 25px 28px; border-bottom: 1px solid #e9f0ef; }
 .assistant-emblem { flex: 0 0 auto; width: 39px; height: 39px; display: grid; place-items: center; background: #e5f3ef; color: #13837d; border-radius: 11px; }
 .chat-heading h2 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: -.02em; color: #214a52; }
-.chat-heading p { margin: 4px 0 0; color: #8b9fa1; font-size: 11px; }
+.chat-heading p { margin: 4px 0 0; color: #55757b; font-size: 11px; }
 .chat-status { margin-left: auto; background: #f1f7f5; color: #628984; font-size: 10px; padding: 5px 9px; border-radius: 100px; font-weight: 650; }
 .conversation-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding: 22px 28px 24px; scrollbar-color: #cadcda transparent; scrollbar-width: thin; }
 .chat-date { margin-bottom: 24px; color: #9baead; font-size: 10px; text-align: center; }
@@ -123,7 +123,7 @@ a { color: inherit; text-decoration: none; }
 .message-row.user { justify-content: flex-end; }
 .message-row > div { max-width: min(85%, 420px); min-width: 0; }
 .message-avatar { flex: 0 0 auto; width: 25px; height: 25px; display: grid; place-items: center; border-radius: 8px; color: #157c79; background: #e5f3ef; }
-.message-author { display: block; color: #75908f; font-size: 10px; font-weight: 700; margin: 0 0 7px 2px; }
+.message-author { display: block; color: #55757b; font-size: 10px; font-weight: 700; margin: 0 0 7px 2px; }
 .message-row.user .message-author { text-align: right; }
 .message-bubble { padding: 13px 15px; border-radius: 3px 13px 13px 13px; color: #36585f; background: #f2f7f6; font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-row.user .message-bubble { color: #fff; background: #1b7778; border-radius: 13px 3px 13px 13px; }
@@ -140,9 +140,9 @@ a { color: inherit; text-decoration: none; }
 .summary-note { color: #92a4a2; font-size: 10px; line-height: 1.5; margin: 10px 0 0; }
 .composer-area { padding: 14px 28px 18px; border-top: 1px solid #e7f0ee; background: #fff; }
 .composer { border: 1px solid #dbe8e6; border-radius: 11px; overflow: hidden; background: #fff; box-shadow: 0 4px 16px #1f4e4b08; }.composer:focus-within { border-color: #76bcb1; box-shadow: 0 0 0 3px #e7f5f1; }
-.composer textarea { display: block; width: 100%; resize: vertical; min-height: 60px; max-height: 160px; border: 0; background: transparent; padding: 14px 14px 5px; outline: 0; color: #284e56; font-size: 12px; line-height: 1.5; }.composer textarea::placeholder { color: #a2b4b1; }.composer textarea:disabled { background: #fafcfb; }
-.composer-bottom { padding: 4px 9px 9px 14px; display: flex; align-items: center; justify-content: space-between; }.composer-bottom > span { color: #adbfbb; font-size: 10px; }.composer-bottom button { width: 33px; height: 33px; display: grid; place-items: center; background: #087d7d; color: #fff; border: 0; border-radius: 8px; }.composer-bottom button:hover:not(:disabled) { background: #076a6d; }.composer-bottom button:disabled { background: #cbded9; }
-.composer-caption { margin: 9px 0 0; text-align: center; color: #a2b4b1; font-size: 10px; }.composer-caption span { padding: 0 3px; }
+.composer textarea { display: block; width: 100%; resize: vertical; min-height: 60px; max-height: 160px; border: 0; background: transparent; padding: 14px 14px 5px; outline: 0; color: #284e56; font-size: 12px; line-height: 1.5; }.composer textarea::placeholder { color: #55757b; }.composer textarea:disabled { background: #fafcfb; }
+.composer-bottom { padding: 4px 9px 9px 14px; display: flex; align-items: center; justify-content: space-between; }.composer-bottom > span { color: #55757b; font-size: 10px; }.composer-bottom button { width: 33px; height: 33px; display: grid; place-items: center; background: #087d7d; color: #fff; border: 0; border-radius: 8px; }.composer-bottom button:hover:not(:disabled) { background: #076a6d; }.composer-bottom button:disabled { background: #cbded9; }
+.composer-caption { margin: 9px 0 0; text-align: center; color: #55757b; font-size: 10px; }.composer-caption span { padding: 0 3px; }
 .error-message { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 9px 10px; border-radius: 7px; background: #fff5ec; color: #9d633a; font-size: 11px; line-height: 1.4; }.error-message button { border: 0; background: transparent; color: #92592f; font-weight: 700; }
 .plan-card { margin-top: 12px; border: 1px solid #d9e7e4; border-radius: 10px; padding: 14px 15px; background: #f6fbfa; }
 .plan-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }

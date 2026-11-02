@@ -78,6 +78,7 @@ inspected without configuring Meta. With a key configured, the app may request a
 fresh planning estimate; stored supplier observations remain dated.
 
 - [Plate project with a second recipe](../examples/software-protocol-project.json).
+- [Revised project with inspection](../examples/revision-consistency-project.json) and its [consistency check](../revision-consistency.md).
 - [12-position tube rack](../examples/parametric-tube-rack-project.json).
 - [Confirmed plate project](../examples/microplate-project.json).
 - [Tube-rack STEP](../examples/tube-rack/tube-rack.step) and [fit coupon](../examples/tube-rack/tube-rack-fit-coupon.stl).

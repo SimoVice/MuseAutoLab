@@ -523,9 +523,10 @@ def apply_update(project: dict, patch: dict) -> dict:
     if (project.get("design", {}).get("foundation") or commercial) and not switching_away:
         from app.foundation_design import assembly_bounds, foundation_sourcing
 
-        geometric = bool(set(summary_updates).intersection({
-            "workspace_width_mm", "cooling_enabled", "cooling_target_c",
-        }) or selections_patch)
+        geometric = any(
+            key in summary_updates and project["summary"].get(key) != summary_updates[key]
+            for key in ("workspace_width_mm", "cooling_enabled", "cooling_target_c")
+        ) or not selections_noop
         if not geometric:
             result["design"] = deepcopy(project["design"])
             if project.get("engineering_design"):

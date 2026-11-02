@@ -173,6 +173,18 @@ def apply_extension(project: dict, raw: object, provenance: dict, *, bump: bool 
     return result
 
 
+def footprint_notice(project: dict) -> str:
+    """Describe accepted model bounds without claiming bench fit or clearance."""
+    bounds = project["inspection_extension"]["assembly_bounds"]
+    width = bounds["max_mm"][0] - bounds["min_mm"][0]
+    depth = bounds["max_mm"][2] - bounds["min_mm"][2]
+    return (
+        f"With the inspection module, the displayed footprint is {width:.1f} × {depth:.1f} mm "
+        "(width × depth). Check both dimensions and allow mounting and motion clearance "
+        "before placement. Bench depth and collision clearance have not been validated."
+    )
+
+
 def restore_extension(project: dict, saved: dict) -> dict:
     if set(saved) != {"proposal", "provenance"} or not isinstance(saved["provenance"], dict):
         raise ValueError("Invalid saved inspection extension.")
@@ -297,7 +309,8 @@ async def develop_inspection(project: dict, instruction: str) -> tuple[dict, dic
                     "instruction": instruction,
                     "attempts": attempts,
                     "message": "Inspection arm and camera added to this "
-                    "project. Kinematic concept only; hardware and camera coverage are unverified.",
+                    "project. Kinematic concept only; hardware and camera coverage are unverified. "
+                    + footprint_notice(updated),
                 }
             feedback = json.dumps({"candidate": candidate, "diagnostics": checks})
     return deepcopy(source), {

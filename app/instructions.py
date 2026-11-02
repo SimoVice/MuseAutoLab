@@ -985,6 +985,8 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
             )
         extension = project.get("inspection_extension")
         if extension and route != "opentrons-ot2":
+            from app.inspection import footprint_notice
+
             add(
                 "inspection-extension",
                 "Resolve the accepted inspection sidecar",
@@ -993,6 +995,7 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
                     "Keep the accepted sidecar, mast, two links and camera at "
                     "the canonical placements. "
                     "Use inspection-module.json for the digital poses and dimensions.",
+                    footprint_notice(project),
                     "Kinematic reach screening does not verify load, collision "
                     "clearance, cable routing or image coverage.",
                 ],

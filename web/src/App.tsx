@@ -205,11 +205,14 @@ export default function App() {
   useEffect(() => {
     if (messages.length < 2 || !conversation.current || !lastMessage.current) return;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const latestMessage = Array.from(conversation.current.querySelectorAll<HTMLElement>('.message-row')).at(-1);
+    const bottom = Math.max(0, lastMessage.current.offsetTop - conversation.current.clientHeight + 24);
     conversation.current.scrollTo({
-      top: Math.max(0, lastMessage.current.offsetTop - conversation.current.clientHeight + 24),
+      // Long replies open at their beginning so the next action keeps its context.
+      top: latestMessage ? Math.max(0, Math.min(bottom, latestMessage.offsetTop - 16)) : bottom,
       behavior: reducedMotion ? 'auto' : 'smooth',
     });
-  }, [messages, busy, agentPhase]);
+  }, [messages]);
 
   useEffect(() => {
     if (selectedId && project && !project.design.components.some((part) => part.id === selectedId)) setSelectedId(null);

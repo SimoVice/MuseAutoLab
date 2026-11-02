@@ -151,7 +151,14 @@ def test_stale_range_is_explicit_and_post_can_refresh_it(monkeypatch):
     api._sessions[project["id"]].cost_estimate = expired
     calls = []
 
-    async def mock(*args):
+    async def mock(candidate, procurement, *, previous=None):
+        assert previous["estimate_id"] == expired["estimate_id"]
+        assert previous["expires_at"] == expired["expires_at"]
+        assert previous["status"] == "stale"
+        stale = prices.estimate_for_project(candidate, previous, procurement)
+        assert stale["status"] == "stale"
+        assert stale["summary"]["project_total_low_usd"] is None
+        assert not any(row["source_kind"] == "model_estimate" for row in stale["rows"])
         calls.append(1)
         return ready
 

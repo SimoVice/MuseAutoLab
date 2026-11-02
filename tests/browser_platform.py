@@ -8,6 +8,7 @@ appears after an explicit model-backed design via the shared helper.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -22,7 +23,25 @@ def run_platform(url: str) -> None:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
-        errors = []
+        errors, estimate_requests = [], []
+
+        def estimate(route):
+            estimate_requests.append(route.request.method)
+            route.fulfill(
+                json={
+                    "state": "current",
+                    "estimate": {"status": "failed", "rows": [], "exclusions": []},
+                }
+            )
+
+        page.route("**/cost-estimate*", estimate)
+
+        def placeholder():
+            cost = page.get_by_role("region", name="Project cost estimate")
+            expect(cost).to_contain_text("Estimate appears with your design")
+            assert not re.search(r"\$\s*\d|\d[\d,.]*\s*USD", cost.inner_text())
+            expect(cost.locator(".cost-breakdown,.cost-estimate-details")).to_have_count(0)
+
         page.on("pageerror", lambda error: errors.append(str(error)))
         try:
             page.goto(url)
@@ -40,7 +59,7 @@ def run_platform(url: str) -> None:
             expect(page.locator(".conversation-panel .brief-card")).to_have_count(0)
             expect(
                 page.locator(
-                    ".viewer-canvas canvas,.cost-block,.summary-card,.plan-card,.camera-card"
+                    ".viewer-canvas canvas,.summary-card,.plan-card,.camera-card"
                 )
             ).to_have_count(0)
             harness.send_chat(
@@ -53,7 +72,7 @@ def run_platform(url: str) -> None:
                 page, "The available space is 450 mm wide.", "Recorded the available space"
             )
             expect(page.locator(".planning-panel")).to_be_visible()
-            expect(page.locator(".viewer-canvas canvas,.cost-block,.footprint")).to_have_count(0)
+            expect(page.locator(".viewer-canvas canvas,.footprint")).to_have_count(0)
             with page.expect_download() as download:
                 page.get_by_role("link", name="Download brief", exact=True).first.click()
             data = json.loads(Path(download.value.path()).read_text(encoding="utf8"))
@@ -62,6 +81,8 @@ def run_platform(url: str) -> None:
             assert data["brief"]["equipment"] == "a microscope and two racks"
             assert "design" not in data and "sourcing" not in data and "summary" not in data
             assert "engineering_design" not in data
+            placeholder()
+            assert not estimate_requests, estimate_requests
             project_id, revision = data["project_id"], data["project_revision"]
             rejected = page.request.post(f"{url.rstrip('/')}/api/projects/{project_id}/confirm")
             assert rejected.status == 422
@@ -84,7 +105,7 @@ def run_platform(url: str) -> None:
             expect(page.locator(".planning-panel")).to_be_visible()
             expect(page.locator(".planning-panel")).to_contain_text("equipment")
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
-            expect(page.locator(".summary-card,.plan-card,.cost-block")).to_have_count(0)
+            expect(page.locator(".summary-card,.plan-card")).to_have_count(0)
             expect(page.locator(".design-agent-card")).to_have_count(0)
             harness.send_chat(
                 page,
@@ -93,25 +114,31 @@ def run_platform(url: str) -> None:
             )
             expect(page.locator(".planning-panel")).to_contain_text("pipette")
             # Quantities alone still reveal no geometry; Confirm stays disabled.
-            harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, harness.EXPECTED_STOCK)
+            harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, "Recorded synthetic parameters")
             page.locator("details.prep-plan > summary").click()
             expect(page.locator(".summary-card")).to_be_visible()
             expect(page.locator(".plan-card")).to_contain_text("100 µL")
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
-            expect(page.locator(".cost-block")).to_have_count(0)
+            placeholder()
+            assert not estimate_requests, estimate_requests
             expect(page.get_by_role("button", name="Confirm design")).to_be_disabled()
-            # Only the explicit model-backed design reveals geometry and cost.
-            harness.develop_layout(page)
+            # Only the explicit model-backed design reveals geometry and starts estimates.
+            developed = harness.develop_layout(page)
             expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
             expect(page.locator(".cost-block")).to_be_visible()
-            expect(page.get_by_text("Meta-proposed layout").first).to_be_visible()
+            assert developed["project"]["engineering_design"]
+            assert developed["project"]["engineering"]["selected_platform_id"] == "jubilee"
+            expect(page.get_by_role("region", name="Jubilee workstation")).to_be_visible()
             expect(page.locator(".conversation-panel .brief-card")).to_have_count(0)
             details = page.locator("details.project-details")
             expect(details).not_to_have_attribute("open", "")
             details.locator("summary").first.click()
             expect(details.locator(".planning-panel")).to_contain_text("pipette")
+            page.locator("details.prep-plan > summary").click()
             page.get_by_role("button", name="Confirm design").click()
             expect(page.locator(".chat-status")).to_contain_text("Confirmed")
+            page.wait_for_load_state("networkidle")
+            requests_after_design = len(estimate_requests)
             harness.send_chat(
                 page,
                 "Actually, switch this project to inspecting vial labels with a microscope.",
@@ -120,10 +147,12 @@ def run_platform(url: str) -> None:
             expect(page.locator(".planning-panel")).to_be_visible()
             expect(
                 page.locator(
-                    ".viewer-canvas canvas,.cost-block,.summary-card,.plan-card,.camera-card"
+                    ".viewer-canvas canvas,.summary-card,.plan-card,.camera-card"
                 )
             ).to_have_count(0)
             expect(page.locator(".chat-status")).to_contain_text("Draft")
+            placeholder()
+            assert len(estimate_requests) == requests_after_design
             assert not errors, errors
             print(
                 "[browser-platform] General discovery, brief download, "

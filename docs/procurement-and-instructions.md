@@ -71,10 +71,19 @@ author the technical geometry or this guide.
 ## Continuity and implementation
 
 Reports belong to a runtime project ID and revision, with a separate report ID.
-Changing the design invalidates the prior report. Reopening a portable project
-rebuilds its geometry under a new runtime ID and requires a new price check. This
-prevents old prices from appearing to be newly verified. Reports are process-local;
-download them before restarting the server if an observation must be retained.
+An accepted revision carries forward supplier observations only for unchanged
+purchase scopes: the same product, source, quantity, pack and relevant geometry.
+Changing only the recipe therefore preserves the hardware prices. A changed
+product or purchase scope needs a new check; adding a module preserves the
+unaffected items. Original observation times and expiry are never renewed by
+editing the project, and expired prices remain last-known values.
+
+Reopening a portable project rebuilds its geometry under a new runtime ID. The
+server can reuse its own existing observations and estimates only when the saved
+lineage, revision and reconstructed purchase scopes match. The portable file
+cannot supply trusted prices. After restarting the server, price checks and
+estimates need to be obtained again. Download reports if an observation must be
+retained separately from the editable project.
 
 Only server-owned supplier URLs are fetched. The adapters bound time, response size
 and concurrency, reject unexpected redirects and validate exact product identity,
@@ -85,10 +94,16 @@ there is no unrestricted web crawling or model-generated supplier URL. See
 ## Early project cost planning ranges
 
 When a design becomes available, the interface requests one revision-bound Spark
-cost estimate automatically. Default requests reuse that revision's estimate;
-an explicit manual refresh can force a new request. Each request makes at most
-one model call. Ranges expire after 24 hours, and stale or failed estimates remain
-explicit rather than turning missing costs into zero.
+cost estimate automatically. Unchanged purchase scopes retain their valid ranges
+across recipe edits; new or changed scopes receive new allowances. An explicit
+manual refresh can request a fresh estimate. Each request makes at most one model
+call. Reusing an allowance does not extend its original 24-hour expiry.
+
+If estimating additional scopes fails, existing valid prices and allowances stay
+visible in a partial total. The missing scopes and error remain explicit, and
+**Refresh cost estimate** retries the missing allowances without discarding the
+retained ones. Failed requests do not retry automatically in a loop. Missing or
+expired costs never become zero-priced hardware.
 
 The USD summary separates current verified supplier totals, model-estimated
 additions and groups still unknown. For understood hardware groups, missing SKUs,

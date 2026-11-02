@@ -174,6 +174,21 @@ def session_for(project_id: str) -> ProjectSession:
     return session
 
 
+def _accept_project(session: ProjectSession, updated: dict) -> None:
+    """Rebind trusted sidecars at a validated project transition, never on reads."""
+    from app.price_estimation import rebind_estimate
+    from app.procurement import rebind_report
+
+    before = session.project
+    report = rebind_report(before, updated, session.procurement_report)
+    estimate = rebind_estimate(
+        before, updated, session.cost_estimate, session.procurement_report, report
+    )
+    session.project = updated
+    session.procurement_report = report
+    session.cost_estimate = estimate
+
+
 def _configuration_message(project: dict) -> str:
     cooling = project["design"]["cooling"]
     sourcing = project["sourcing"]
@@ -402,10 +417,15 @@ async def get_cost_estimate(project_id: str, revision: int) -> dict:
         estimate = estimate_for_project(
             session.project, session.cost_estimate, session.procurement_report
         )
-        current = bool(estimate and estimate.get("status") != "stale")
+        current = bool(estimate and estimate.get("status") != "stale"
+                       and (not estimate.get("pending_scope_group_ids")
+                            or estimate.get("retry_required")))
         return {"estimate": estimate or unestimated_cost(
             session.project, session.procurement_report
-        ), "state": "current" if current else "not_estimated"}
+        ), "state": "current" if current else (
+            "needs_estimate" if estimate and estimate.get("pending_scope_group_ids")
+            else "not_estimated"
+        )}
 
 
 @app.post("/api/projects/{project_id}/cost-estimate")
@@ -427,11 +447,15 @@ async def refresh_cost_estimate(
                 cached = estimate_for_project(
                     session.project, session.cost_estimate, session.procurement_report
                 )
-                if not payload.force and cached and cached.get("status") in ("ready", "partial"):
+                if (not payload.force and cached and cached.get("status") in ("ready", "partial")
+                        and not cached.get("pending_scope_group_ids")):
                     return {"estimate": cached, "state": "current"}
                 project = deepcopy(session.project)
                 report = deepcopy(session.procurement_report)
-            estimate = await estimate_project_prices(project, report)
+            if cached and (not payload.force or cached.get("retry_required")):
+                estimate = await estimate_project_prices(project, report, previous=cached)
+            else:
+                estimate = await estimate_project_prices(project, report)
             async with session.model_lock():
                 _check_procurement_revision(session.project, payload.project_revision)
                 if session.procurement_report != report:
@@ -576,7 +600,27 @@ async def open_project(request: Request) -> dict:
         project, history = restore_snapshot(decode_snapshot(bytes(content)))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
-    _sessions[project["id"]] = ProjectSession(project=project, history=history)
+    session = ProjectSession(project=project, history=history)
+    # Portable files contain no prices. Reuse only observations already held by this
+    # runtime for the exact saved lineage/revision, after canonical reconstruction.
+    restored = project.get("restored_from", {})
+    from app.price_estimation import price_context
+
+    restored_scope = price_context(project)["input_scope_sha256"]
+    for source in reversed(list(_sessions.values())):
+        if (source.project.get("lineage_id", source.project["id"]) == restored.get("project_id")
+                and source.project["revision"] == restored.get("revision")
+                and price_context(source.project)["input_scope_sha256"] == restored_scope):
+            candidate = ProjectSession(
+                project=source.project, procurement_report=deepcopy(source.procurement_report),
+                cost_estimate=deepcopy(source.cost_estimate),
+            )
+            _accept_project(candidate, project)
+            if candidate.procurement_report is not None or candidate.cost_estimate is not None:
+                session.procurement_report = candidate.procurement_report
+                session.cost_estimate = candidate.cost_estimate
+                break
+    _sessions[project["id"]] = session
     return {"project": deepcopy(project), "conversation": deepcopy(history),
             "assistant_message": "Project reopened. Geometry was rebuilt from saved inputs."}
 
@@ -646,9 +690,10 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     and updated["workflow"]["kind"] == "liquid_preparation"
                     and (updated["summary"].get("equipment") or updated["brief"].get("equipment"))):
                 actions = [ChatAction(kind="develop_layout", source=engineering.choice_source)]
-            if (not actions and current.get("engineering_design") and set(patch).intersection({
-                "workspace_width_mm", "cooling_enabled", "cooling_target_c",
-            })):
+            if (not actions and current.get("engineering_design") and any(
+                key in patch and current["summary"].get(key) != updated["summary"].get(key)
+                for key in ("workspace_width_mm", "cooling_enabled", "cooling_target_c")
+            )):
                 actions = [ChatAction(kind="develop_layout", source=request.message[:1000])]
             action_runs = []
             if actions:
@@ -733,7 +778,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 for r in recommendations
             )
         # Publish state only after model and domain validation both succeed.
-        session.project = updated
+        _accept_project(session, updated)
         session.history.extend(
             [{"role": "user", "content": request.message}, {"role": "assistant", "content": reply}]
         )
@@ -768,7 +813,7 @@ async def choose_tip_rack(project_id: str, request: TipRackChoiceRequest) -> dic
             raise HTTPException(
                 status_code=422, detail=f"{exc} The project was not changed."
             ) from None
-        session.project = updated
+        _accept_project(session, updated)
         session.history.extend([{"role": "user", "content": literal},
                                 {"role": "assistant", "content": run["message"]}])
         session.history = session.history[-8:]
@@ -787,7 +832,7 @@ async def update_configuration(project_id: str, request: ConfigurationRequest) -
             raise HTTPException(
                 status_code=422, detail=f"{exc} The project was not changed."
             ) from None
-        session.project = updated
+        _accept_project(session, updated)
         message = _configuration_message(updated)
         return {"project": deepcopy(updated), "assistant_message": message}
 
@@ -829,7 +874,7 @@ async def confirm(project_id: str) -> dict:
             updated = confirm_project(session.project)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
-        session.project = updated
+        _accept_project(session, updated)
         return {
             "project": deepcopy(updated),
             "assistant_message": (
@@ -908,7 +953,7 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
             raise HTTPException(status_code=502, detail=str(exc)) from None
         # Commit only accepted runs; rejected runs leave the stored project unchanged.
         if run.get("status") == "accepted":
-            session.project = updated
+            _accept_project(session, updated)
             return {
                 "project": deepcopy(updated),
                 "design_run": deepcopy(run),
@@ -940,7 +985,7 @@ async def add_inspection_extension(project_id: str, request: DesignRequest) -> d
                 "detail": str(exc), "design_run": getattr(exc, "design_run", None),
             })
         if run["status"] == "accepted":
-            session.project = updated
+            _accept_project(session, updated)
         return {"project": deepcopy(session.project), "design_run": run,
                 "assistant_message": run["message"]}
 
@@ -962,7 +1007,7 @@ async def remove_inspection_extension(project_id: str, request: RevisionRequest)
             updated = clear_extension(current)
             updated["revision"] += 1
             updated["status"] = "draft"
-            session.project = updated
+            _accept_project(session, updated)
         return {"project": deepcopy(session.project),
                 "assistant_message": "Inspection module removed. Workstation layout preserved."}
 

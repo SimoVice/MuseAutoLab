@@ -250,6 +250,10 @@ revision-bound report. State its date and partial coverage; never turn a partial
 the full machine price. Never claim ordering or unobserved supplier availability.
 Return the required JSON. For each field, extract a new value only if it was specified or
 corrected in the current user message. Use null for every field that should remain unchanged.
+Preserve ALL declared bench dimensions and units in brief_constraints; workspace_width_mm
+checks width only. Do not discard stated depth/height or claim that overall bench fit is validated.
+For brief_constraints and source_brief_constraints, copy the SAME exact constraint span from
+this message. Do not add a prefix such as 'bench' unless that word is inside the copied span.
 Extract a workspace width only when the user states a specific maximum width, converting cm or m
 to mm.
 For every non-null field also return its paired source field: a short exact substring copied

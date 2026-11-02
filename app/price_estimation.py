@@ -164,7 +164,7 @@ def _finite_price(value):
 
 def price_context(project: dict, procurement: dict | None = None) -> dict:
     """Return canonical purchase scopes without any supplier or model request."""
-    from app.procurement import initial_procurement_rows, report_for_project
+    from app.procurement import initial_procurement_rows, purchase_scope, report_for_project
 
     rows = initial_procurement_rows(project)
     if len(rows) > MAX_GROUPS:
@@ -200,6 +200,7 @@ def price_context(project: dict, procurement: dict | None = None) -> dict:
             "pack_size": row["pack_size"],
             "pack_count": row["pack_count"],
             "price_basis": "group_total",
+            "purchase_scope": purchase_scope(project, row),
             "scope": scope,
             "allowance_basis": _allowance_basis(
                 row["group_id"], row["component_ids"], row["label"]
@@ -246,7 +247,6 @@ def price_context(project: dict, procurement: dict | None = None) -> dict:
     scope_data = {
         "groups": binding,
         "fabrication_capabilities": project.get("fabrication_capabilities"),
-        "brief": project.get("brief"),
         "equipment": project.get("summary", {}).get("equipment"),
     }
     fingerprint = hashlib.sha256(
@@ -400,12 +400,72 @@ def estimate_for_project(
     return result
 
 
+def rebind_estimate(before: dict, after: dict, estimate: dict | None,
+                    old_procurement: dict | None, procurement: dict | None) -> dict | None:
+    """Explicitly retain unchanged planning scopes without renewing their TTL."""
+    previous = estimate_for_project(before, estimate, old_procurement)
+    if previous is None or previous.get("status") == "stale":
+        return None
+    old_context = price_context(before, old_procurement)
+    current = unestimated_cost(after, procurement)
+    old_basis = {row["group_id"]: row for row in old_context["rows"]}
+    old_rows = {row["group_id"]: row for row in previous["rows"]}
+    retained, pending = [], []
+    environment_equal = (
+        before.get("fabrication_capabilities") == after.get("fabrication_capabilities")
+        and before.get("summary", {}).get("equipment") == after.get("summary", {}).get("equipment")
+    )
+    # Compare only fields that define an allowance, not supplier freshness or values.
+    fields = ("purchase_scope", "price_basis", "scope", "allowance_basis",
+              "excluded_group_ids", "components", "compatibility_note")
+    for index, row in enumerate(current["rows"]):
+        old = old_rows.get(row["group_id"], {})
+        basis = old_basis.get(row["group_id"], {})
+        same = environment_equal and all(row.get(key) == basis.get(key) for key in fields)
+        if row["source_kind"] == "verified_supplier":
+            continue
+        if same and old.get("source_kind") == "model_estimate":
+            current["rows"][index] = deepcopy(old)
+            retained.append(row["group_id"])
+        elif same and old.get("source_kind") == "unknown":
+            # An earlier model refusal is an honest partial result, not a reason
+            # to retry inference on an unrelated recipe edit.
+            current["rows"][index] = deepcopy(old)
+        elif row["source_kind"] == "unknown":
+            pending.append(row["group_id"])
+    current.update({key: deepcopy(previous.get(key)) for key in
+                    ("estimate_id", "generated_at", "expires_at", "model", "usage")})
+    current["revision_binding"] = {
+        "source_project_id": before["id"], "source_revision": before["revision"],
+        "retained_estimate_group_ids": retained,
+        "reason": "Unchanged planning scopes; original generation time and expiry retained.",
+    }
+    current["pending_scope_group_ids"] = pending
+    current["status"] = (
+        "partial" if any(row["source_kind"] == "unknown" for row in current["rows"]) else "ready"
+    )
+    current["issue"] = (
+        "New or changed purchase scopes need planning allowances." if pending else None
+    )
+    if previous.get("retry_required") and current["status"] == "partial" and not pending:
+        current["retry_required"] = True
+        current["pending_scope_group_ids"] = [
+            row["group_id"] for row in current["rows"] if row["source_kind"] == "unknown"
+        ]
+        current["issue"] = previous.get("issue")
+    if previous.get("status") == "failed" and current["status"] == "partial" and not pending:
+        current.update(status="failed", issue=previous.get("issue"))
+    _summarize(current)
+    return current
+
+
 async def estimate_project_prices(
     project: dict,
     procurement: dict | None = None,
     *,
     client: httpx.AsyncClient | None = None,
     settings=None,
+    previous: dict | None = None,
 ) -> dict:
     """Make one bounded structured Spark call; retain honest failures and usage."""
     from app.model_client import (
@@ -417,6 +477,9 @@ async def estimate_project_prices(
     )
 
     report = unestimated_cost(project, procurement)
+    seed = estimate_for_project(project, previous, procurement)
+    if seed and seed.get("status") != "stale":
+        report = deepcopy(seed)
     at = _now()
     report.update(
         estimate_id=str(uuid4()),
@@ -424,6 +487,12 @@ async def estimate_project_prices(
         expires_at=_iso(at + timedelta(seconds=ESTIMATE_TTL_SECONDS)),
         model=ESTIMATE_MODEL,
     )
+    if seed and seed.get("expires_at") and seed.get("status") != "stale":
+        report["expires_at"] = min(report["expires_at"], seed["expires_at"])
+        report["reused_estimate_id"] = seed.get("estimate_id")
+        report["usage"] = {}
+    report.pop("pending_scope_group_ids", None)
+    report.pop("retry_required", None)
     missing = [row for row in report["rows"] if row["source_kind"] == "unknown"]
     if not missing:
         report.update(status="ready" if report["rows"] else "partial", issue=None)
@@ -570,6 +639,13 @@ Ranges are unverified planning estimates, never exact catalog evidence.""",
                 high_usd=None,
                 assumptions=[],
                 issue="No accepted model estimate; retry explicitly if needed.",
+            )
+        if seed and any(row["source_kind"] == "model_estimate" for row in report["rows"]):
+            report.update(
+                status="partial", retry_required=True,
+                pending_scope_group_ids=[row["group_id"] for row in missing],
+                issue="Additional planning allowances failed. Previous valid ranges are retained; "
+                "retry explicitly to estimate only the missing scopes.",
             )
     _summarize(report)
     return report

@@ -1,4 +1,15 @@
-# Delivery verification — 2026-10-31
+# Delivery verification
+
+## Revision consistency and workspace review — 2026-11-02
+
+The [latest consistency review](revision-consistency.md) follows the real
+liquid-handling journey through tube/plate changes, two supplier products,
+US prices, another recipe, inspection, instructions and Save/Open. It records
+the corrected price-continuity and unchanged-constraint defects, the 1,043-test
+regression pass, full CAD export and remaining depth-fit limitation. The separate
+[workspace review](workspace-quality-review.md) covers actual UI and 3D checks.
+
+Earlier results below retain their original scope and dates.
 
 ## Reusable protocols and conversation feedback
 

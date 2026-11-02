@@ -157,7 +157,7 @@ def test_relayout_rechecks_applied_rack_and_failure_keeps_current_project(client
     assert result["project"] == old
 
 
-def test_old_price_report_and_export_are_stale_after_rack_revision(client, monkeypatch):
+def test_empty_price_report_is_discarded_and_export_stale_after_rack_revision(client, monkeypatch):
     project = source_project()
     url = install(project)
     no_rows = deepcopy(project)
@@ -171,9 +171,10 @@ def test_old_price_report_and_export_are_stale_after_rack_revision(client, monke
     )
     result = client.post(url + "/messages", json={"message": FULL_MESSAGE}).json()["project"]
     assert client.get(url + "/procurement", params={"revision": result["revision"]}).json() == {
-        "state": "stale_revision",
+        "state": "not_refreshed",
         "report": None,
     }
+    assert api._sessions[project["id"]].procurement_report is None
     with pytest.raises(ExportError) as error:
         _check_coherence(result, {"project_id": project["id"], "revision": project["revision"]})
     assert error.value.status_code == 409
