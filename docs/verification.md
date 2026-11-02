@@ -1,5 +1,26 @@
 # Delivery verification
 
+## Requests in the user's own words
+
+On 2026-11-02 we tried two previously untested requests in the browser with
+Muse Spark Contributor. Each started from a separate synthetic project.
+
+| Project at the start | User's words | Observed result |
+| --- | --- | --- |
+| Two platforms offered, 1.5 mL tubes, 800 mm bench | “I'll take the one our technicians can put together from parts. Lay it out for the microcentrifuge tubes we discussed, just for pipetting.” | Muse resolved the choice to Jubilee. The first run exposed an equipment-ownership check that discarded the choice. After the fix, the same interpretation and a new layout response produced a tube workstation with the width limit intact and no arm. Equipment ownership stayed unspecified. |
+| Jubilee with an accepted 96-well plate | “When the run is over, park the finished plate in its own chilled cabinet.” | The project added the dedicated refrigerator and plate gripper. The selected plate and preparation parameters stayed unchanged. |
+
+Four actual provider responses used 39,714 tokens in total. Replaying responses
+in the browser added no inference usage. Separate offline tests exercised
+questions, hypothetical choices, unsupported plates, conflicting references,
+missing information and reopening a project. These two live cases show the
+observed behavior for those requests. They do not measure a general success rate.
+
+The regular regression suite passed all 1,217 tests. The compiled browser
+journey also covered changing the tip rack and plate, adding the camera and
+gripper, and reopening the result. That journey used synthetic model replies.
+The full foundation CAD export was outside this run.
+
 ## Choosing a platform in the second message
 
 A fresh conversation compared buildable and assembled options for pipetting

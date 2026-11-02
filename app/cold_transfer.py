@@ -13,48 +13,108 @@ LIMITATIONS = [
 ]
 
 
-def cold_transfer_intent(message: str) -> str | None:
-    text = message.casefold().replace("’", "'")
-    cold = re.search(r"refriger|fridge|frigor|cold[ -]storage|cold[ -]transfer|cold cabinet", text)
-    motion = re.search(
-        r"transfer|trasfer|manipolat|gripper|gantry|robotic arm|braccio|move|spost|portare", text
-    )
-    if not cold or not motion:
-        return None
-    text = re.sub(r"^(?:in addition to|alongside|besides|oltre (?:a|alla))\s+"
-                  r"(?:(?:the|my|existing|inspection|current)\s+)*(?:camera|telecamera)\s*[,;:]?\s*",
-                  "", text.strip())
-    if re.search(r"\b(not|don't|do not|non|never|no|senza|without|except)\b", text):
-        return "discuss"
-    # Only an instruction addressed to the assistant changes the accepted design.
-    # Informational questions may mention exactly the same components and verbs.
-    instruction = re.sub(r"^(?:please\s+)?(?:(?:can|could|would) you\s+(?:please\s+)?|"
-                         r"i (?:want|need|would like) (?:you )?to\s+|"
-                         r"(?:puoi|potresti|voglio|vorrei)\s+)", "", text.strip())
-    if re.search(r"\b(if|maybe|might|later|future|eventually|forse|se|futuro)\b", instruction):
-        return "discuss"
-    if re.search(r"(?:[,;.]\s*|\band\s+(?:then\s+|also\s+)?)(?:switch|replace|change|"
-                 r"buy|reduce|increase|add|remove|set)\b", instruction):
-        return "clarify"
-    if re.match(r"(?:remove|delete|rimuovi|rimuovere|togli|elimina)\b", instruction):
+def offline_cold_transfer_intent(message: str) -> str | None:
+    """Canonical convenience commands, exclusively during provider unavailability."""
+    text = message.casefold().strip()
+    if re.fullmatch(
+        r"(?:please )?add a (?:manipulator|gripper) to transfer the "
+        r"(?:prepared |rigid |prepared rigid )?plate to a dedicated refrigerator[.!]?", text
+    ):
+        return "add"
+    if re.fullmatch(
+        r"(?:please )?remove the (?:refrigerator transfer manipulator|"
+        r"cold-transfer module|cold transfer module)[.!]?", text
+    ):
         return "remove"
-    if re.match(r"(?:add|design|build|implement|install|include|create|equip|transfer|move|"
-                r"aggiungi|aggiungere|progetta|costruisci|inserisci|trasferisci)\b", instruction):
-        return "add"
-    if re.match(r"(?:i (?:want|need|would like)|vorrei|voglio) (?:a |an |un |una )?"
-                r"(?:dedicated |robotic |plate[ -]transfer )?(?:gripper|manipulat|manipolat|"
-                r"robotic arm|arm |gantry|refrigerator|fridge|braccio)", text.strip()):
-        return "add"
-    return "discuss"
+    return None
+
+
+COLD_ACTIONS = {
+    "add_cold_transfer": "add", "remove_cold_transfer": "remove",
+    "discuss_cold_transfer": "discuss", "clarify_cold_transfer": "clarify",
+}
+
+
+def semantic_cold_transfer_intent(turn, message: str, project: dict | None = None) -> str | None:
+    """Validate model interpretation against this turn, never against prior wishes."""
+    actions = [a for a in turn.actions if a.kind in COLD_ACTIONS]
+    if not actions:
+        return None
+    action = actions[0]
+    # A cold operation is atomic: unrelated updates must not disappear silently.
+    from app.model_client import EngineeringUpdate, LabwareSelection, TipRackUpdate
+    if (len(turn.actions) != 1 or turn.patch() or turn.labware.patch()
+            or turn.engineering != EngineeringUpdate()
+            or turn.labware_selection != LabwareSelection()
+            or turn.tip_rack != TipRackUpdate()):
+        return "clarify"
+    if action.source not in message:
+        return "clarify"
+    intent = COLD_ACTIONS[action.kind]
+    if intent in ("discuss", "clarify"):
+        return intent
+    text = message.casefold()
+    if re.search(r"(?:[;.]\s*|\band\s+(?:then\s+|also\s+)?)(?:switch|replace|"
+                 r"change|buy|reduce|increase|add|remove|set|give|install|design)\b", text):
+        return "clarify"
+    # Independent guard against an unsafe model classification of an information
+    # request, prohibition, hypothetical or extra engineering requirement.
+    if re.search(r"^\s*(?:what|why|how|when\s+(?:will|would|can|could|does|is)|"
+                 r"where|is|are|does|do we|can we|could we|would it)\b",
+                 text) or re.search(r"\b(?:don't|do not|not|never|without|instead|if|maybe|later|"
+                                    r"eventually|unless|only if)\b", text):
+        return "discuss"
+    if re.search(r"\b(?:mm|cm|degrees?|celsius|fahrenheit|minutes?|seconds?|litres?|liters?)\b|"
+                 r"\b\d+\s*\u00b0?[cf]\b", text):
+        return "clarify"
+    if intent == "remove":
+        if re.search(r"\b(?:just|only|lid|door|shelf|jaw|motor|carriage|gantry|mast|"
+                     r"gripper|refrigerator alone|fridge alone)\b", text):
+            return "clarify"
+        if (not re.search(r"cold[ -]transfer|refriger|fridge|cold[ -]storage", text)
+                and not (project or {}).get("cold_transfer_extension")):
+            return "clarify"
+        if re.search(r"\b(?:keep|retain|preserve)\b", text):
+            return "clarify"
+        if re.search(r"camera|inspection|cooling", text):
+            return "clarify"
+        return intent
+    grounding = action.cold_transfer
+    if (grounding is None or grounding.payload != "selected_rigid_plate"
+            or grounding.destination != "dedicated_refrigerated"):
+        return "clarify"
+    payload = grounding.payload_source
+    destination = grounding.destination_source
+    if (not payload or not destination or payload not in action.source
+            or destination not in action.source):
+        return "clarify"
+    if re.search(r"shared|existing|communal|freezer|incubator", destination.casefold()):
+        return "clarify"
+    # A quoted cold cabinet can be the departure location. The adapter supports
+    # incoming storage only; a model role label cannot reverse the user's route.
+    if re.search(r"\b(?:from|out of)\s+(?:(?:the|a|an|its|own|dedicated|new)\s+)*"
+                 r"(?:fridge|refriger\w*|chilled\s+cabinet|cold\s+storage)", text):
+        return "clarify"
+    try:
+        require_supported_payload_request(message)
+    except ValueError:
+        return "clarify"
+    return intent
 
 
 def require_supported_payload_request(message: str) -> None:
     """Do not silently reinterpret a request for an incompatible transported object."""
     text = message.casefold()
     # Mentioning an existing camera is expected. Reject it only as a payload.
-    camera_payload = re.search(r"\b(?:carry|move|transfer|store|place|put|pick up|sposta)\s+"
-                               r"(?:(?:my|the|our|a|la)\s+)?camera\b", text)
-    if camera_payload or re.search(r"\b(tubes?|provett\w*|vials?|bottles?|flasks?|centrifug\w*|"
+    camera_payload = re.search(r"\b(?:carry|move|transfer|store|place|put|pick up|give|send|"
+                               r"take|sposta)\s+"
+                               r"(?:(?:my|the|our|a|la|inspection)\s+)?camera\b", text)
+    holder_payload = re.search(r"\b(?:carry|move|transfer|store|place|put|pick up|give|"
+                               r"send|take)\s+"
+                               r"(?:(?:my|the|our|a)\s+)?(?:plate\s+)?(?:holder|rack|lid)\b",
+                               text)
+    if camera_payload or holder_payload or re.search(
+                                    r"\b(tubes?|provett\w*|vials?|bottles?|flasks?|centrifug\w*|"
                                     r"microscope|microscopio)\b", text):
         raise ValueError("This cold-transfer adapter moves only the selected rigid 96-well "
                          "plate. The requested object has no supported transfer adapter; "

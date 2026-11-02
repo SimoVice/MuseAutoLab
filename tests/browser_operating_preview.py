@@ -15,6 +15,9 @@ from pathlib import Path
 
 import browser_smoke as harness
 
+ADD_COLD = "Add a gripper to move the prepared 96-well plate into a dedicated refrigerator."
+REMOVE_COLD = "Remove the refrigerator transfer manipulator."
+
 OUTPUT = Path(
     os.environ.get(
         "OPERATING_PREVIEW_OUTPUT", str(harness.ROOT / ".local/cold-transfer-20261102/qa/browser")
@@ -28,8 +31,22 @@ def serve():
     import uvicorn
 
     import app.api as api
+    from app.model_client import ChatAction, ColdTransferGrounding, ExtractedTurn
 
     async def chat(project, message, history, **kwargs):
+        if message in (ADD_COLD, REMOVE_COLD):
+            grounding = (ColdTransferGrounding(
+                payload="selected_rigid_plate", destination="dedicated_refrigerated",
+                payload_source="prepared 96-well plate",
+                destination_source="a dedicated refrigerator",
+            ) if message == ADD_COLD else None)
+            return ExtractedTurn(
+                assistant_message="Applying the synthetic cold-transfer interpretation.",
+                actions=[ChatAction(
+                    kind="add_cold_transfer" if message == ADD_COLD else "remove_cold_transfer",
+                    source=message, cold_transfer=grounding,
+                )],
+            ), {"model": "offline-cold-transfer-fixture"}
         if message in (tips.ALTERNATIVES, tips.YES_PRINTER, tips.NO_PRINTER):
             return await tips.chat(project, message, history, **kwargs)
         return await plate.chat(project, message, history, **kwargs)
@@ -282,9 +299,7 @@ def run(url):
             checks.append("save-open-reset")
             # The camera concept and cold manipulator are independent optional modules.
             # Exercise actual ordinary chat, compiler, download and portable restore.
-            cold = send(
-                "Add a gripper to move the prepared 96-well plate into a dedicated refrigerator."
-            )
+            cold = send(ADD_COLD)
             assert cold.get("inspection_extension") and cold.get("cold_transfer_extension")
             assert len(cold["cold_transfer_extension"]["component_ids"]) == 8
             bounds = cold["cold_transfer_extension"]["assembly_bounds"]
@@ -377,7 +392,7 @@ def run(url):
             assert restored_project["inspection_extension"] == cold["inspection_extension"]
             desktop.get_by_label("Operating sequence").select_option("preparation")
             expect(desktop.get_by_role("button", name="Play", exact=True)).to_be_enabled()
-            removed = send("Remove the refrigerator transfer manipulator.")
+            removed = send(REMOVE_COLD)
             assert not removed.get("cold_transfer_extension") and removed.get(
                 "inspection_extension"
             )

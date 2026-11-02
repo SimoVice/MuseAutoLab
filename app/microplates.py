@@ -40,6 +40,10 @@ class LabwareSelection(StrictModel):
 
 def verify_selection(profile_id: str, source: str, message: str) -> None:
     lowered = source.casefold()
+    if noncurrent_plate_choice(message, profile_id):
+        raise ValueError(
+            "A question, hypothetical or withdrawn plate choice cannot change labware."
+        )
     for clause in re.split(r"[,;!?\n]|\.(?!\d)", message):
         if not re.search(r"plate|piastr|rack|labware|provett|tubes?|96", clause, re.I):
             continue
@@ -114,6 +118,24 @@ def verify_selection(profile_id: str, source: str, message: str) -> None:
             "microwells",
         }:
             raise ValueError("The named destination plate needs its own reviewed profile.")
+
+
+def noncurrent_plate_choice(message: str, profile_id: str | None = PROFILE_ID) -> bool:
+    """Recognize discussion and withdrawal without rejecting polite edit requests."""
+    if profile_id == "previous_tube_rack" and re.search(
+        r"(?:^|[.;!?])\s*(?:please\s+)?(?:return|restore|switch back|go back)\b"
+        r".{0,30}\b(?:tubes?|tube rack)\b", message, re.I,
+    ):
+        return False
+    return any(re.search(
+        r"\b(?:never mind|nevermind|forget (?:about )?|cancel)\b.{0,60}(?:plate|piastr)|"
+        r"\b(?:leave|keep)\b.{0,25}\btubes?\b.{0,25}\b(?:in place|unchanged)\b|"
+        r"\b(?:could|can|would)\s+(?:we|I)\s+(?:use|switch|change)\b|"
+        r"\b(?:how|what|why|which)\b.{0,70}\b(?:plate|piastr)|"
+        r"\b(?:if we|hypothetical\w*|suppose|in future|later|someday)\b.{0,70}"
+        r"(?:plate|piastr)|\b(?:plate|piastr)\w*\b.{0,50}\b(?:later|someday)\b",
+        clause, re.I,
+    ) for clause in re.split(r"[;!?\n]|\.(?!\d)", message))
 
 
 class PreviousComponent(StrictModel):

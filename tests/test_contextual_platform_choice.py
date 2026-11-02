@@ -35,12 +35,18 @@ def compared_project(ids=("jubilee", "opentrons-ot2")):
 
 
 def run_extraction(project, message, turn):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        content = (turn.model_dump_json() if len(calls) == 1 else
+                   '{"platform_id":null,"source":null}')
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": content,
+        }}], "usage": {"total_tokens": 12}})
+
     async def run():
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(
-            200, json={"choices": [{"finish_reason": "stop", "message": {
-                "content": turn.model_dump_json(),
-            }}], "usage": {"total_tokens": 12}},
-        ))) as client:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await generate_turn(project, message, [], client=client, settings=SETTINGS)
     return asyncio.run(run())
 
@@ -84,10 +90,25 @@ def test_source_repair_cannot_force_unsupported_or_ambiguous_choices(message, id
     turn = ExtractedTurn(assistant_message="Offline selection.", engineering=EngineeringUpdate(
         platform_choice=choice, choice_source=source,
     ))
-    with pytest.raises(ModelClientError) as caught:
-        run_extraction(compared_project(ids), message, turn)
-    assert caught.value.failure_kind == "source_validation"
-    assert "could not be verified" in str(caught.value)
+    project = compared_project(ids)
+    before = deepcopy(project)
+    if source == "invented user statement":
+        with pytest.raises(ModelClientError) as caught:
+            run_extraction(project, message, turn)
+        assert caught.value.failure_kind == "source_validation"
+    else:
+        extracted, _ = run_extraction(project, message, turn)
+        assert extracted.engineering.platform_choice is None
+        assert extracted.engineering.choice_source is None
+        assert extracted.patch() == {}
+        assert not extracted.actions
+        from app.engineering import apply_engineering_update
+
+        updated = apply_engineering_update(project, extracted.engineering, message)
+        assert state_for(updated) == state_for(before)
+        assert updated == before
+    assert project == before
+
 
 
 def test_safe_choice_source_repair_does_not_repair_invented_other_requirements():
@@ -109,8 +130,13 @@ def test_open_shorthand_equipment_and_interest_mentions_cannot_select(message):
     turn = ExtractedTurn(assistant_message="Offline selection.", engineering=EngineeringUpdate(
         platform_choice="jubilee", choice_source="open platform",
     ))
-    with pytest.raises(ModelClientError):
-        run_extraction(compared_project(), message, turn)
+    project = compared_project()
+    before = deepcopy(project)
+    extracted, _ = run_extraction(project, message, turn)
+    assert extracted.engineering.platform_choice is None
+    assert extracted.patch() == {}
+    assert not extracted.actions
+    assert state_for(project) == state_for(before)
 
 
 @pytest.mark.parametrize("message", [

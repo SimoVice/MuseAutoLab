@@ -458,8 +458,13 @@ def test_only_exact_recorded_selection_echo_is_inert(
         assert turn.actions[0].kind == "add_inspection"
         assert usage["total_tokens"] == 62
     else:
-        with pytest.raises(ModelClientError):
-            asyncio.run(run())
+        turn, usage = asyncio.run(run())
+        assert turn.engineering.platform_choice is None
+        assert turn.engineering.choice_source is None
+        assert not turn.actions
+        assert turn.patch() == {}
+        assert "Please" in turn.assistant_message
+        assert usage["total_tokens"] == 62
 
 
 @pytest.mark.parametrize("literal_value,expect_success", [
@@ -488,3 +493,16 @@ def test_brief_source_repair_does_not_use_historical_only_value():
             lambda request: httpx.Response(200, json=body),
             message="I still use a manual pipette", history=[{"role": "user", "content": literal}],
         )
+
+
+@pytest.mark.parametrize("response", [
+    httpx.Response(200, json=[]),
+    httpx.Response(200, json={"choices": [None]}),
+    httpx.Response(200, json={"choices": [{"message": []}]}),
+    httpx.Response(200, content=b"\xff"),
+])
+def test_malformed_provider_shape_and_unicode_are_sanitized(response):
+    with pytest.raises(ModelClientError) as caught:
+        run_turn(lambda request: response)
+    assert caught.value.failure_kind == "response_format"
+    assert "invalid response" in str(caught.value)

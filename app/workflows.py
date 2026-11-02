@@ -88,3 +88,40 @@ def describe_workflow(project: dict) -> dict:
         "design_available": design_available,
         "parameters_started": parameters_started,
     }
+
+
+def has_workstation_design_context(project: dict) -> bool:
+    """Allow sourced conceptual layout discovery without inventing owned equipment.
+
+    A recorded liquid workflow with an explicitly selected supported base, process
+    and materials is enough to propose a workstation. This is not execution,
+    labware compatibility, dispensing readiness or physical confirmation.
+    Existing declared equipment preserves the legacy design path.
+    """
+    if current_kind(project) != "liquid_preparation":
+        return False
+    brief, summary = project.get("brief") or {}, project.get("summary") or {}
+    if any(isinstance(value, str) and value.strip() for value in (
+        summary.get("equipment"), brief.get("equipment")
+    )):
+        return True
+    selected = (project.get("engineering") or {}).get("selected_platform_id")
+    if (_stored_kind(project) != "liquid_preparation"
+            or selected not in ("jubilee", "opentrons-ot2")):
+        return False
+    return all(isinstance(brief.get(key), str) and brief[key].strip()
+               for key in ("process", "materials"))
+
+
+def workstation_context_question(project: dict) -> str:
+    """Ask for the first missing conceptual input, without assuming ownership."""
+    brief = project.get("brief") or {}
+    selected = (project.get("engineering") or {}).get("selected_platform_id")
+    if selected not in ("jubilee", "opentrons-ot2"):
+        return (
+            "Describe the equipment in chat, or record the liquid process and materials "
+            "and choose a sourced platform before developing a workstation."
+        )
+    if not isinstance(brief.get("process"), str) or not brief["process"].strip():
+        return "What liquid preparation process should this workstation automate?"
+    return "Which materials or containers should this workstation handle?"

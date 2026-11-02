@@ -14,7 +14,7 @@ import re
 from copy import deepcopy
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 PlatformId = Literal["jubilee", "opentrons-ot2"]
 RequirementField = Literal["procurement", "budget", "throughput", "assembly", "priorities"]
@@ -70,6 +70,16 @@ class EngineeringRequirement(StrictModel):
 
 
 class EngineeringUpdate(StrictModel):
+    # Runtime-only attestation; never exposed in or accepted from model/project JSON.
+    _semantic_choice: tuple | None = PrivateAttr(default=None)
+
+    def attest_semantic_choice(self, message: str, project: dict) -> None:
+        self._semantic_choice = self._choice_binding(message, project)
+
+    def _choice_binding(self, message: str, project: dict) -> tuple:
+        return (message, self.platform_choice, self.choice_source,
+                tuple(_previous_option_ids(project)))
+
     requirements: Annotated[list[EngineeringRequirement], Field(max_length=5)] = []
     options: Annotated[list[EngineeringOption], Field(max_length=2)] = []
     platform_choice: PlatformId | None = None
@@ -158,7 +168,8 @@ class EngineeringUpdate(StrictModel):
         if _looks_like_url(self.choice_source):
             raise ValueError("Arbitrary URLs are not accepted as choice sources.")
         previous = _previous_option_ids(project)
-        if not _message_selects_platform(message, self.platform_choice, previous):
+        if (not _message_selects_platform(message, self.platform_choice, previous)
+                and self._semantic_choice != self._choice_binding(message, project)):
             raise ValueError("The latest message does not actually select that platform.")
 
 

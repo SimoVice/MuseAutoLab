@@ -12,6 +12,7 @@ from app.microplates import LabwareSelection, reapply_plate, select_plate
 from app.model_client import ModelClientError
 from app.tip_racks import TipRackUpdate, reapply_tip_rack, select_tip_rack, show_tip_options
 from app.upstream_cad import foundation_metadata
+from app.workflows import has_workstation_design_context, workstation_context_question
 
 
 def _rollback(project: dict, runs: list) -> tuple[dict, list]:
@@ -76,10 +77,10 @@ async def execute_chat_actions(
                     raise ValueError(
                         "Describe the workflow first. This CAD adapter supports liquid preparation."
                     )
-                if not (result["summary"].get("equipment") or result["brief"].get("equipment")):
-                    raise ValueError(
-                        "Describe the equipment in chat before developing the workstation."
-                    )
+                if not has_workstation_design_context(result):
+                    runs.append({"kind": kind, "status": "ready", "needs_context": True,
+                                 "message": workstation_context_question(result)})
+                    continue
                 width = result["summary"].get("workspace_width_mm")
                 commercial = selected == "opentrons-ot2"
                 required = 1030 if commercial else foundation_metadata()["bbox_mm"][0]

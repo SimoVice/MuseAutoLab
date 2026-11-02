@@ -6,7 +6,7 @@ from test_foundation_storage import source_project
 from test_microplates import select
 
 from app import api
-from app.cold_transfer import apply_cold_transfer, clear_cold_transfer, cold_transfer_intent
+from app.cold_transfer import apply_cold_transfer, clear_cold_transfer, offline_cold_transfer_intent
 from app.geometry import add_geometry
 from app.project_storage import make_snapshot, restore_snapshot
 
@@ -20,20 +20,18 @@ def plate_project():
 @pytest.mark.parametrize('message,intent', [
     ('Add a manipulator to transfer the prepared plate to a dedicated refrigerator', 'add'),
     ('Remove the refrigerator transfer manipulator', 'remove'),
-    ('Do not add a robot arm to transfer to the fridge', 'discuss'),
-    ('What if we add a robot arm to transfer to a fridge?', 'discuss'),
-    ('Estimate the cost of a robot arm and refrigerator transfer', 'discuss'),
-    ('Add a camera', None), ('Add cooling', None),
-    ('Could you add a gripper to move the plate to a dedicated refrigerator?', 'add'),
-    ('I want to know whether a refrigerator gripper would work', 'discuss'),
-    ('What would it cost to remove the refrigerator transfer module?', 'discuss'),
-    ('Show me the design without the cold-transfer gripper', 'discuss'),
-    ('I would like a gripper to move a plate into the fridge', 'add'),
-    ('Add a gripper to transfer the plate to a fridge and replace my rack', 'clarify'),
-    ('Alongside the inspection camera, add a gripper to transfer the plate to a fridge', 'add'),
+    ('Do not add a robot arm to transfer to the fridge', None),
+    ('What if we add a robot arm to transfer to a fridge?', None),
+    ('Could you add a gripper to move the plate to a dedicated refrigerator?', None),
+    ('I would like a gripper to move a plate into the fridge', None),
+    ('Add a gripper to transfer the plate to a fridge and replace my rack', None),
+    ('Move the plate from the refrigerator to the deck', None),
+    ('Remove just the lid from the refrigerator transfer cell', None),
+    ('Remove the cold-transfer module and change the bench width', None),
+    ('Add a gripper to transfer the prepared plate to a dedicated refrigerator at 4 C', None),
 ])
-def test_explicit_intent(message, intent):
-    assert cold_transfer_intent(message) == intent
+def test_offline_fullmatch_accepts_only_canonical_complete_commands(message, intent):
+    assert offline_cold_transfer_intent(message) == intent
 
 
 def test_canonical_roundtrip_geometry_and_independent_equipment():
@@ -57,11 +55,12 @@ def test_loose_tubes_rejected():
         apply_cold_transfer(source_project())
 
 
-def test_chat_is_normal_entry_point_and_does_not_call_model(monkeypatch):
+def test_canonical_commands_remain_available_during_provider_outage(monkeypatch):
     project = plate_project()
     api._sessions[project['id']] = api.ProjectSession(project=project)
     async def forbidden(*args, **kwargs):
-        raise AssertionError('No model call expected')
+        from app.model_client import ModelClientError
+        raise ModelClientError('Synthetic transport outage', failure_kind='provider_unavailable')
     monkeypatch.setattr(api, 'generate_turn', forbidden)
     async def journey():
         response = await api.send_message(project['id'], api.MessageRequest(
@@ -102,7 +101,7 @@ def test_independent_inspection_and_export_guidance():
     'What if we remove the refrigerator transfer manipulator?',
 ])
 def test_negative_hypothetical_removal_is_not_an_action(message):
-    assert cold_transfer_intent(message) == 'discuss'
+    assert offline_cold_transfer_intent(message) is None
 
 
 def test_all_project_acceptance_rebinds_and_rejects_unsupported_transition():

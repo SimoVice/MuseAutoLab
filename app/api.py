@@ -82,7 +82,11 @@ from app.vision_jobs import (
     review_inspection,
     start_inspection,
 )
-from app.workflows import describe_workflow
+from app.workflows import (
+    describe_workflow,
+    has_workstation_design_context,
+    workstation_context_question,
+)
 
 app = FastAPI(title="MuseAutoLab", version="0.1.0")
 
@@ -646,61 +650,75 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         from app.cold_transfer import (
             apply_cold_transfer,
             clear_cold_transfer,
-            cold_transfer_intent,
+            offline_cold_transfer_intent,
             require_supported_payload_request,
+            semantic_cold_transfer_intent,
         )
-        cold_intent = cold_transfer_intent(request.message)
-        if cold_intent:
-            updated = deepcopy(current)
-            status = "ready"
-            if cold_intent == "add":
-                try:
-                    require_supported_payload_request(request.message)
-                    if current.get("cold_transfer_extension"):
-                        reply = ("The dedicated refrigerator and plate gripper are already in this "
-                                 "design. Select Cold transfer in Operating preview to inspect it.")
-                    else:
-                        updated = apply_cold_transfer(current)
-                        status = "accepted"
-                        reply = ("Added a dedicated refrigerator and plate gripper. Press Play in "
-                                 "Operating preview to follow the 96-well plate from its holder to "
-                                 "the cabinet shelf. Grip, clearances and cooling performance "
-                                 "still need physical verification.")
-                except ValueError as exc:
-                    status, reply = "rejected", str(exc)
-            elif cold_intent == "remove":
-                updated = clear_cold_transfer(current)
-                if current.get("cold_transfer_extension"):
-                    updated["revision"] += 1
-                    updated["status"] = "draft"
-                    status = "accepted"
-                    reply = "Removed the dedicated refrigerator and transfer gripper."
-                else:
-                    reply = "This design already has no cold-transfer module."
-            elif cold_intent == "clarify":
-                reply = ("Please send the gripper and refrigerator request separately from your "
-                         "other design changes so you can review each revision.")
-            else:
-                reply = ("Cold transfer is available as an optional Jubilee digital "
-                         "concept for a rigid "
-                         "96-well plate, with a dedicated refrigerator and Cartesian gripper. "
-                         "Hardware is unselected and unpriced. Ask explicitly to add it "
-                         "when ready; "
-                         "this discussion has not changed the project.")
-            if status == "accepted":
-                _accept_project(session, updated, preserve_cold=cold_intent != "remove")
-            session.history.extend([{"role":"user", "content":request.message},
-                                    {"role":"assistant", "content":reply}])
-            session.history = session.history[-8:]
-            return {"project": deepcopy(updated), "assistant_message": reply,
-                    "usage": {}, "recommendations": [],
-                    "action_runs": [{"kind": "cold_transfer", "status": status, "message": reply}],
-                    "assistant_message_origin": "canonical_cold_transfer_state"}
         try:
-            turn, usage = await generate_turn(
-                project_with_report(current, session.procurement_report, session.cost_estimate),
-                request.message, list(session.history)
-            )
+            turn = None
+            usage = {}
+            # Ordinary natural language always goes through Muse. A provider outage
+            # permits only the narrow documented canonical offline commands.
+            try:
+                turn, usage = await generate_turn(
+                    project_with_report(current, session.procurement_report, session.cost_estimate),
+                    request.message, list(session.history)
+                )
+                cold_intent = semantic_cold_transfer_intent(turn, request.message, current)
+            except ModelClientError as exc:
+                cold_intent = (offline_cold_transfer_intent(request.message)
+                               if exc.failure_kind == "provider_unavailable" else None)
+                if cold_intent is None:
+                    raise
+            if cold_intent:
+                updated = deepcopy(current)
+                status = "ready"
+                if cold_intent == "add":
+                    try:
+                        require_supported_payload_request(request.message)
+                        if current.get("cold_transfer_extension"):
+                            reply = ("The dedicated refrigerator and plate gripper are already "
+                                     "in this design. Select Cold transfer in Operating preview.")
+                        else:
+                            updated = apply_cold_transfer(current)
+                            status = "accepted"
+                            reply = ("Added a dedicated refrigerator and plate gripper. Press Play "
+                                     "in Operating preview to follow the 96-well plate from its "
+                                     "holder to the cabinet shelf. Grip, clearances and cooling "
+                                     "performance "
+                                     "still need physical verification.")
+                    except ValueError as exc:
+                        status, reply = "rejected", str(exc)
+                elif cold_intent == "remove":
+                    updated = clear_cold_transfer(current)
+                    if current.get("cold_transfer_extension"):
+                        updated["revision"] += 1
+                        updated["status"] = "draft"
+                        status = "accepted"
+                        reply = "Removed the dedicated refrigerator and transfer gripper."
+                    else:
+                        reply = "This design already has no cold-transfer module."
+                elif cold_intent == "clarify":
+                    reply = ("Please clarify the plate-transfer request separately from other "
+                             "changes. Only the selected rigid plate and its dedicated fridge "
+                             "concept are supported; custom constraints need further review.")
+                else:
+                    reply = ("Cold transfer is available as an optional Jubilee digital "
+                             "concept for a rigid "
+                             "96-well plate, with a dedicated refrigerator and Cartesian gripper. "
+                             "Hardware is unselected and unpriced. Ask explicitly to add it "
+                             "when ready; "
+                             "this discussion has not changed the project.")
+                if status == "accepted":
+                    _accept_project(session, updated, preserve_cold=cold_intent != "remove")
+                session.history.extend([{"role":"user", "content":request.message},
+                                        {"role":"assistant", "content":reply}])
+                session.history = session.history[-8:]
+                return {"project": deepcopy(updated), "assistant_message": reply,
+                        "usage": usage, "recommendations": [],
+                        "action_runs": [{"kind": "cold_transfer", "status": status,
+                                         "message": reply}],
+                        "assistant_message_origin": "canonical_cold_transfer_state"}
             if turn.labware_selection.profile_id is not None:
                 turn.normalize_container_volume_scope(request.message)
             actions = list(turn.actions)
@@ -751,16 +769,21 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     and all(current["summary"].get(k) == updated["summary"].get(k) for k in (
                         "workspace_width_mm", "cooling_enabled", "cooling_target_c"))):
                 actions = [action for action in actions if action.kind != "develop_layout"]
+            context_runs = []
             if (engineering.platform_choice and new_choice and not actions
-                    and updated["workflow"]["kind"] == "liquid_preparation"
-                    and (updated["summary"].get("equipment") or updated["brief"].get("equipment"))):
-                actions = [ChatAction(kind="develop_layout", source=engineering.choice_source)]
+                    and updated["workflow"]["kind"] == "liquid_preparation"):
+                if has_workstation_design_context(updated):
+                    actions = [ChatAction(kind="develop_layout", source=engineering.choice_source)]
+                else:
+                    context_runs = [{"kind": "develop_layout", "status": "ready",
+                                     "needs_context": True,
+                                     "message": workstation_context_question(updated)}]
             if (not actions and current.get("engineering_design") and any(
                 key in patch and current["summary"].get(key) != updated["summary"].get(key)
                 for key in ("workspace_width_mm", "cooling_enabled", "cooling_target_c")
             )):
                 actions = [ChatAction(kind="develop_layout", source=request.message[:1000])]
-            action_runs = []
+            action_runs = context_runs
             if actions:
                 if any(action.kind in ("select_labware", "select_tip_rack") for action in actions):
                     updated, action_runs = await execute_chat_actions(
@@ -802,8 +825,14 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             run["kind"] == "show_build_plan" for run in action_runs
         ):
             updated["engineering_guidance"] = engineering_guidance(updated)
+        action_outcome_reply = any(
+            run.get("needs_context") or run.get("status") in ("failed", "rejected")
+            for run in action_runs
+        )
         if action_runs:
-            if canonical_reply is None:
+            if action_outcome_reply and canonical_reply is None:
+                reply = "\n\n".join(run["message"] for run in action_runs)
+            elif canonical_reply is None:
                 reply += "\n\n" + "\n".join(run["message"] for run in action_runs)
         recommendations = []
         for recommendation in turn.recommendations:
@@ -811,7 +840,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             recommendations.append({"reference": ref, "reason": recommendation.reason})
         workflow = describe_workflow(updated)
         design_available = bool(workflow.get("design_available"))
-        if design_available:
+        if design_available and not action_outcome_reply:
             plan = updated.get("plan")
             previous_plan = current.get("plan")
             if plan is not None and plan != previous_plan:
@@ -851,7 +880,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         return {"project": deepcopy(updated), "assistant_message": display_reply, "usage": usage,
                 "recommendations": recommendations, "action_runs": action_runs,
                 "assistant_message_origin": (
-                    "canonical_labware_state" if canonical_reply is not None else "model"
+                    "canonical_labware_state" if canonical_reply is not None else
+                    "canonical_action_state" if action_outcome_reply else "model"
                 )}
 
 
@@ -989,10 +1019,10 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
             current.get("summary", {}).get("equipment")
             or current.get("brief", {}).get("equipment")
         )
-        if not isinstance(equipment, str) or not equipment.strip():
+        if not has_workstation_design_context(current):
             raise HTTPException(
                 status_code=409,
-                detail="Describe the equipment in chat before developing a workstation layout.",
+                detail=workstation_context_question(current),
             )
         design = current.get("design", {}) if isinstance(current, dict) else {}
         if design.get("constraint_status") == "infeasible":
@@ -1001,7 +1031,14 @@ async def develop_layout(project_id: str, request: DesignRequest) -> dict:
                 detail="Layout design is not available for an infeasible width.",
             )
         try:
-            updated, run = await develop_design(deepcopy(current), request.instruction)
+            if not isinstance(equipment, str) or not equipment.strip():
+                # The conceptual route still needs the selected source adapter adopted.
+                updated, runs = await execute_chat_actions(current, [ChatAction(
+                    kind="develop_layout", source=request.instruction[:1000]
+                )], request.instruction)
+                run = runs[0]
+            else:
+                updated, run = await develop_design(deepcopy(current), request.instruction)
             if run.get("status") == "accepted" and updated.get("labware_rack"):
                 updated = reapply_labware(updated)
             if run.get("status") == "accepted" and updated.get("labware_plate"):

@@ -29,6 +29,7 @@ from app.tip_racks import (
     tip_rack_inputs,
 )
 from app.upstream_cad import ASSET_ID
+from app.workflows import has_workstation_design_context
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
 Text = Annotated[str, Field(max_length=1000)]
@@ -290,8 +291,13 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
 
             project = add_geometry(project)
     if saved.engineering_design and not upgraded:
-        if not summary["equipment"] or saved.revision < 1:
-            raise ValueError("A saved layout requires equipment and a design revision.")
+        source_layout = isinstance(proposal, (FoundationLayoutProposal, CommercialProposal))
+        context_available = (has_workstation_design_context(project) if source_layout
+                             else bool(summary["equipment"]))
+        if not context_available or saved.revision < 1:
+            raise ValueError(
+                "A saved layout requires recorded design context and a design revision."
+            )
         project = apply_candidate(
             project,
             saved.engineering_design.proposal.model_dump(),
