@@ -189,11 +189,25 @@ export type ProjectWorkflow = {
   parameters_started: boolean;
 };
 
+export type BenchStationOperation = 'weigh' | 'print_label' | 'read_barcode' | 'inspect';
+export type BenchStationModule = {
+  id: BenchStationOperation; label: string; position_mm: [number, number, number];
+  size_mm: [number, number, number]; role: string; guidance: string;
+  functional_surface_mm?: [number, number, number, number];
+};
+export type BenchStation = {
+  proposal: { schema_version: '1'; operations: BenchStationOperation[] };
+  footprint_mm: [number, number]; modules: BenchStationModule[];
+  steps: string[]; limitations: string[];
+  parts: { operation: BenchStationOperation; label: string; source_title: string | null; source_url: string | null; price_usd: number | null }[];
+};
+
 export type Project = {
   id: string;
   lineage_id?: string;
   restored_from?: { project_id: string; revision: number; saved_at: string };
   revision: number;
+  bench_station?: BenchStation | null;
   labware_brief?: LabwareBrief | null;
   labware_rack?: LabwareRack | null;
   labware_plate?: LabwarePlate | null;

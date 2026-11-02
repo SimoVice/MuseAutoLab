@@ -109,6 +109,25 @@ def project_with_report(project: dict, report: dict | None, estimate: dict | Non
 
 def procurement_groups(project: dict) -> list[dict]:
     """Use the accepted route's selected groups, never the legacy template BOM."""
+    station = project.get("bench_station")
+    if station:
+        groups = []
+        for part in station["parts"]:
+            operation = part["operation"]
+            reference = part.get("source_url")
+            kind = "equipment" if reference else "supplies"
+            group_id = f"bench-{operation}-{kind}"
+            option = {"id": group_id, "label": part["label"], "source_url": reference,
+                      "compatibility_note": part.get("source_title") or "Specify the accessories."}
+            if reference:
+                option["price_kind"] = "configuration_needed"
+            if operation == "inspect" and reference == PRODUCTS["camera-module-3"].url:
+                camera = PRODUCTS["camera-module-3"]
+                option.update(id=camera.option_id, supplier=camera.supplier, sku=camera.sku)
+                option.pop("price_kind")
+            groups.append({"id": group_id, "quantity": 1, "component_ids": [operation],
+                           "selected_id": option["id"], "is_candidate": True, "options": [option]})
+        return groups
     groups = deepcopy(project.get("sourcing", {}).get("groups", []))
     if any(
         group["id"] == "upstream-platform" and group["selected_id"] == "source-cad"

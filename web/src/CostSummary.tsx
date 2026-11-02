@@ -18,7 +18,7 @@ export default function CostSummary({ project, report }: { project: Project; rep
   const [expiryEpoch, setExpiryEpoch] = useState(0);
   const [estimateContext, setEstimateContext] = useState('');
   const manualRefresh = useRef(false);
-  const hasDesign = Boolean(project.engineering_design);
+  const hasDesign = Boolean(project.engineering_design || project.bench_station);
   // A new supplier report invalidates the previous estimate once; failed calls never loop.
   const reportSignature = report ? JSON.stringify([report.report_id, report.expires_at, report.coverage, report.known_partial_subtotal]) : '';
   const contextKey = `${project.id}:${project.revision}:${reportSignature}`;
@@ -56,14 +56,14 @@ export default function CostSummary({ project, report }: { project: Project; rep
   const summary = current?.summary;
   const verified = report ? (report.coverage.fresh_priced_count && Date.parse(report.expires_at) > Date.now() ? report.known_partial_subtotal : null) : summary?.verified_count ? summary.verified_subtotal_usd : null;
   return <section className="cost-block cost-summary" aria-label="Project cost estimate" aria-busy={loading}>
-    <span>Project cost · USD</span>
+    <span>{project.bench_station ? 'Listed equipment & supplies' : 'Project cost'} · USD</span>
     <strong>{!hasDesign ? 'Estimate appears with your design' : loading ? 'Estimating project cost…' : !summary ? 'Estimate unavailable' : summary.coverage_complete ? range(summary.project_total_low_usd, summary.project_total_high_usd) : summary.known_plus_estimated_low_usd != null && summary.known_plus_estimated_high_usd != null ? `${range(summary.known_plus_estimated_low_usd, summary.known_plus_estimated_high_usd)} covered items` : 'Partial cost estimate'}</strong>
     {hasDesign && <dl className="cost-breakdown">
       <div><dt>Verified supplier prices</dt><dd>{verified == null ? 'Not checked' : money(verified)}</dd></div>
       <div><dt>Additional model estimate</dt><dd>{range(summary?.estimated_additional_low_usd ?? null, summary?.estimated_additional_high_usd ?? null)}</dd></div>
       <div><dt>Missing prices</dt><dd>{summary ? `${summary.missing_count} groups` : 'Coverage not established'}</dd></div>
     </dl>}
-    <small>{hasDesign ? 'Planning estimate, not a quote. Complete machine cost remains unknown until every required item is covered. Excludes shipping and taxes.' : 'US supplier prices and model estimates will be shown separately.'}</small>
+    <small>{project.bench_station ? 'Budget range for the listed candidates. Installation, integration, shipping and taxes are excluded.' : hasDesign ? 'Planning estimate, not a quote. Complete project cost remains unknown until every required item is covered. Excludes shipping and taxes.' : 'US supplier prices and model estimates will be shown separately.'}</small>
     {issue && <small role="status">{issue}</small>}
     {hasDesign && !loading && <details className="cost-estimate-details"><summary>Estimate details & refresh</summary>
       {current?.rows.map(row => <div key={row.group_id}><strong>{row.label}</strong><p>{row.source_kind === 'model_estimate' ? 'Model estimate' : row.source_kind === 'verified_supplier' ? 'Verified supplier' : 'Missing price'}: {range(row.low_usd, row.high_usd)}. {row.rationale ?? row.issue}</p>{row.assumptions?.length ? <ul>{row.assumptions.map((item, index) => <li key={index}>{item}</li>)}</ul> : null}</div>)}

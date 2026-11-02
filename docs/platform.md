@@ -63,17 +63,21 @@ still requires implementation: a new prompt alone does not add a machine family.
 
 | Layer | Available now |
 | --- | --- |
-| Requirements and planning | General laboratory task briefs and conversational planning. Non-liquid tasks remain in this layer until engineering support is implemented. |
-| Engineering | Liquid-preparation designs using two reviewed routes: Jubilee source CAD with custom modules, or a schematic Opentrons OT-2 configuration. |
+| Requirements and planning | A general brief can generate a revision-specific functional plan with ordered operations, equipment roles, handoffs, acceptance checks and open questions. The specification is downloadable as JSON. |
+| Engineering | Liquid-preparation designs using Jubilee source CAD with custom modules or a schematic Opentrons OT-2 configuration; a separate bounded non-liquid bench-station adapter. |
 | Components and cost | Supported US catalog retrieval, source references, selected alternatives and separately labelled planning estimates. Coverage depends on the supported component catalog. |
 | Project continuity | Revisioned designs, portable save/reopen, supported design changes and revision-specific exports. |
-| Software guidance | Equipment-specific setup and protocol-authoring guidance for the supported routes, plus a standalone logical preview for direct-dilution recipes. |
+| Software guidance | Equipment-specific setup and protocol-authoring guidance, a standalone logical direct-dilution preview, and a downloadable operator-assisted bench-station record runner with optional printable HTML label output. |
 
 The [liquid-handling example](use-cases/liquid-handling.md) shows the engineering
 layer in detail: a workstation adapted to tubes or a microplate, component
 choices, pricing and instructions. Its test records establish that specific
-coverage. Other task families can be discussed and planned, but their CAD,
-component packages and execution adapters still need to be developed.
+coverage. The [non-liquid bench station](bench-station.md) adds another specific
+path: ordered weighing, printing, barcode reading and visual inspection modules,
+conceptual access envelopes, sourcing references and a local human-checkpoint
+runner. It generates no vendor CAD, automated transport or instrument control.
+Other task families can be discussed and planned; their engineering adapters
+still need implementation.
 
 Current designs are digital proposals. Neither supported platform has a hardware
 control or physics adapter. Physical fit, mounting, calibration and laboratory

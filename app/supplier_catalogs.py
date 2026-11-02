@@ -46,6 +46,7 @@ PRODUCTS = {
         CatalogProduct("diy-peltier", "Adafruit", "1335", "https://www.adafruit.com/product/1335"),
         CatalogProduct("probe", "Adafruit", "381", "https://www.adafruit.com/product/381"),
         CatalogProduct("bare", "Adafruit", "374", "https://www.adafruit.com/product/374"),
+        CatalogProduct("camera-module-3", "Adafruit", "5657", "https://www.adafruit.com/product/5657"),
         CatalogProduct(
             "jubilee-motor-kit",
             "Filastruder",

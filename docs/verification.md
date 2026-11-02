@@ -1,5 +1,61 @@
 # Delivery verification
 
+## Cross-workflow check, 2026-11-02
+
+Four Muse Spark 1.3 Contributor responses used 36,534 reported tokens on
+synthetic inputs. A request to receive sealed vials on an 800 mm bench produced
+weighing, label printing and barcode reading in that order. A second request put
+the barcode reader first. Both actual outputs went through the normal chat
+endpoint and both revisions reopened from their portable snapshots. This replay
+exposed and verified fixes for a repeated workflow classification and for a
+width constraint written in the user's own words.
+
+The pricing call returned six labelled model allowances for the revised station.
+The separate general planning call used a recorded synthetic brief about sorting
+trays by destination. It produced four proposed operations with handoffs and
+acceptance checks. No supplier quote or hardware measurement was obtained.
+
+In an isolated Chrome profile, both station revisions rendered the expected
+sequence, a rotatable 3D view and three working downloads. The browser used
+captured responses to check the price ranges and functional-plan download.
+The original compiled pipetting checks passed for a fresh tube workstation,
+plate and tip-rack changes, the inspection camera and cold transfer. These
+regressions used synthetic model responses.
+
+The ordinary regression suite passed 1,344 tests. This run excluded the separate
+full Jubilee STEP export/reimport suite. TypeScript and the production build
+passed. Both previous live-model pipetting projects reopened on the updated local
+site with matching geometry and sourcing. The Python runner downloaded for the
+reordered bench station completed a dry run and an assisted run with synthetic
+inputs, writing the local event record and printable sample ID.
+
+## Bounded non-liquid compiler and local runner — 2026-11-02
+
+The [bench-station adapter](bench-station.md) has a separate canonical compiler
+and standalone standard-library Python runner. Its targeted compiler/runner suite
+passed **65 tests**. Ruff passed for the runner and its tests. These local checks
+cover schema rejection, all 24 four-operation orderings, functional-surface
+separation, width constraints, deterministic recompilation, retained input state,
+revision-consistent operations/parts and parseable dimensioned SVG output.
+
+Runner checks cover finite mass readings in grams, identifier mismatches, explicit
+manual handoffs, failed visual review, dry-run checkpoints without observations,
+existing-file protection, path collisions, escaped HTML identifiers and rejected
+oversized/control-character identifiers. Aborting after HTML label creation keeps
+a partial record with its path, hash and unconfirmed physical status. Test inputs
+are synthetic. These checks establish software behavior, not instrument integration,
+label fit, barcode quality, real observations or laboratory performance. The HTML
+label is plain text; no barcode generation or automatic printing is implemented.
+
+The focused command is:
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/test_bench_station.py tests/test_bench_station_runner.py -q --basetemp=.local/bench-station-verification
+```
+
+This count covers the compiler/runner only; it does not replace the historical
+liquid-handling or whole-application verification records below.
+
 ## Requests in the user's own words
 
 On 2026-11-02 we tried two previously untested requests in the browser with

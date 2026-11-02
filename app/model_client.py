@@ -575,6 +575,14 @@ class ColdTransferGrounding(BaseModel):
     destination_source: Annotated[str, Field(min_length=1, max_length=1000)]
 
 
+class StationOperationSources(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    weigh: str | None = None
+    print_label: str | None = None
+    read_barcode: str | None = None
+    inspect: str | None = None
+
+
 class ChatAction(BaseModel):
     """A bounded user-requested product operation, never executable model code."""
 
@@ -583,7 +591,10 @@ class ChatAction(BaseModel):
                   "show_files", "show_sources", "show_components", "show_photo_check",
                   "show_build_plan", "develop_labware", "remove_labware", "select_labware",
                   "select_tip_rack", "show_tip_rack_options", "add_cold_transfer",
-                  "remove_cold_transfer", "discuss_cold_transfer", "clarify_cold_transfer"]
+                  "remove_cold_transfer", "discuss_cold_transfer", "clarify_cold_transfer",
+                  "develop_bench_station"]
+    operations: list[Literal["weigh", "print_label", "read_barcode", "inspect"]] | None = None
+    operation_sources: StationOperationSources | None = None
     cold_transfer: ColdTransferGrounding | None = None
     source: Annotated[str, Field(min_length=1, max_length=1000)]
 
@@ -723,6 +734,11 @@ class ExtractedTurn(BaseModel):
         self.tip_rack.verify_sources(user_message, printer_context=bool(
             (project or {}).get("tip_rack_request", {}).get("awaiting_printer")))
         for action in self.actions:
+            if action.kind == "develop_bench_station":
+                from app.bench_station_chat import validate_action
+                validate_action(action, user_message, project or {}, self.workflow_kind)
+            elif action.operations is not None or action.operation_sources is not None:
+                raise ValueError("Station operations require a station action")
             if action.source not in user_message:
                 raise ValueError("Action source must occur literally in this message")
         if len({action.kind for action in self.actions}) != len(self.actions):
@@ -922,6 +938,44 @@ def _catalogue_facts(project: dict) -> dict:
     }
 
 
+def _bench_station_facts(project: dict) -> dict | None:
+    """Compact canonical non-liquid context, never the liquid catalogue fallback."""
+    station = project.get("bench_station")
+    if not station or project.get("workflow", {}).get("kind") != "general":
+        return None
+    facts = {key: deepcopy(station[key]) for key in (
+        "proposal", "footprint_mm", "steps", "limitations")}
+    facts["project_revision"] = project["revision"]
+    facts["equipment_candidates"] = [{key: part[key] for key in (
+        "operation", "label", "source_title", "source_url") if key in part}
+        for part in station["parts"]]
+    facts["pricing"] = {"market": "US", "currency": "USD", "supplier_status": "not_checked",
+        "model_estimate_status": "not_estimated", "interpretation":
+        "Only revision-matched prices below may be discussed. Candidate references are not "
+        "purchases or verified compatibility. Model allowances are not supplier quotations; "
+        "no current complete machine price is implied. Never use the liquid catalogue."}
+    for namespace, prefix, fields in (
+        ("procurement_report", "supplier", ("report_id", "fetched_at", "expires_at",
+         "is_expired", "known_partial_subtotal", "coverage", "exclusions")),
+        ("cost_estimate", "model_estimate", ("status", "model", "generated_at", "expires_at",
+         "summary", "exclusions")),
+    ):
+        record = project.get(namespace)
+        if not record or (record.get("project_id"), record.get("project_revision")) != (
+                project.get("id"), project.get("revision")):
+            continue
+        details = {key: deepcopy(record[key]) for key in fields if key in record}
+        row_fields = ("group_id", "label", "source_kind", "low_usd", "high_usd", "unit_price",
+                      "line_total", "status", "freshness", "fetched_at", "price_source_url",
+                      "issue", "assumptions")
+        details["items"] = [{key: deepcopy(row[key]) for key in row_fields if key in row}
+            for row in record.get("rows", [])
+            if str(row.get("group_id", "")).startswith("bench-")]
+        facts["pricing"][prefix] = details
+        facts["pricing"][f"{prefix}_status"] = "revision_matched_record"
+    return facts
+
+
 def _instruction_facts(project: dict) -> dict:
     """A compact canonical guide context without renders, mesh data or repeated part records."""
     from app.instructions import build_instruction_guide
@@ -1061,14 +1115,21 @@ async def generate_turn(
         "workflow": workflow,
         "reviewed_reference_library": reference_context(project),
         "engineering": state_for(project),
+        "bench_station": _bench_station_facts(project),
     }
     from app.platform_profiles import platform_profiles
 
     state["reviewed_platforms"] = platform_profiles()
+    if state["bench_station"]:
+        state["reviewed_platforms"] = []
+        state["reviewed_reference_library"] = {
+            "architecture": "Accepted schematic non-liquid bench station",
+            "geometry_bindings": [],
+        }
     state["current_cold_transfer"] = bool(project.get("cold_transfer_extension"))
     state["labware_brief"] = deepcopy(project.get("labware_brief"))
     from app.tip_racks import tip_rack_options
-    state["tip_rack_options"] = tip_rack_options(project)
+    state["tip_rack_options"] = [] if state["bench_station"] else tip_rack_options(project)
     state["tip_rack"] = deepcopy(project.get("tip_rack"))
     if state["tip_rack"]:
         state["tip_rack"].pop("geometry", None)
@@ -1085,7 +1146,7 @@ async def generate_turn(
         "assumptions", "provenance",
     )} if rack else None)
     accepted_layout = bool(project.get("engineering_design"))
-    if not accepted_layout:
+    if not accepted_layout and not state["bench_station"]:
         state["reviewed_reference_library"]["geometry_bindings"] = []
         state["reviewed_reference_library"]["architecture"] = (
             "Workflow discovery; no accepted machine design"
@@ -1120,7 +1181,7 @@ async def generate_turn(
         if focused_tip_turn else ""
     )
     messages = [
-        {"role": "developer", "content": SYSTEM_INSTRUCTIONS},
+        {"role": "developer", "content": SYSTEM_INSTRUCTIONS + "\n" + BENCH_STATION_INSTRUCTIONS},
         {
             "role": "developer",
             "content": "Current recorded project state: " + json.dumps(state, ensure_ascii=False),
@@ -1191,6 +1252,10 @@ async def generate_turn(
         result = (ExtractedTurn.model_validate(parsed.model_dump())
                   if focused_tip_turn else parsed)
         failure_kind = "source_validation"
+        if result.workflow_kind == workflow["kind"] and result.source_workflow_kind is None:
+            # Some turns repeat the current classification while proposing a different edit.
+            # Keeping the existing kind needs no new evidence or state change.
+            result.workflow_kind = None
         result.normalize_container_volume_scope(user_message)
         for key in BRIEF_KEYS:
             value = getattr(result, key)
@@ -1206,6 +1271,8 @@ async def generate_turn(
         clarification = choice_clarification(result, user_message, project)
         if clarification:
             result = ExtractedTurn(assistant_message=clarification)
+        from app.bench_station_chat import clarification_turn
+        result = clarification_turn(result, user_message, project)
         result.verify_sources(user_message, project)
         recorded = state_for(project)
         if (
@@ -1279,3 +1346,33 @@ async def generate_turn(
     # Only counts/model ID are logged; prompts, responses and authentication are omitted.
     LOGGER.info("Meta model=%s token_usage=%s", settings.model, usage)
     return result, usage
+
+
+BENCH_STATION_INSTRUCTIONS = """
+General workflows can develop a reusable NON-LIQUID benchtop station concept using
+develop_bench_station. Supported ordered operations are weigh, print_label,
+read_barcode, inspect. print_label means printing only, with manual application;
+it never implements automatic label application. An explicit request to design,
+build or revise a supported station can use this action; discovery, feasibility
+questions, comparisons, hypotheticals and future wishes must discuss/clarify
+without generating or replacing a station. Ask before partial coverage: if ANY
+requested operation is unsupported (including automatic label application, sterile
+filtering, dispensing, pipetting, mixing, transport, cooling), do not call this
+action or silently omit that operation. Never reroute a liquid workflow, cold
+transfer or the legacy inspection extension through this adapter.
+Set workflow_kind general for a new non-liquid request. operations is the COMPLETE
+ordered list, retaining existing operations for a revision unless explicitly
+removed; unique entries only. operation_sources maps EACH new operation to an EXACT
+quotation from the latest message. Retained operations may omit a fresh citation.
+The action source must quote the literal design/revision clause (at most 1000 characters).
+Review the COMPLETE latest request for unsupported operations. Reordering uses the
+complete revised list. Questions preserve existing station. All outputs are
+schematic unverified concepts, no CAD, physics, control or complete BOM. For an
+accepted station, answer operating questions from bench_station.steps and dimensions
+from its actual footprint. Equipment links are candidates. Discuss dollar amounts
+only from bench_station.pricing revision-matched records, distinguishing dated
+model allowances, expired records and verified fresh supplier observations. No
+liquid preparation sequence, pipette calibration or platform-selection guidance
+belongs to this station. Build/source/files requests refer to its station panel,
+layout SVG, plan JSON and assisted operator runner, not liquid build instructions.
+"""

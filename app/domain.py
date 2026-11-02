@@ -486,6 +486,7 @@ def apply_update(project: dict, patch: dict) -> dict:
     result["brief"].update(brief_patch)
     result["summary"].update(summary_updates)
     if switching_away:
+        result.pop("cold_transfer_extension", None)
         for key in ("stock_concentration", "target_concentrations", "final_volume", "equipment"):
             result["summary"][key] = None
         result["summary"]["cooling_enabled"] = False

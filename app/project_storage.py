@@ -29,7 +29,7 @@ from app.tip_racks import (
     tip_rack_inputs,
 )
 from app.upstream_cad import ASSET_ID
-from app.workflows import has_workstation_design_context
+from app.workflows import describe_workflow, has_workstation_design_context
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
 Text = Annotated[str, Field(max_length=1000)]
@@ -90,6 +90,7 @@ class Snapshot(StrictModel):
     platform_id: Literal["opentrons-ot2"] | None = None
     engineering: EngineeringState | None = None
     engineering_design: SavedDesign | None
+    bench_station: dict[str, JsonValue] | None = None
     inspection_extension: dict[str, JsonValue] | None = None
     cold_transfer_extension: dict[str, JsonValue] | None = None
     labware_brief: SavedLabwareBrief | None = None
@@ -163,6 +164,8 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
             "bed_drop_mm"
         ),
         "engineering_design": deepcopy(project.get("engineering_design")),
+        **({"bench_station": deepcopy(project["bench_station"]["proposal"])}
+           if project.get("bench_station") else {}),
         "platform_id": project.get("design", {}).get("platform", {}).get("id"),
         "engineering": state_for(project),
         "labware_brief": deepcopy(project.get("labware_brief")),
@@ -271,7 +274,10 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
                      selection_source="Restored existing Jubilee design")
         project["engineering"] = state
     if width is not None:
-        project = apply_update(project, {"workspace_width_mm": width})
+        project = apply_update(project, {
+            "workspace_width_mm": width,
+            "brief_constraints": brief["constraints"],
+        })
     upgraded = saved.compiler_version in ("1", "2")
     clearance_upgrade = bool(saved.foundation_id and saved.engineering_design
                              and saved.compiler_version in ("3", "4", "5", "6", "7"))
@@ -305,6 +311,16 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         )
     if project["summary"] != summary or project["brief"] != brief:
         raise ValueError("The saved inputs are inconsistent with the current project format.")
+    if saved.bench_station is not None:
+        from app.bench_station import StationProposal, compile_station
+        if inputs.workflow_kind != "general" or any((saved.engineering_design,
+                saved.foundation_id, saved.platform_id, saved.inspection_extension,
+                saved.cold_transfer_extension, saved.labware_rack, saved.labware_plate,
+                saved.tip_rack)):
+            raise ValueError("A bench station cannot contain liquid-workflow artifacts.")
+        project["bench_station"] = compile_station(
+            StationProposal.model_validate(saved.bench_station), workspace_width_mm=width)
+        project["workflow"] = describe_workflow(project)
     if saved.inspection_extension is not None and not upgraded:
         from app.inspection import restore_extension
 

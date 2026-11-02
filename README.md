@@ -46,9 +46,20 @@ Accepted revisions keep those outputs tied to the same project.
 
 This modular architecture separates the platform's purpose from any single
 laboratory workflow. **Liquid handling is the first deeply implemented use case.**
-Other tasks can currently develop a discovery brief; arbitrary machine CAD,
-components and control are not yet implemented. New engineering paths need their
-own adapters and checks.
+A second, bounded adapter develops a **modular bench station** for weighing,
+label printing, barcode reading and visual inspection. It connects an ordered
+schematic layout, sourcing candidates, manual operating guidance and downloadable
+SVG/JSON files to a local operator-assisted record runner. Arbitrary machine CAD
+and hardware control remain outside the implemented scope. New engineering paths
+need their own adapters and checks.
+
+For a different process, describe what happens in your lab and select **Develop
+functional plan** in the project brief. The resulting specification lists the
+operations, the role of each device, what passes between steps and how to check
+the outcome. You can download it as JSON and take the open questions to an
+instrument or software engineer.
+
+[Try the non-liquid bench station](docs/bench-station.md).
 
 [Platform architecture and scope](docs/platform.md) · [Source-grounding policy](docs/source-grounding.md)
 

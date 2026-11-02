@@ -1,8 +1,9 @@
 """Generic workflow registry and helpers.
 
 Dilution/aliquoting (liquid_preparation) is one supported adapter, not the
-platform identity. Other work stays in a generic discovery/planning branch
-that never claims 3D, cost, simulation or build output.
+platform identity. General tasks support proposed functional planning; the
+bounded bench adapter additionally supplies a schematic and human-operated plan.
+Neither general route claims arbitrary machine CAD, physics or hardware control.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ REGISTRY = {
     "general": {
         "label": "General concept",
         "status": "planning",
-        "capabilities": ["discovery", "brief planning"],
+        "capabilities": ["discovery", "brief planning", "functional planning"],
     },
     "liquid_preparation": {
         "label": "Liquid preparation",
@@ -81,13 +82,33 @@ def describe_workflow(project: dict) -> dict:
             if isinstance(value, str) and value.strip():
                 parameters_started = True
                 break
-    return {
+    result = {
         "kind": kind,
         "label": entry["label"],
         "status": entry["status"],
         "design_available": design_available,
         "parameters_started": parameters_started,
     }
+    if kind == "general":
+        station = project.get("bench_station")
+        if station:
+            result.update(
+                label="Human-operated bench station",
+                status="supported_concept",
+                capabilities=["brief planning", "schematic 3d", "ordered human operations",
+                              "parts planning", "software starter"],
+                scope="Schematic planning allocations and a human-operated workflow. "
+                      "Candidate equipment and cost allowances require review; no fabrication "
+                      "CAD, physics validation or hardware control is provided.",
+            )
+        else:
+            result.update(
+                capabilities=["discovery", "brief planning", "functional planning"],
+                scope="The recorded brief can be developed on request into proposed operations, "
+                      "equipment roles, data handoffs and acceptance checks. Specifications "
+                      "require review; arbitrary machine CAD, quotes and control are unavailable.",
+            )
+    return result
 
 
 def has_workstation_design_context(project: dict) -> bool:

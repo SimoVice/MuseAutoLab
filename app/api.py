@@ -159,6 +159,7 @@ class ProjectSession:
     procurement_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     cost_estimate: dict | None = None
     estimate_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    functional_plan: dict | None = None
 
     @asynccontextmanager
     async def model_lock(self):
@@ -184,7 +185,8 @@ def _accept_project(session: ProjectSession, updated: dict, *, preserve_cold: bo
     from app.procurement import rebind_report
 
     before = session.project
-    if preserve_cold and before.get("cold_transfer_extension"):
+    if (preserve_cold and before.get("cold_transfer_extension")
+            and updated.get("workflow", {}).get("kind") == "liquid_preparation"):
         from app.cold_transfer import apply_cold_transfer
 
         candidate = deepcopy(updated)
@@ -456,7 +458,7 @@ async def refresh_cost_estimate(
         async with session.estimate_lock:
             async with session.model_lock():
                 _check_procurement_revision(session.project, payload.project_revision)
-                if not session.project.get("engineering_design"):
+                if not any(session.project.get(k) for k in ("engineering_design", "bench_station")):
                     raise HTTPException(
                         status_code=409, detail="Develop a design before estimating its cost."
                     )
@@ -494,7 +496,7 @@ async def refresh_project_procurement(
         async with session.procurement_lock:
             async with session.model_lock():
                 _check_procurement_revision(session.project, payload.project_revision)
-                if not session.project.get("engineering_design"):
+                if not any(session.project.get(k) for k in ("engineering_design", "bench_station")):
                     raise HTTPException(
                         status_code=409, detail="Develop a machine before refreshing its parts."
                     )
@@ -664,6 +666,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     project_with_report(current, session.procurement_report, session.cost_estimate),
                     request.message, list(session.history)
                 )
+                from app.bench_station_chat import clarification_turn
+                turn = clarification_turn(turn, request.message, current)
                 cold_intent = semantic_cold_transfer_intent(turn, request.message, current)
             except ModelClientError as exc:
                 cold_intent = (offline_cold_transfer_intent(request.message)
@@ -783,7 +787,32 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 for key in ("workspace_width_mm", "cooling_enabled", "cooling_target_c")
             )):
                 actions = [ChatAction(kind="develop_layout", source=request.message[:1000])]
-            action_runs = context_runs
+            from app.bench_station_chat import update_station
+            updated, station_run = update_station(
+                current, updated, actions, request.message, turn.workflow_kind)
+            if station_run:
+                actions = [a for a in actions if a.kind != "develop_bench_station"]
+            action_runs = [station_run] if station_run else context_runs
+            if updated.get("bench_station"):
+                bench_messages = {
+                    "show_build_plan": "Work through the station follows this revision's ordered "
+                        "operator steps and manual handoffs. Download the plan JSON and assisted "
+                        "Python runner together; the operator handles the instruments. Equipment "
+                        "selection, bench access, compatibility and performance need verification.",
+                    "show_sources": "Modules and sourcing references lists this station's "
+                        "equipment candidates and original source links. These are not selected "
+                        "purchases or verified compatibility. Refresh US prices for supplier data.",
+                    "show_components": "Modules and sourcing references lists the current station "
+                        "equipment and supplies. Project cost separates supplier observations "
+                        "from model estimates in USD.",
+                    "show_files": "Download layout (SVG), plan (JSON) and assisted runner (Python) "
+                        "from the station panel. These are schematic planning and human-operated "
+                        "checkpoints, not fabrication CAD or hardware control.",
+                }
+                action_runs.extend({"kind": action.kind, "status": "ready",
+                    "bench_station": True, "message": bench_messages[action.kind]}
+                    for action in actions if action.kind in bench_messages)
+                actions = [action for action in actions if action.kind not in bench_messages]
             if actions:
                 if any(action.kind in ("select_labware", "select_tip_rack") for action in actions):
                     updated, action_runs = await execute_chat_actions(
@@ -814,6 +843,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ) from None
 
         canonical_reply = canonical_labware_reply(updated, action_runs, patch)
+        if any(run.get("bench_station") for run in action_runs):
+            canonical_reply = "\n\n".join(run["message"] for run in action_runs)
         tip_runs = [run for run in action_runs if run["kind"] in (
             "select_tip_rack", "show_tip_rack_options")]
         if tip_runs:
@@ -821,9 +852,9 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         reply = canonical_reply if canonical_reply is not None else turn.assistant_message
         from app.platform_profiles import engineering_guidance
 
-        if state_for(updated)["selected_platform_id"] or any(
+        if not updated.get("bench_station") and (state_for(updated)["selected_platform_id"] or any(
             run["kind"] == "show_build_plan" for run in action_runs
-        ):
+        )):
             updated["engineering_guidance"] = engineering_guidance(updated)
         action_outcome_reply = any(
             run.get("needs_context") or run.get("status") in ("failed", "rejected")
@@ -839,6 +870,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             ref = resolve_reference(recommendation.reference_id)
             recommendations.append({"reference": ref, "reason": recommendation.reason})
         workflow = describe_workflow(updated)
+        updated["workflow"] = workflow
         design_available = bool(workflow.get("design_available"))
         if design_available and not action_outcome_reply:
             plan = updated.get("plan")
@@ -930,6 +962,33 @@ async def update_configuration(project_id: str, request: ConfigurationRequest) -
         _accept_project(session, updated)
         message = _configuration_message(updated)
         return {"project": deepcopy(updated), "assistant_message": message}
+
+
+@app.post("/api/projects/{project_id}/functional-plan")
+async def functional_plan(project_id: str, request: ProcurementRefreshRequest) -> dict:
+    from app.functional_plan import propose_plan
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        project = session.project
+        _check_procurement_revision(project, request.project_revision)
+        brief = project.get("brief") or {}
+        if (project["workflow"]["kind"] != "general" or project.get("bench_station")
+                or not (brief.get("objective") or brief.get("process"))):
+            raise HTTPException(409, "Describe a general laboratory process in chat first.")
+        cached = session.functional_plan
+        if (cached and cached["project_revision"] == project["revision"]
+                and cached["model_request"] == session.model):
+            return deepcopy(cached)
+        try:
+            generated = await propose_plan(brief)
+        except ModelClientError as exc:
+            raise HTTPException(502, str(exc)) from None
+        session.functional_plan = {
+            **generated, "project_id": project_id, "project_revision": project["revision"],
+            "model_request": session.model, "brief": deepcopy(brief),
+        }
+        return deepcopy(session.functional_plan)
 
 
 @app.get("/api/projects/{project_id}/brief")
@@ -1364,3 +1423,40 @@ async def download_export_file(project_id: str, job_id: str, name: str) -> Respo
         media_type=media_type_for(name),
         headers={"Content-Disposition": f'attachment; filename="{safe}"'},
     )
+
+
+@app.get("/api/projects/{project_id}/bench-station/layout.svg")
+async def bench_station_layout(project_id: str, revision: int) -> Response:
+    from app.bench_station import station_svg
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        station = session.project.get("bench_station")
+        if not station:
+            raise HTTPException(status_code=404, detail="No bench station concept exists.")
+        return Response(content=station_svg(station), media_type="image/svg+xml")
+
+
+@app.get("/api/projects/{project_id}/bench-station/plan.json")
+async def bench_station_plan(project_id: str, revision: int) -> dict:
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        station = session.project.get("bench_station")
+        if not station:
+            raise HTTPException(status_code=404, detail="No bench station concept exists.")
+        return {"project_id": project_id, "revision": revision, **deepcopy(station)}
+
+
+@app.get("/api/projects/{project_id}/bench-station/run.py")
+async def bench_station_runner(project_id: str, revision: int) -> Response:
+    import inspect
+
+    from app import bench_station_runner as runner
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        if not session.project.get("bench_station"):
+            raise HTTPException(status_code=404, detail="No bench station concept exists.")
+        return Response(content=inspect.getsource(runner), media_type="text/x-python",
+                        headers={"Content-Disposition": 'attachment; filename="run.py"'})
