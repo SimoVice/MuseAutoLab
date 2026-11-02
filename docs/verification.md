@@ -1,5 +1,39 @@
 # Delivery verification
 
+## Revision-bound operating previews — 2026-11-02
+
+The [operating preview](operating-previews.md) animates the current Jubilee
+preparation and inspection sequences. The full regular suite passed **1,065 tests**
+in 178.75 seconds, including 22 tests that execute the actual TypeScript motion
+compiler against canonical projects. TypeScript, production build and Ruff passed.
+The existing large-JavaScript-bundle warning remains. The final Impeccable scan
+reported no findings across the five changed UI targets; it was a scoped scan,
+not a replacement for the earlier whole-workspace audit.
+
+Compiled browser checks passed tube, plate and supplier revisions, play/pause,
+seek, speed, completion, inspection, expanded keyboard controls, mobile tab
+switching, Save/Open and unchanged project snapshots. The existing custom-rack
+browser regression also passed. Follow-up checks on the final build verified
+source/sample approaches and inspection playback when a preparation is unavailable.
+The compact model is fully framed at 1440 × 900; the complete cost block ends at
+852 px in the synthetic test. Catalog/model requests were blocked in these browser
+tests, so this result does not revalidate prices or live-model behavior.
+
+The source partition check retained 1,785,242 raw triangles and identical bounds;
+aggregate surface area and signed volume agree within the recorded tolerances.
+The [asset manifest](../app/assets/jubilee-c877bd2.motion-preview.json) records the
+source, transforms, approximation and checks. The original STEP remains unchanged.
+The heavy CAD export suite was excluded from this run; a new full CAD package was
+not generated for this renderer-only change.
+
+A separate 10-second observation on the final build recorded median browser
+animation-frame intervals of 8.3 ms and p95 of 8.8 ms, with no interval over
+50 ms or page error. This measures scheduling on the test computer while the
+scene moves, not rendered GPU frames or physical-device performance. Browser
+screenshots and numerical checks do not validate collisions, dispensing,
+calibration or machine operation. No new Meta response was required for these
+deterministic checks or playback.
+
 ## Revision consistency and workspace review — 2026-11-02
 
 The [latest consistency review](revision-consistency.md) follows the real

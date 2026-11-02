@@ -359,7 +359,10 @@ def canonical_labware_reply(project: dict, action_runs: list[dict], patch: dict)
             )
         paragraphs.append(
             "Pipette range, holder fit and access remain unverified. "
-            "Plate operation animation is unavailable."
+            + ("A revision-bound illustrative operating preview can be prepared for the "
+               "supported Jubilee adapter when recipe and geometric pose checks pass."
+               if project["design"].get("foundation") else
+               "This platform has no operating motion adapter.")
         )
     else:
         paragraphs.append(

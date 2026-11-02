@@ -85,7 +85,9 @@ It supports a sourced choice between Jubilee and an Opentrons OT-2 schematic,
 bounded layout revisions, dimension-driven holders, reviewed labware alternatives,
 US supplier listings in USD and separately labelled planning estimates. Supported
 exports include revision-specific design files, instructions and logical protocol
-previews.
+previews. [Operating previews](docs/operating-previews.md) animate the supported
+Jubilee preparation sequence and inspection concept directly in the 3D workspace,
+with playback tied to the current recipe and selected labware.
 
 Neither route has a physics or hardware-control adapter. Fit, mounting, tool
 access, calibration, liquid handling, thermal performance and complete build cost

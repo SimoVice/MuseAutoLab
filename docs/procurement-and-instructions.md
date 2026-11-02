@@ -176,5 +176,7 @@ work, not records that those checks have been performed.
 
 The rack rests on the insert in the digital model. Retention, loaded stability,
 source-machine attachment, tool travel and liquid handling are separate unresolved
-interfaces. Custom-rack operating animation is therefore unavailable. This module
-does not establish arbitrary fixture design or an OT-2 labware adapter.
+interfaces. The [operating preview](operating-previews.md) illustrates the proposed
+sequence when its recipe and pose checks pass; it does not resolve those physical
+interfaces. This module does not establish arbitrary fixture design or an OT-2
+labware adapter.

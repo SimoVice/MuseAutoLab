@@ -763,8 +763,11 @@ def build_readme(project: dict) -> bytes:
             "Follow the rack input, print, first-article and placement steps in "
             "assembly-guide.html. Material, printing and rework are unpriced. One rack "
             "requires no assembly fasteners; deck location and retention remain open. "
-            "The custom-rack operating animation is unavailable until tool access, "
-            "pipette approach and calibration are implemented and verified.\n"
+            + ("The website can prepare a revision-bound illustrative operating preview for "
+             "the supported Jubilee adapter, subject to recipe and geometric pose checks. "
+             if project["design"].get("foundation") else
+             "This platform has no operating motion adapter. ")
+            + "Tool access, pipette approach, calibration and control remain unverified.\n"
         )
     if project.get("labware_plate"):
         plate = project["labware_plate"]
@@ -792,9 +795,13 @@ def build_readme(project: dict) -> bytes:
             "fabricated as a laboratory plate. Print the holder flat-bottom-down, inspect "
             "the pocket and dry fit the actual empty plate. Holder material, printing, "
             "plate procurement and deck attachment remain unresolved or unpriced.\n\n"
-            "The plate operating animation is disabled pending actual location, pipette "
-            "approach, calibration and control integration. Follow the plate profile, "
-            "volume, holder-fit and placement steps in assembly-guide.html.\n"
+            + ("The website can prepare a revision-bound illustrative plate operating preview "
+             "for the supported Jubilee adapter, subject to recipe and geometric pose checks. "
+             if project["design"].get("foundation") else
+             "This platform has no operating motion adapter. ")
+            + "Actual location, pipette approach, calibration and control remain unverified. "
+            "Follow the plate profile, volume, holder-fit and placement steps "
+            "in assembly-guide.html.\n"
         )
     return text.encode("utf-8")
 

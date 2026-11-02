@@ -1,0 +1,31 @@
+.operating-preview { padding: 18px 22px; border-top: 1px solid var(--border, #d9e1e3); background: #f5f9f9; color: #294044; }
+.operating-preview-heading, .operation-time { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.operating-preview-heading h2 { font-size: 16px; margin: 0; }
+.operating-preview-heading > span, .operation-time { font-size: 12px; color: #526b70; }
+.operation-scope { font-size: 12px; line-height: 1.5; margin: 8px 0 12px; }
+.operation-now { display: flex; gap: 10px; align-items: baseline; min-height: 28px; font-size: 13px; }
+.operation-now span { color: #526b70; }
+.operating-preview input[type=range] { width: 100%; accent-color: #22716b; margin: 8px 0 12px; }
+.operation-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.operation-buttons button, .operation-limits button { border: 1px solid #b8cdcd; border-radius: 7px; background: white; color: #294044; padding: 7px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+.operation-buttons button:first-child { background: #226b65; color: white; border-color: #226b65; }
+.operation-buttons button:disabled { opacity: .45; cursor: default; }
+.operation-buttons label { margin-left: auto; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.operation-buttons select, .operation-mode select { background: white; color: #294044; border: 1px solid #b8cdcd; border-radius: 6px; padding: 6px; font: inherit; }
+.operation-mode { display: flex; align-items: center; gap: 12px; font-size: 12px; margin-top: 10px; }
+.operation-limits { margin-top: 12px; font-size: 12px; line-height: 1.6; color: #526b70; }
+.operation-limits summary { cursor: pointer; }
+.operation-limits ul { padding-left: 18px; }
+.operating-preview :focus-visible { outline: 3px solid #b17822; outline-offset: 3px; }
+@media (max-width: 500px) { .operating-preview { padding: 16px; } .operation-now { flex-direction: column; gap: 3px; } }
+
+.operating-preview { padding: 11px 22px; }
+.operating-preview-heading { margin-bottom: 6px; }
+.operation-now { min-height: 20px; float: right; margin-left: 12px; }
+.operation-buttons { min-height: 30px; }
+.operation-buttons button { padding: 5px 10px; }
+.operation-limits { clear: both; margin-top: 6px; }
+.operation-limits > label { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+@media (max-width: 600px) { .operation-now { float: none; margin: 0 0 6px; } }
+
+.presentation-stage-expanded .operating-preview { flex: 0 0 auto; max-height: 38dvh; overflow-y: auto; }

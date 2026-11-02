@@ -20,6 +20,7 @@ use the engineering references for the adapters relevant to your project.
 - [Models, voice and illustrations](multimodal-demo.md) — account access, editable dictation and presentation artwork.
 - [Verification](verification.md) — actual software, model, supplier and export outcomes with limitations.
 - [Revision consistency](revision-consistency.md) — what stays aligned across design edits, recipes, sourcing and exports.
+- [Operating previews](operating-previews.md) — play, inspect and compare revision-bound motion sequences.
 - [Workspace quality](workspace-quality-review.md) — browser checks, visual refinements and their measured scope.
 - [Development](development.md) — test commands and deliberate dependency updates.
 - [Third-party notices](../THIRD_PARTY_NOTICES.md) and [software acknowledgements](software-acknowledgements.md).

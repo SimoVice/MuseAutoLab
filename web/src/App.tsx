@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
+import OperatingPreview from './OperatingPreview';
+import { compileMotionPlan } from './motionPlan';
+import type { MotionMode } from './motionPlan';
 import PresentationStage from './PresentationStage';
 import ModelSelector from './ModelSelector';
 import type { ImageCapability, VoiceCapability } from './ModelSelector';
@@ -142,6 +145,47 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [operationMode, setOperationMode] = useState<MotionMode>('preparation');
+  const [operationTime, setOperationTime] = useState(0);
+  const [operationSpeed, setOperationSpeed] = useState(1);
+  const operationClock = useRef(0);
+  const motionPlan = useMemo(() => project ? compileMotionPlan(project, operationMode) : null, [project, operationMode]);
+  const motionBinding = motionPlan ? `${motionPlan.project_id}:${motionPlan.revision}:${motionPlan.mode}` : '';
+  const [playbackBinding, setPlaybackBinding] = useState('');
+  const currentMotion = motionPlan?.status === 'ready' && playbackBinding === motionBinding;
+  useEffect(() => {
+    operationClock.current = 0; setOperationTime(0); setInspectionTime(0); setPlaying(false);
+    setPlaybackBinding(motionBinding);
+  }, [motionBinding]);
+  useEffect(() => {
+    if (!playing || !motionPlan || !currentMotion) return;
+    let frame = 0, previous = performance.now(), lastDisplay = previous;
+    const tick = (now: number) => {
+      operationClock.current = Math.min(motionPlan.duration_s, operationClock.current + Math.min(0.1, (now - previous) / 1000) * operationSpeed);
+      previous = now;
+      if (now - lastDisplay >= 100 || operationClock.current >= motionPlan.duration_s) {
+        setOperationTime(operationClock.current); lastDisplay = now;
+        if (operationMode === 'inspection') setInspectionTime(operationClock.current);
+      }
+      if (operationClock.current >= motionPlan.duration_s) { setPlaying(false); return; }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playing, motionPlan, currentMotion, operationSpeed, operationMode]);
+  useEffect(() => {
+    const narrow = window.matchMedia('(max-width: 760px)');
+    const pauseWhenHidden = () => {
+      if (document.hidden || (narrow.matches && mobileView === 'chat')) {
+        setPlaying(false); setOperationTime(operationClock.current);
+        if (operationMode === 'inspection') setInspectionTime(operationClock.current);
+      }
+    };
+    pauseWhenHidden();
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    narrow.addEventListener('change', pauseWhenHidden);
+    return () => { document.removeEventListener('visibilitychange', pauseWhenHidden); narrow.removeEventListener('change', pauseWhenHidden); };
+  }, [mobileView, operationMode]);
   const [resetKey, setResetKey] = useState(0);
   const [physicsView, setPhysicsView] = useState<PhysicsView | null>(null);
   const [physicsActive, setPhysicsActive] = useState(false);
@@ -266,7 +310,7 @@ export default function App() {
   const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || project?.plan?.status === 'ready');
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
-  const showPreview = project?.status === 'confirmed' && project?.plan?.status === 'ready' && hasEngineeringDesign;
+  const showPreview = project?.plan?.status === 'ready' && hasEngineeringDesign;
   const acceptedLayoutId = project?.engineering_design?.provenance.run_id;
   useEffect(() => {
     if (actionRuns.some((run) => run.status === 'ready' && !['show_build_plan', 'show_tip_rack_options'].includes(run.kind)) && details.current) {
@@ -281,21 +325,24 @@ export default function App() {
     });
   }, [acceptedLayoutId]);
   useEffect(() => {
-    if (!showPreview) setPlaying(false);
-  }, [showPreview]);
+    if (!currentMotion) setPlaying(false);
+  }, [currentMotion]);
 
-  function handlePlay() { setResetKey((value) => value + 1); setInspectionTime(0); setPhysicsActive(false); setPhysicsView(null); setPlaying(true); }
-  function handlePause() { setPlaying(false); }
+  function handlePlay() {
+    if (!motionPlan || motionPlan.status !== 'ready' || !currentMotion) return;
+    if (operationClock.current >= motionPlan.duration_s) { operationClock.current = 0; setOperationTime(0); }
+    setPhysicsActive(false); setPhysicsView(null); setPlaying(true);
+  }
+  function handlePause() { setPlaying(false); setOperationTime(operationClock.current); if (operationMode === 'inspection') setInspectionTime(operationClock.current); }
   function handleReset() {
+    operationClock.current = 0; setOperationTime(0); setInspectionTime(0);
     setPlaying(false);
     setResetKey((value) => value + 1);
   }
   const handlePhysicsView = useCallback((view: PhysicsView | null) => { setPhysicsView(view); }, []);
   const handlePhysicsActivate = useCallback(() => { setResetKey((value) => value + 1); setInspectionTime(0); setPlaying(false); setPhysicsActive(true); }, []);
-  const handleInspection = useCallback((time: number) => {
-    setInspectionTime(time); setPlaying(false); setPhysicsActive(false); setPhysicsView(null);
-  }, []);
   const uiBusy = busy || storageBusy || modelBusy;
+  useEffect(() => { if (uiBusy) setPlaying(false); }, [uiBusy]);
   const appendTranscript = useCallback((text: string) => {
     const current = inputRef.current;
     const combined = current.trim() ? `${current}\n${text}` : text;
@@ -723,7 +770,7 @@ export default function App() {
                 sourceNote={hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'}
                 components={project?.design.components ?? []} selectedPart={part} onSelect={setSelectedId}>
                 <div aria-busy={agentPhase === 'pending' || agentPhase === 'updating'} className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-                  {project ? <Scene captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} operation={{ playing: physicsView ? false : playing, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  {project ? <Scene captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} inspectionPlayback={{ timeRef: operationClock, playing: !uiBusy && Boolean(currentMotion) && operationMode === 'inspection' && playing }} operation={{ playing: !uiBusy && operationMode === 'preparation' && currentMotion && !physicsView ? playing : false, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey, timeline: !physicsView ? motionPlan ?? undefined : undefined, time_s: currentMotion ? operationTime : 0, timeRef: operationClock }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} scene />}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
                   <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
@@ -732,6 +779,7 @@ export default function App() {
                   <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
                   <div className="viewer-status"><span className={`status-indicator ${status === 'infeasible' ? 'warning' : ''}`} />{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</div>
                 </div>
+              {motionPlan && <OperatingPreview plan={motionPlan} playing={playing && Boolean(currentMotion)} time={currentMotion ? operationTime : 0} speed={operationSpeed} disabled={uiBusy} hasInspection={Boolean(project?.inspection_extension)} onMode={(mode) => { handleReset(); setOperationMode(mode); }} onPlay={handlePlay} onPause={handlePause} onReset={handleReset} onSpeed={(speed) => { if ([0.5, 1, 2, 4].includes(speed)) setOperationSpeed(speed); }} onSeek={(time) => { if (!Number.isFinite(time) || !motionPlan) return; time = Math.max(0, Math.min(motionPlan.duration_s, time)); setPlaying(false); operationClock.current = time; setOperationTime(time); setPhysicsView(null); setPhysicsActive(false); if (operationMode === 'inspection') setInspectionTime(time); }} />}
               </PresentationStage>
 
               <div className="below-viewer">
@@ -772,27 +820,6 @@ export default function App() {
                 )}
                 {project && <DesignSources project={project} showBindings={hasEngineeringDesign} onHighlight={handleVisionSelect} />}
                 {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
-                {project?.inspection_extension && (
-                  <div className="inspection-sweep">
-                    <button type="button" className="new-project-button" disabled={uiBusy} onClick={() => handleInspection(0)}>
-                      Reset inspection sweep
-                    </button>
-                    <label htmlFor="inspection-time">Camera sweep <span>{inspectionTime.toFixed(1)} / 6 s</span></label>
-                    <input id="inspection-time" type="range" min={0} max={6} step={0.05} value={inspectionTime} disabled={uiBusy} onChange={(event) => { const value = Number(event.target.value); handleInspection(value); }} />
-                  </div>
-                )}
-                {showPreview && !project?.labware_rack && !project?.labware_plate && (
-                  <div className="preview-block">
-                    <div className="preview-controls" role="group" aria-label="Preparation preview controls">
-                      <button type="button" className="preview-button" onClick={handlePlay} disabled={playing} aria-pressed={playing}>Play preview</button>
-                      <button type="button" className="preview-button" onClick={handlePause} disabled={!playing}>Pause preview</button>
-                      <button type="button" className="preview-button" onClick={handleReset}>Reset preview</button>
-                    </div>
-                    <p className="preview-note">Illustrative animation; motion and dispensing are not validated.</p>
-                  </div>
-                )}
-                {showPreview && project?.labware_rack && <p className="preview-note">The operating preview is unavailable for this custom rack. Tool access, pipette approach and calibration need verification; tube envelopes mark the current preparation targets and unused holes remain free.</p>}
-                {project?.labware_plate && <p className="preview-note">The operating preview is unavailable for this plate setup. Plate location, pipette approach, working volume and calibration need verification. Occupied wells show the current preparation targets.</p>}
                 {showPhotoCheck && project && (
                   <details className="photo-check" open={requestedPhoto || undefined}>
                     <summary>Photo check</summary>

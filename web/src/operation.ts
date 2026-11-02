@@ -5,6 +5,9 @@
 export type Vec3 = [number, number, number];
 
 export type OperationSpec = {
+  timeline?: import('./motionPlan').MotionPlan;
+  time_s?: number;
+  timeRef?: { current: number };
   playing: boolean;
   steps: { stock_volume_ul: number; diluent_volume_ul: number }[];
   onComplete: () => void;

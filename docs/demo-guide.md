@@ -109,8 +109,9 @@ The [small CAD artifacts and hashes](examples/tube-rack/manifest.json) are avail
 directly so a reviewer can inspect the useful output before installing the entire
 application. Follow the [measurement and first-article guidance](procurement-and-instructions.md#parametric-tube-rack).
 These inputs do not establish fit to a commercial 1.5–2 mL tube. Printed fit,
-material suitability, deck retention and pipetting are unverified; the custom
-rack has no operating-animation adapter.
+material suitability, deck retention and pipetting are unverified. The current
+Jubilee adapter offers an [illustrative operating preview](operating-previews.md)
+when its recipe and pose checks pass.
 
 ![Real recorded rack and its dimension card](images/parametric-rack-workspace.png)
 

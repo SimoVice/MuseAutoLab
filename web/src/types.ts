@@ -203,7 +203,7 @@ export type Project = {
     constraint_status: 'unconstrained' | 'fits' | 'infeasible';
     estimated_cost: { amount: number | null; currency: string };
     cooling: DesignCooling;
-    foundation?: { id: string; bed_drop_mm: number; bbox_mm: [number, number, number] };
+    foundation?: { id: string; source_sha256?: string; bed_drop_mm: number; bbox_mm: [number, number, number] };
     assembly_bounds?: { min_mm: [number, number, number]; max_mm: [number, number, number] };
     platform?: { id: string; label: string; geometry_scope: string };
   };

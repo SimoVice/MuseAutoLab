@@ -59,6 +59,11 @@ and invalidate outdated generated files.
 
 ## Reuse the design for another recipe
 
+Use the [operating preview](../operating-previews.md) to inspect a supported
+Jubilee preparation before building it. The animated sequence follows the
+current tube holes or plate wells and selected tip rack. Playback and inspection
+remain digital illustrations, with no robot connection or collision validation.
+
 The recorded example starts from synthetic inputs: 5 mg/mL stock, targets of
 0.5, 0.25 and 0.05 mg/mL, and 200 µL per preparation. A second recorded recipe keeps
 the selected hardware and suppliers while changing targets to 1, 0.2 and 0.1 mg/mL

@@ -1,0 +1,176 @@
+{
+  "asset_id": "jubilee-v2.2.2-c877bd2-rigid-motion-preview",
+  "source_title": "Jubilee V2.2.2 frame assembly",
+  "author": "Joshua Vasquez, Machine Agency, University of Washington",
+  "source_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/frame/cads/STEP/jubilee.STEP",
+  "source_revision": "c877bd2e889560c83da2a68479641a4f7f0d9b83",
+  "source_step_sha256": "533417712183775a544802ae29a6f94d50ef0839bc2f24f68bce7a048798afea",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "source_license_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/license.txt",
+  "scope": "Renderer-only approximate meshes, not fabrication files or a physics/control adapter. CAD export retains the unchanged pinned STEP.",
+  "source_hierarchy": "Paths below use the 0-based child index in the imported STEP assembly. Parent locations are applied to extracted descendants; no source solids are cut.",
+  "partition": {
+    "fixed": {
+      "root_children": "all except build_plate_assembly and jubilee_xy_frame_assembly_Centered_Carriage",
+      "xy_children": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38
+      ]
+    },
+    "crossbar": {
+      "xy_child": 5,
+      "path": "jubilee_xy_frame_assembly_Centered_Carriage/crossbar_with_carriage_center",
+      "children": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "carriage": {
+      "xy_child_5_children": [
+        1
+      ],
+      "xy_children": [
+        14,
+        15,
+        16,
+        31
+      ],
+      "labels": [
+        "carriage_center_assembly",
+        "twist_lock_assembly",
+        "carriage_coupling_plate_assembly",
+        "carriage_back_plate_assembly",
+        "carriage_Spring_Guide_Capture"
+      ]
+    },
+    "belts": {
+      "xy_children": [
+        27,
+        28
+      ],
+      "labels": [
+        "upper_belt_centered",
+        "lower_belt_centered"
+      ]
+    },
+    "bed": {
+      "root_child_label": "build_plate_assembly",
+      "preview_path": "web/public/assets/jubilee-c877bd2-bed.glb",
+      "sha256": "bf53a9f357ceb7e79b6998010e6868703da4441eaecca7c693936c8811452a6e"
+    }
+  },
+  "motion_mapping": {
+    "source_to_app": "(X-274.855945675, Y-272.216535584, 425.743280356-Z)",
+    "crossbar": "source Z = -app delta Z",
+    "carriage": "source X = app delta X; source Z = -app delta Z",
+    "bed": "source Y = -bed_drop_mm; deck content follows bed",
+    "belts": "Hidden away from original horizontal rest pose because fixed STEP solids cannot depict flexible belts."
+  },
+  "tessellation": {
+    "linear_deflection_mm": 0.8,
+    "angular_deflection_rad": 0.5,
+    "vertex_merge": "exact positions in float32 STL",
+    "simplifier": "meshoptimizer 1.1.1, target 900000 indices, relative error 0.002 maximum",
+    "fixed_reported_error": 0.00025233617634512484,
+    "other_reported_error": 0
+  },
+  "preview_assets": {
+    "fixed": {
+      "path": "web/public/assets/jubilee-c877bd2-motion-fixed.glb",
+      "sha256": "9428ee0be890b8f7dd95b77d8f3d3a1e6d7552733c29740c26cb883f28b9c23e",
+      "bytes": 5393688
+    },
+    "crossbar": {
+      "path": "web/public/assets/jubilee-c877bd2-motion-crossbar.glb",
+      "sha256": "9ae2cf255d9cab51f97fbe72c5448e5ceffb7466f4c2b49c075195fe9abd224d",
+      "bytes": 3507184
+    },
+    "carriage": {
+      "path": "web/public/assets/jubilee-c877bd2-motion-carriage.glb",
+      "sha256": "72ad8773237ad9f46dcc7dd25a027e06793af2a8da7486a41bce6678a8584305",
+      "bytes": 1638680
+    },
+    "belts": {
+      "path": "web/public/assets/jubilee-c877bd2-motion-belts.glb",
+      "sha256": "93cfcc51db3bca30f4741fb568219f016b130c9367f4db21c0754a5a1c585b27",
+      "bytes": 19304
+    }
+  },
+  "rest_pose_raw_tessellation_check": {
+    "original": {
+      "triangle_count": 1785242,
+      "min_mm": [
+        33.2984733581543,
+        272.41339111328125,
+        120.08628845214844
+      ],
+      "max_mm": [
+        513.26708984375,
+        836.4133911132812,
+        732.0863037109375
+      ],
+      "signed_volume_mm3": 6098659.304666466,
+      "surface_area_mm2": 4107452.945408928
+    },
+    "partitioned": {
+      "triangle_count": 1785242,
+      "min_mm": [
+        33.2984733581543,
+        272.41339111328125,
+        120.08628845214844
+      ],
+      "max_mm": [
+        513.26708984375,
+        836.4133911132812,
+        732.0863037109375
+      ],
+      "signed_volume_mm3": 6098659.304639383,
+      "surface_area_mm2": 4107452.945376122
+    }
+  },
+  "rest_pose_check_scope": "Bounds, triangle count, signed volume and total surface area compare un-simplified static STL against the union of the four disjoint source-child partitions. The displayed fixed GLB is simplified and therefore is approximate.",
+  "reproduction": [
+    "python scripts/prepare_jubilee_mesh.py",
+    "python scripts/prepare_jubilee_motion.py",
+    "python scripts/verify_jubilee_motion.py",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-fixed",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-crossbar",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-carriage",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-belts"
+  ],
+  "limitations": "Rigid component transforms are an illustrative concept. Belts, individual fasteners and flexible connections are not dynamically modeled. Stroke limits, tool coupling, clearance, collision, fluid handling, calibration and laboratory operation are unverified."
+}

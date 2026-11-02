@@ -16,7 +16,7 @@ from browser_labware_server import COMPLETE, EDIT, PARTIAL, REJECT, SIX_TARGETS 
 def run(url):
     from playwright.sync_api import expect, sync_playwright
 
-    output = harness.ROOT / ".local" / "parametric-rack-20261030" / "ui"
+    output = harness.ROOT / ".local" / "operating-preview-20261102" / "qa" / "labware-regression"
     output.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
@@ -27,6 +27,21 @@ def run(url):
             "request",
             lambda request: posts.append(request.url) if request.method == "POST" else None,
         )
+        # Geometry regression must never trigger model pricing or supplier retrieval.
+        page.route(
+            "**/cost-estimate*",
+            lambda route: route.fulfill(
+                json={
+                    "state": "current",
+                    "estimate": {
+                        "status": "failed",
+                        "rows": [],
+                        "exclusions": [],
+                    },
+                }
+            ),
+        )
+        page.route("**/procurement/refresh*", lambda route: route.abort())
         try:
             page.goto(url)
             page.wait_for_load_state("networkidle")
@@ -77,7 +92,10 @@ def run(url):
                 f"?revision={accepted['revision']}&format=json"
             )
             panel.get_by_role("button", name="Show rack in model").click()
-            expect(page.locator(".selection-block")).to_contain_text("rim-supported tube rack")
+            expect(page.get_by_label("Component in expanded view")).to_have_value("sample-rack")
+            expect(page.locator(".stage-component-detail")).to_contain_text(
+                "rim-supported tube rack"
+            )
             page.get_by_label("Inspect component view").select_option("part")
             page.locator(".viewer-shell").scroll_into_view_if_needed()
             page.evaluate(
@@ -175,8 +193,9 @@ def run(url):
             details = page.locator("details.project-details")
             if details.get_attribute("open") is None:
                 details.locator(":scope > summary").click()
-            expect(page.get_by_role("button", name="Play preview", exact=True)).to_have_count(0)
-            expect(details).to_contain_text("operating preview is unavailable for this custom rack")
+            operating = page.get_by_role("region", name="Operating preview", exact=True)
+            expect(operating).to_contain_text("Preparation")
+            expect(operating.get_by_role("button", name="Play", exact=True)).to_be_enabled()
             assert not errors, errors
             assert not any(
                 path.endswith(("/procurement/refresh", "/exports", "/design")) for path in posts
