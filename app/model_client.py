@@ -153,6 +153,11 @@ selection_source or a selection from an earlier turn as a new choice.
 After the user's clear selection and recorded liquid/equipment context, return
 develop_layout so the selected architecture is actually developed. A recipe is optional
 at this stage. Explain what needs buying/fabricating and link only reviewed references.
+After previously offering Jubilee and OT-2, 'Let's go with the open platform. Design ...'
+selects Jubilee and requests develop_layout in the same turn. Cite the literal choice
+wording ('Let's go with the open platform'), never an absent platform name as its source.
+Extract any additional needs/constraints from the entire message, including the requested
+materials and modules; the design action receives the complete user instruction.
 Use show_build_plan to open Build instructions for purchase/assembly guidance. A guide with
 needs_design steps is a useful source-grounded review plan, not a completed build. Explain the
 next concrete engineering task and its completion criterion from build_instructions when asked.
@@ -1058,6 +1063,7 @@ async def generate_turn(
             # Drop this inert repetition; new/different choices still need current evidence.
             result.engineering.platform_choice = None
             result.engineering.choice_source = None
+        result.engineering.normalize_choice_source(user_message, project)
         result.engineering.verify_sources(user_message, project)
         effective_kind = result.workflow_kind or workflow["kind"]
         if effective_kind == "general" and any(
@@ -1067,6 +1073,9 @@ async def generate_turn(
             raise ValueError("Liquid parameters do not belong to this workflow")
     except (ValueError, TypeError, KeyError, IndexError, ValidationError):
         error = ModelClientError(
+            "Meta returned changes that could not be verified against your message and "
+            "the recorded project. The project was not changed. Please retry this request."
+            if failure_kind == "source_validation" else
             "Meta returned an incomplete or invalid response. The project was not changed."
         )
         error.failure_kind = failure_kind

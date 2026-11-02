@@ -1,5 +1,20 @@
 # Delivery verification
 
+## Choosing a platform in the second message
+
+A fresh conversation compared buildable and assembled options for pipetting
+with 1.5 mL tubes on an 800 mm bench. In the next turn the user chose “the open
+platform” and requested a source rack, sample rack, tip rack and tip waste bin.
+With Muse Spark Contributor, the first turn kept both choices open. The second
+accepted Jubilee and generated the requested tube workstation without adding
+an arm. The two chat responses and one layout response used 31,710 tokens.
+
+Replaying the same returned choice against the previous release reproduced
+the rejection. The updated validator accepted the user's literal selection.
+Separate browser checks started from an empty workspace and exercised retrying
+the retained draft after a failed response. Both browser cases used synthetic
+model responses. This check covers platform selection and the initial layout.
+
 ## Plate transfer and motion continuity
 
 On 2026-11-02, 1,104 regular automated tests passed. The compiled browser

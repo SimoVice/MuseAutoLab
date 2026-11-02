@@ -83,6 +83,43 @@ class EngineeringUpdate(StrictModel):
             self.choice_source = None
         return self
 
+    def normalize_choice_source(self, message: str, project: dict) -> None:
+        """Rebind a model's nonliteral name to the user's unambiguous offered choice.
+
+        This repairs evidence only: it never adds or changes a model-selected platform,
+        and every other extracted field still passes its ordinary source validation.
+        """
+        if self.platform_choice is None or (
+            self.choice_source is not None and self.choice_source in message
+        ):
+            return
+        aliases = {
+            "jubilee": {"jubilee"},
+            "opentrons-ot2": {"opentrons", "opentrons ot-2", "opentrons-ot2", "ot-2", "ot2"},
+        }
+        if (not isinstance(self.choice_source, str)
+                or self.choice_source.strip().lower() not in aliases[self.platform_choice]):
+            return
+        previous = _previous_option_ids(project)
+        if not previous or _looks_like_url(message):
+            return
+        candidates = [pid for pid in previous if _message_selects_platform(message, pid, previous)]
+        if candidates != [self.platform_choice]:
+            return
+        other = "opentrons-ot2" if self.platform_choice == "jubilee" else "jubilee"
+        # Mixed references require the model to cite the actual disambiguating text;
+        # never repair an ambiguous or contradictory citation by dropping a clause.
+        if _mentions(other, message.lower()) or _mentions_procurement(
+            PLATFORM_PROCUREMENT[other], message.lower()
+        ):
+            return
+        for span in re.split(r"[.!?;\n]", message):
+            literal = span.strip()
+            if (literal and len(literal) <= 1000
+                    and _message_selects_platform(literal, self.platform_choice, previous)):
+                self.choice_source = literal
+                return
+
     def verify_sources(self, message: object, project: object) -> None:
         """Raise ValueError unless the update is grounded in the latest message."""
         if not isinstance(message, str) or not message:
@@ -207,7 +244,7 @@ def _mentions(platform: str, lowered: str) -> bool:
 
 def _mentions_procurement(route: str, lowered: str) -> bool:
     if route == "open_hardware":
-        return any(
+        return bool(re.search(r"\bopen\s+(?:platform|route|system)\b", lowered)) or any(
             token in lowered
             for token in (
                 "open_hardware",
@@ -236,6 +273,21 @@ def _mentions_procurement(route: str, lowered: str) -> bool:
             "assembled",
         )
     )
+
+
+def _selects_open_shorthand(lowered: str) -> bool:
+    """The new shorthand needs an answer or a choice, not an equipment mention."""
+    route = r"(?:the\s+)?open\s+(?:platform|route|system)"
+    if re.fullmatch(
+        rf"\s*(?:(?:yes|yeah|yep|ok|okay|sure)[,\s]+)?{route}"
+        r"(?:[,\s]+please)?[.!\s]*", lowered,
+    ):
+        return True
+    return bool(re.search(
+        r"\b(?:choose|select|go with|go for|prefer|opt for|confirm|proceed with|"
+        r"build|start with|pick|take|use)\s+(?:(?:the|an|this|that)\s+)?"
+        r"open\s+(?:platform|route|system)\b", lowered,
+    ))
 
 
 def _has_choice_verb(lowered: str) -> bool:
@@ -313,7 +365,8 @@ def _is_yes_only(lowered: str) -> bool:
 
 def _is_question_only(lowered: str, choice: str) -> bool:
     if re.search(
-        r"^\s*(?:should i|would you recommend|do you recommend|is it better|"
+        r"^\s*(?:should i|could we|could i|can we|can i|would you recommend|"
+        r"do you recommend|is it better|"
         r"which|dovrei|mi consigli|consiglieresti|è meglio|e meglio)\b", lowered
     ):
         return True
@@ -357,6 +410,14 @@ def _is_negated_or_future(lowered: str, choice: str) -> bool:
         "non ancora",
         "thinking about",
         "considering",
+        "hypothetical",
+        "hypothetically",
+        "suppose",
+        "imagine",
+        "if we",
+        "if i",
+        "what if",
+        "whether",
     )
     if any(marker in lowered for marker in future_markers):
         return True
@@ -465,6 +526,13 @@ def _message_selects_platform(message: str, choice: str, previous: list[str]) ->
     if _is_negated_or_future(lowered, choice):
         return False
     other = "opentrons-ot2" if choice == "jubilee" else "jubilee"
+    ordinal = _has_ordinal(message, lowered)
+    if ordinal is not None and previous:
+        index = 0 if ordinal == "first" else 1
+        if (len(previous) <= index or previous[index] != choice
+                or _mentions(other, lowered)
+                or _mentions_procurement(PLATFORM_PROCUREMENT[other], lowered)):
+            return False
     mentions_choice = _mentions(choice, lowered)
     mentions_other = _mentions(other, lowered)
     if mentions_choice and mentions_other:
@@ -495,10 +563,19 @@ def _message_selects_platform(message: str, choice: str, previous: list[str]) ->
     mentions_route = _mentions_procurement(route, lowered)
     mentions_other_route = _mentions_procurement(other_route, lowered)
     if mentions_route and not mentions_other_route and (_has_choice_verb(lowered) or short_answer):
+        if route == "open_hardware":
+            without_shorthand = re.sub(r"\bopen\s+(?:platform|route|system)\b", "", lowered)
+            if (not _mentions_procurement(route, without_shorthand)
+                    and not _selects_open_shorthand(lowered)):
+                return False
+        if re.search(
+            r"\b(?:not|don't|do not|never|won't|will not|non|mai|compare|explain|"
+            r"tell me|confronta|spiega)\b", lowered,
+        ):
+            return False
         matching = [pid for pid in previous if PLATFORM_PROCUREMENT.get(pid) == route]
         if len(matching) == 1 and matching[0] == choice:
             return True
-    ordinal = _has_ordinal(message, lowered)
     if ordinal is not None and previous:
         index = 0 if ordinal == "first" else 1
         if len(previous) > index and previous[index] == choice:

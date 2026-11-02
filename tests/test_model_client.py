@@ -380,7 +380,7 @@ def test_generic_workflow_cannot_receive_liquid_parameters_without_routing():
                 settings=TEST_SETTINGS,
             )
 
-    with pytest.raises(ModelClientError, match="invalid response"):
+    with pytest.raises(ModelClientError, match="could not be verified"):
         asyncio.run(run())
     assert project["summary"]["final_volume"] is None
     assert project["workflow"]["kind"] == "general"
