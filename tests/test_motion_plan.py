@@ -24,7 +24,7 @@ def compile_plan(project, mode="preparation"):
     node = shutil.which("node")
     assert node, "The pinned Node 24 toolchain is required"
     script = f"""
-import {{ compileMotionPlan, sampleMotionPlan, SOURCE_TUBE_MOUTH_ABOVE_RACK_MM,
+import {{ compileMotionPlan, sampleMotionPlan, availableTipSlots, SOURCE_TUBE_MOUTH_ABOVE_RACK_MM,
   PREVIEW_APPROACH_CLEARANCE_MM, SCHEMATIC_TIP_TOP_ABOVE_RACK_MM }}
   from {json.dumps(COMPILER)};
 let input = ''; for await (const chunk of process.stdin) input += chunk;
@@ -32,7 +32,12 @@ const project = JSON.parse(input), original = JSON.stringify(project);
 const plan = compileMotionPlan(project, {json.dumps(mode)});
 const samples = [-1, 0, plan.duration_s / 2, plan.duration_s + 1, NaN].map(
   time => sampleMotionPlan(plan, time));
-process.stdout.write(JSON.stringify({{plan, samples, constants: {{
+const rack = project.design.components.find(p => p.id === 'tip-rack');
+const count = rack?.geometry?.primitives.find(p => p.holes?.length)?.holes.length ?? 0;
+const inventory = plan.keyframes.filter(f => ['Pick up tip', 'Manual refill'].includes(f.stage))
+  .map(f => ({{frame: f, before: availableTipSlots(plan, f.time_s - 0.001, count),
+    after: availableTipSlots(plan, f.time_s, count)}}));
+process.stdout.write(JSON.stringify({{plan, samples, inventory, constants: {{
   source_mouth: SOURCE_TUBE_MOUTH_ABOVE_RACK_MM,
   clearance: PREVIEW_APPROACH_CLEARANCE_MM,
   schematic_tip: SCHEMATIC_TIP_TOP_ABOVE_RACK_MM}},
@@ -119,9 +124,7 @@ def test_bound_targets_tips_source_arithmetic_and_read_only_revision(plate, prof
     assert first["position_mm"] == pytest.approx(expected)
     pickup = next(f for f in frames if f["stage"] == "Pick up tip")
     tip_point = world_hole(p["tip-rack"])
-    tip_point[1] = (
-        p["tip-rack"]["position"][1] + p["tip-rack"]["size"][1] / 2 + (3 if profile else 17)
-    )
+    tip_point[1] = p["tip-rack"]["position"][1] + p["tip-rack"]["size"][1] / 2 + 14 - 22
     assert pickup["position_mm"] == pytest.approx(tip_point)
     assert pickup["tip_attached"]
     aspirate = next(f for f in frames if f["stage"] == "Aspirate")
@@ -216,3 +219,62 @@ def test_tall_tip_rack_exceeding_bed_pose_is_unavailable_without_mutation():
     plan = compile_plan(project)["plan"]
     assert plan["status"] == "unavailable"
     assert "bed-pose envelope" in plan["message"]
+
+
+@pytest.mark.parametrize("profile", [None, TIPONE, OPENTRONS])
+def test_tip_inventory_handoff_refill_and_backward_seek(profile):
+    project = before()
+    if profile:
+        project = selected(project, profile)
+    else:
+        top = next(
+            p for p in parts(project)["tip-rack"]["geometry"]["primitives"] if p.get("holes")
+        )
+        top["holes"] = top["holes"][:2]
+    output = compile_plan(project)
+    assert output["plan"]["status"] == "ready"
+    inventory = output["inventory"]
+    pickups = [event for event in inventory if event["frame"]["stage"] == "Pick up tip"]
+    assert pickups
+    for event in pickups:
+        slot = event["frame"]["tip_slot"]
+        assert event["before"][slot] and not event["after"][slot]
+        assert sum(event["before"]) - sum(event["after"]) == 1
+    refills = [event for event in inventory if event["frame"]["stage"] == "Manual refill"]
+    if profile is None:
+        assert refills
+        assert all(all(event["after"]) and not any(event["before"]) for event in refills)
+    # Sampling before the first pickup reconstructs the full inventory, even after a later sample.
+    assert all(pickups[0]["before"])
+
+
+def test_custom_holder_uses_exact_holes_and_manual_refill():
+    from test_tip_racks import SPEC
+
+    from app.tip_racks import PRINTED_ID, TipRackUpdate, select_tip_rack
+
+    project = before()
+    project["fabrication_capabilities"] = {
+        "printer_available": "yes",
+        "source": "I have a 3D printer",
+    }
+    project["tip_rack_request"] = {
+        "profile_id": PRINTED_ID,
+        "spec": SPEC,
+        "spec_sources": {key: "synthetic test fixture" for key in SPEC},
+    }
+    project, _ = select_tip_rack(
+        project, TipRackUpdate(), "Use the printed holder", accept_placement=True
+    )
+    output = compile_plan(project)
+    plan = output["plan"]
+    assert plan["status"] == "ready", plan["message"]
+    tips = parts(project)["tip-rack"]
+    pickup = next(f for f in plan["keyframes"] if f["stage"] == "Pick up tip")
+    expected = world_hole(tips)
+    expected[1] = tips["position"][1] + tips["size"][1] / 2 + 14 - 22
+    assert pickup["position_mm"] == pytest.approx(expected)
+    for event in output["inventory"]:
+        if event["frame"]["stage"] == "Pick up tip":
+            slot = event["frame"]["tip_slot"]
+            assert event["before"][slot] and not event["after"][slot]

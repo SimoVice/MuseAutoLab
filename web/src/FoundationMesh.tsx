@@ -3,6 +3,8 @@ import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fib
 import { DoubleSide, Mesh, MeshStandardMaterial, type Group } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { sampleMotionPlan } from './motionPlan';
+import { deformJubileeBelts } from './beltDeformation';
+import { sampleColdTransfer } from './coldTransferMotion';
 import type { OperationSpec } from './operation';
 
 /** Rigid renderer partitions of the pinned source. CAD exports use the original STEP. */
@@ -39,6 +41,16 @@ export default function FoundationMesh({ selected = false, onSelect, bedDropMm =
     });
     return cloned;
   }), [fixedGltf, crossbarGltf, carriageGltf, beltsGltf, bedGltf, material]);
+  const beltGeometry = useMemo(() => {
+    const meshes: Array<{ mesh: Mesh; original: Float32Array }> = [];
+    scenes[3].traverse((child) => {
+      if (child instanceof Mesh) {
+        const attribute = child.geometry.getAttribute('position');
+        meshes.push({ mesh: child, original: new Float32Array(attribute.array as ArrayLike<number>) });
+      }
+    });
+    return meshes;
+  }, [scenes]);
   useEffect(() => {
     material.emissive.set(selected ? '#0a6a71' : '#000000');
     material.emissiveIntensity = selected ? 0.17 : 0;
@@ -60,12 +72,22 @@ export default function FoundationMesh({ selected = false, onSelect, bedDropMm =
       dx = frame.position_mm[0] - home[0];
       dz = frame.position_mm[2] - home[2];
       drop += frame.position_mm[1] - home[1];
+    } else if (plan?.status === 'ready' && plan.mode === 'cold-transfer') {
+      const frame = sampleColdTransfer(plan, motion?.timeRef?.current ?? motion?.time_s ?? 0);
+      if (frame) [dx, dz] = frame.jubilee_park_mm;
     }
     // Source axes use the opposite Z convention to the application.
     crossbar.current.position.set(0, 0, -dz);
     carriage.current.position.set(dx, 0, -dz);
-    // Belt paths are fixed solids in the STEP and cannot depict flexing in motion.
-    belts.current.visible = Math.abs(dx) < 0.001 && Math.abs(dz) < 0.001;
+    // Deform the original straight runs between fixed frame turns and mobile turns.
+    // This is a visual kinematic interpolation, not a belt physics simulation.
+    beltGeometry.forEach(({ mesh, original }) => {
+      const position = mesh.geometry.getAttribute('position');
+      deformJubileeBelts(original, position.array as Float32Array, dx, -dz);
+      position.needsUpdate = true;
+      mesh.geometry.computeVertexNormals();
+      mesh.geometry.computeBoundingSphere();
+    });
     bed.current.position.set(0, -drop, 0);
   };
   useEffect(() => { apply(); invalidate(); }, [plan, motion?.time_s, motion?.playing, bedDropMm, invalidate]);

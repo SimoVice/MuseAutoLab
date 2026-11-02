@@ -43,7 +43,8 @@ def _cooling(project: dict) -> dict:
         "target_c": target,
         "target_source": info.get("target_source", "assumed"),
         "variant_id": str(info.get("variant_id", "")),
-        "transfer_mode": "manual",
+        "transfer_mode": ("digital_cold_transfer_concept"
+                          if project.get("cold_transfer_extension") else "manual"),
     }
 
 
@@ -345,7 +346,8 @@ def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = N
         "Custom deck is a solid blank for review, not fabrication-ready; no drill patterns "
         "or mounts are specified.",
         "No fastener sizes, torque values, wiring pinouts, or calibration steps are given.",
-        "Cold target is a requested setting with manual transfer, never a measured temperature.",
+        "On-deck cold-bay targets are requested settings with manual access, never measured "
+        "temperatures; an optional external cold-transfer concept is a separate subsystem.",
     ]
     if project.get("design", {}).get("platform"):
         limitations = [
@@ -479,7 +481,10 @@ STEPS
             + " mm"
         ),
     )
-    cooling_text = f"{cooling['variant_id']}, manual transfer" if cooling["enabled"] else "disabled"
+    cooling_text = (f"On-deck bay: {cooling['variant_id']}, manual access"
+                    if cooling["enabled"] else "On-deck bay disabled")
+    if project.get("cold_transfer_extension"):
+        cooling_text += "; separate external refrigerator and digital plate-transfer concept"
     page = page.replace("COOLING", html.escape(cooling_text))
     page = page.replace(
         "TARGET", target_text + " °C (requested)" if cooling["enabled"] else "not applicable"
@@ -671,7 +676,8 @@ def build_readme(project: dict) -> bytes:
         "- Rack holes and clamp details are concept assumptions, not verified labware fits.\n"
         "  The sample insert pattern follows the number of targets; validate before fabrication.\n"
         "- Rails, mounts, pipette actuation, power, wiring, and firmware are unverified.\n"
-        "- Cold target is a requested setting with manual transfer, never a measured result.\n"
+        "- On-deck cold-bay targets are requested settings with manual access, never measured "
+        "results. Any external refrigerator/plate-transfer concept is a separate subsystem.\n"
     )
     engineering = project.get("engineering_design")
     if engineering:
@@ -686,6 +692,16 @@ def build_readme(project: dict) -> bytes:
             "revision. Read project.json -> project.engineering_design for the accepted "
             "proposal, model identity and recorded checks. These checks do not establish "
             "mechanical, thermal or liquid-handling performance.\n"
+        )
+    if project.get("cold_transfer_extension"):
+        text += (
+            "\n## Dedicated refrigerator and plate-transfer concept\n\n"
+            "The CAD includes this revision's canonical external cabinet, lid, landing shelf, "
+            "gantry, mast, carriage, shaft and gripper. Read extension-plan.json and the "
+            "cold-transfer build-instruction step for component IDs and unresolved engineering. "
+            "The rigid plate moves separately from its holder. No control, gripping, collision "
+            "or thermal validation is claimed; hardware is unselected and unpriced. "
+            "Any original on-deck cooling bay retains its manual-access workflow.\n"
         )
     if project.get("inspection_extension"):
         text += (
@@ -808,6 +824,15 @@ def build_readme(project: dict) -> bytes:
 
 def build_extension_plan(project: dict) -> bytes:
     cooling = _cooling(project)
+    if project.get("cold_transfer_extension"):
+        return json.dumps({"project_id":_project_id(project), "revision":_revision(project),
+                           "status":"digital_concept", "installed":False,
+                           "cold_transfer_extension":project["cold_transfer_extension"],
+                           "inspection_extension":project.get("inspection_extension"),
+                           "cooling_transfer_mode":cooling["transfer_mode"],
+                           "on_deck_cold_bay_transfer_mode":"manual",
+                           "physics_scope":"not_run_imported_foundation"},
+                          indent=2, sort_keys=True).encode("utf-8")
     if project.get("inspection_extension"):
         return json.dumps(
             {
@@ -874,6 +899,23 @@ def build_extensions_md(project: dict) -> bytes:
     from app.foundation_design import is_source_based
 
     cooling = _cooling(project)
+    if project.get("cold_transfer_extension"):
+        module = project["cold_transfer_extension"]
+        text = ("# Cold transfer — digital concept\n\n"
+                f"Project {_project_id(project)} revision {_revision(project)}.\n\n"
+                "The dedicated refrigerated cabinet and Cartesian transfer gripper move only "
+                "the prepared rigid 96-well plate in the operating preview. Its holder stays "
+                "on the deck. No hardware control or thermal validation is implemented.\n\n"
+                "Assembly: engineer an independent supported gantry, plate-safe jaws, a "
+                "top-opening refrigerator and plate landing shelf; verify reach, loads, "
+                "travel clearances, liquid retention, condensation and interlocks before use. "
+                "Select and price hardware before procurement.\n\n"
+                + "\n".join("- " + item for item in module["limitations"]))
+        if project.get("inspection_extension"):
+            inspection_project = dict(project)
+            inspection_project.pop("cold_transfer_extension")
+            text += "\n\n" + build_extensions_md(inspection_project).decode("utf-8")
+        return text.encode("utf-8")
     extension = project.get("inspection_extension")
     if extension:
         simulation_scope = (
@@ -974,6 +1016,10 @@ def build_document_files(project: dict, procurement: dict | None = None) -> dict
             "quantities, source URLs, dates, gaps and stale/unavailable statuses. "
             "The known subtotal is partial, excludes unresolved items, and is not a "
             "complete machine quotation. Commercial offers do not replace accepted geometry.\n"
+        ).encode("utf-8")
+    if project.get("cold_transfer_extension"):
+        files["cold-transfer-module.json"] = json.dumps(
+            project["cold_transfer_extension"], indent=2, sort_keys=True
         ).encode("utf-8")
     extension = project.get("inspection_extension")
     if extension:

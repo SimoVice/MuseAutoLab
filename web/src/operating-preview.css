@@ -12,7 +12,7 @@
 .operation-buttons button:disabled { opacity: .45; cursor: default; }
 .operation-buttons label { margin-left: auto; font-size: 12px; display: flex; align-items: center; gap: 8px; }
 .operation-buttons select, .operation-mode select { background: white; color: #294044; border: 1px solid #b8cdcd; border-radius: 6px; padding: 6px; font: inherit; }
-.operation-mode { display: flex; align-items: center; gap: 12px; font-size: 12px; margin-top: 10px; }
+.operation-mode { display: flex; align-items: center; gap: 10px; font-size: 12px; margin: 4px 0 9px; }
 .operation-limits { margin-top: 12px; font-size: 12px; line-height: 1.6; color: #526b70; }
 .operation-limits summary { cursor: pointer; }
 .operation-limits ul { padding-left: 18px; }

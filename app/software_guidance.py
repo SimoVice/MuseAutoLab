@@ -239,6 +239,11 @@ def build_software_guidance(project: dict) -> dict:
         ],
         "limits": limitations,
     }
+    if project.get("cold_transfer_extension"):
+        limitations.extend(project["cold_transfer_extension"]["limitations"])
+        authoring.append("Treat cold transfer as a separate uncommissioned subsystem: "
+                         "select refrigerator, drives and jaws; validate liquid retention, "
+                         "clearances, interlocks and thermal performance before control.")
     return {
         "project_id": project.get("id"),
         "project_revision": project.get("revision", 0),

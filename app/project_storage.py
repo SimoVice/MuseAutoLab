@@ -90,6 +90,7 @@ class Snapshot(StrictModel):
     engineering: EngineeringState | None = None
     engineering_design: SavedDesign | None
     inspection_extension: dict[str, JsonValue] | None = None
+    cold_transfer_extension: dict[str, JsonValue] | None = None
     labware_brief: SavedLabwareBrief | None = None
     labware_rack: SavedLabwareRack | None = None
     labware_plate: SavedPlate | None = None
@@ -181,6 +182,8 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
             if extension
             else None
         ),
+        "cold_transfer_extension": ({"compiler": "cold-transfer-v1"}
+                                    if project.get("cold_transfer_extension") else None),
         "history": deepcopy(history[-8:]),
     }
     if payload["compiler_version"] == "4":
@@ -328,6 +331,11 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         from app.platform_profiles import commercial_sourcing
 
         project["sourcing"] = commercial_sourcing()
+    if saved.cold_transfer_extension is not None:
+        if saved.cold_transfer_extension != {"compiler": "cold-transfer-v1"} or upgraded:
+            raise ValueError("Unsupported saved cold-transfer extension.")
+        from app.cold_transfer import apply_cold_transfer
+        project = apply_cold_transfer(project, bump=False)
     if saved.status == "confirmed" and not upgraded and not clearance_upgrade:
         project = confirm_project(project)
     project["revision"] = saved.revision + int(upgraded or clearance_upgrade)

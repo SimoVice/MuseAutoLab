@@ -24,8 +24,9 @@ be opened with **Open project** to inspect the preview without a model request.
    inspect a draft before confirming it; generating CAD files is not required.
 2. Select **Play** in **Operating preview**. The status identifies the current
    action, destination and intended transfer volume.
-3. Use **Pause** or **Reset**. Expand **Playback details** to scrub the sequence,
-   choose a speed or switch to the inspection sequence when available.
+3. Use **Pause** or **Reset**. Expand **Playback details** to scrub the sequence
+   or change its speed. The **Sequence** selector appears when the design
+   includes a camera inspection or cold-transfer module.
 4. Change the recipe, labware or tip-rack product. The preview stops and rebuilds
    against the accepted revision, including the selected holes and well addresses.
 5. Download the motion plan from **Playback details** to inspect its revision,
@@ -37,11 +38,19 @@ or switching away from the model on mobile pauses it without losing the position
 
 ## What moves
 
+Selecting the Jubilee platform in chat opens its rotatable source model while
+the custom deck layout is being developed. An accepted workstation can run
+its preparation preview with the pipette alone.
+
 The preparation sequence shows tip pickup, the stock or diluent source, the
 assigned destination and tip disposal. Zero-volume transfers are skipped. For a
 plate, destinations follow the occupied well addresses rather than an evenly
 spaced approximation; a twelve-position tube rack uses its actual hole centers.
 Changing the tip-rack profile changes its visited positions as well as its shape.
+Each illustrative tip transfers from its displayed rack slot to the tool and then
+to waste; playback and seeking reconstruct available slots from the timeline. If
+the supply runs out, a labelled manual refill is shown before reuse. This is an
+illustration of a required intervention, not evidence that it took place.
 
 Jubilee's source-derived carriage and crossbar move horizontally. The source bed,
 custom deck and its mounted containers move together vertically. The planner
@@ -52,6 +61,26 @@ specification. The canonical design and STEP export remain at their accepted pos
 Inspection playback follows the accepted pose sequence and maintains rigid link
 lengths. It does not capture images or establish a calibrated field of view.
 
+### Transfer a plate into cold storage
+
+With a compatible 96-well plate on an accepted Jubilee layout, try this request.
+
+> Add a gripper to move the prepared 96-well plate into a dedicated refrigerator.
+
+The design gains a top-opening cabinet with a landing shelf and a separate
+Cartesian gripper. Select **Cold transfer** and press **Play**. The pipette
+carriage and any inspection camera park to clear the pickup path. Inspect the open
+jaws as they descend around the plate, then pause after release to see the plate
+resting on the shelf. Its holder stays on the deck and the occupied well markers
+travel with it. Reset returns the plate to its starting position for another run.
+
+![The parked inspection arm at left and the gripper holding the prepared plate above the open refrigerator at right](images/plate-to-cold-storage.png)
+
+The module can be saved with the project and removed in chat. It currently
+supports one rigid plate. The cabinet and gripper are custom concepts with
+no selected supplier. Grip force, open-plate handling, travel clearances and
+temperature control need physical verification.
+
 ## Read the preview correctly
 
 The displayed seconds are **preview time**, not a prediction of cycle time. Tool
@@ -61,11 +90,14 @@ modeled. A transfer label shows the planned total, not measured dispensing.
 Pipette capacity and splitting a transfer into repeated aspiration strokes are
 not modeled; the sequence is not an executable liquid-handling protocol.
 
-The source mesh is separated by existing assembly hierarchy for rendering, while
+The source mesh is separated using the assembly hierarchy and spatial association
+of nearby disconnected fasteners for rendering, while
 the pinned source STEP is unchanged. The [asset provenance](../app/assets/jubilee-c877bd2.motion-preview.json)
 records the original revision, license, partitions, transforms and mesh hashes.
-Flexible belts are omitted away from their
-rest pose because rigid meshes cannot represent their deformation. Custom tool
+The belt preview interpolates the original mesh between fixed frame turns and
+moving crossbar/carriage attachments. It preserves the source rest shape but does
+not simulate belt tension or pulley contact. The fastener association is an
+approximation. Custom tool
 attachments, motion clearance, loads, calibration and control still need
 engineering verification. The viewer does not establish collision safety or a
 successful physical simulation.
@@ -82,7 +114,7 @@ one shared playback clock. The renderer applies rigid transforms without writing
 them back to project geometry. Revision changes reset the preview; unavailable
 adapters and invalid pose envelopes cannot be played.
 
-See the [verification record](verification.md#revision-bound-operating-previews--2026-11-02)
+See the [verification record](verification.md#plate-transfer-and-motion-continuity)
 for numerical and browser checks. Rebuilding the committed source preview meshes
 is optional and memory-intensive (about 22 GB was observed during conversion).
 Normal playback loads the prepared assets and does not import the source STEP.

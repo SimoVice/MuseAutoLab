@@ -174,12 +174,24 @@ def session_for(project_id: str) -> ProjectSession:
     return session
 
 
-def _accept_project(session: ProjectSession, updated: dict) -> None:
+def _accept_project(session: ProjectSession, updated: dict, *, preserve_cold: bool = True) -> None:
     """Rebind trusted sidecars at a validated project transition, never on reads."""
     from app.price_estimation import rebind_estimate
     from app.procurement import rebind_report
 
     before = session.project
+    if preserve_cold and before.get("cold_transfer_extension"):
+        from app.cold_transfer import apply_cold_transfer
+
+        candidate = deepcopy(updated)
+        candidate["cold_transfer_extension"] = deepcopy(before["cold_transfer_extension"])
+        try:
+            candidate = apply_cold_transfer(candidate, bump=False)
+        except ValueError as exc:
+            raise HTTPException(status_code=422,
+                                detail=f"{exc} The project was not changed.") from None
+        updated.clear()
+        updated.update(candidate)
     report = rebind_report(before, updated, session.procurement_report)
     estimate = rebind_estimate(
         before, updated, session.cost_estimate, session.procurement_report, report
@@ -631,6 +643,59 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
     # Serialize each project's turns: a slow model call cannot overwrite a newer revision.
     async with session.model_lock():
         current = session.project
+        from app.cold_transfer import (
+            apply_cold_transfer,
+            clear_cold_transfer,
+            cold_transfer_intent,
+            require_supported_payload_request,
+        )
+        cold_intent = cold_transfer_intent(request.message)
+        if cold_intent:
+            updated = deepcopy(current)
+            status = "ready"
+            if cold_intent == "add":
+                try:
+                    require_supported_payload_request(request.message)
+                    if current.get("cold_transfer_extension"):
+                        reply = ("The dedicated refrigerator and plate gripper are already in this "
+                                 "design. Select Cold transfer in Operating preview to inspect it.")
+                    else:
+                        updated = apply_cold_transfer(current)
+                        status = "accepted"
+                        reply = ("Added a dedicated refrigerator and plate gripper. Press Play in "
+                                 "Operating preview to follow the 96-well plate from its holder to "
+                                 "the cabinet shelf. Grip, clearances and cooling performance "
+                                 "still need physical verification.")
+                except ValueError as exc:
+                    status, reply = "rejected", str(exc)
+            elif cold_intent == "remove":
+                updated = clear_cold_transfer(current)
+                if current.get("cold_transfer_extension"):
+                    updated["revision"] += 1
+                    updated["status"] = "draft"
+                    status = "accepted"
+                    reply = "Removed the dedicated refrigerator and transfer gripper."
+                else:
+                    reply = "This design already has no cold-transfer module."
+            elif cold_intent == "clarify":
+                reply = ("Please send the gripper and refrigerator request separately from your "
+                         "other design changes so you can review each revision.")
+            else:
+                reply = ("Cold transfer is available as an optional Jubilee digital "
+                         "concept for a rigid "
+                         "96-well plate, with a dedicated refrigerator and Cartesian gripper. "
+                         "Hardware is unselected and unpriced. Ask explicitly to add it "
+                         "when ready; "
+                         "this discussion has not changed the project.")
+            if status == "accepted":
+                _accept_project(session, updated, preserve_cold=cold_intent != "remove")
+            session.history.extend([{"role":"user", "content":request.message},
+                                    {"role":"assistant", "content":reply}])
+            session.history = session.history[-8:]
+            return {"project": deepcopy(updated), "assistant_message": reply,
+                    "usage": {}, "recommendations": [],
+                    "action_runs": [{"kind": "cold_transfer", "status": status, "message": reply}],
+                    "assistant_message_origin": "canonical_cold_transfer_state"}
         try:
             turn, usage = await generate_turn(
                 project_with_report(current, session.procurement_report, session.cost_estimate),

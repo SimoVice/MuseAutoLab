@@ -8,6 +8,9 @@ import type { Group, Mesh, OrthographicCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Component, InspectionExtension, LabwarePlate, LabwareRack, PhysicsFrame, PhysicsView, Project } from './types';
 import GeometryPart from './GeometryPart';
+import ColdTransferScene from './ColdTransferScene';
+import { sampleColdTransfer } from './coldTransferMotion';
+import type { ColdTransferPlan } from './coldTransferMotion';
 import FoundationMesh from './FoundationMesh';
 import './scene-controls.css';
 import {
@@ -18,7 +21,7 @@ import {
   sampleOperationKeyframes,
 } from './operation';
 import type { OperationKeyframe, OperationSpec, Vec3 } from './operation';
-import { sampleMotionPlan, SOURCE_TUBE_MOUTH_ABOVE_RACK_MM, SCHEMATIC_TIP_TOP_ABOVE_RACK_MM, VIRTUAL_TIP_LENGTH_MM } from './motionPlan';
+import { availableTipSlots, sampleMotionPlan, SOURCE_TUBE_MOUTH_ABOVE_RACK_MM, SCHEMATIC_TIP_TOP_ABOVE_RACK_MM, VIRTUAL_TIP_LENGTH_MM } from './motionPlan';
 import type { MotionFrame, MotionPlan } from './motionPlan';
 
 const SCALE = 100;
@@ -390,6 +393,27 @@ function TimelineHead({ carriage, pipette, frame, plan, timeRef, time, playing, 
   </group>;
 }
 
+function ColdParkedHead({ carriage, pipette, plan, operation, center, selectedId, onSelect, visibleIds }: {
+  carriage: Component; pipette: Component; plan: MotionPlan; operation: OperationSpec; center: Vec3;
+  selectedId: string | null; onSelect: (id: string) => void; visibleIds: string[] | null;
+}) {
+  const group = useRef<Group>(null);
+  const invalidate = useThree((state) => state.invalidate);
+  const apply = () => {
+    const park = sampleColdTransfer(plan, operation.timeRef?.current ?? operation.time_s ?? 0)?.jubilee_park_mm ?? [0, 0];
+    group.current?.position.set((carriage.position[0] + park[0] - center[0]) / SCALE,
+      (carriage.position[1] - center[1]) / SCALE, (carriage.position[2] + park[1] - center[2]) / SCALE);
+  };
+  useEffect(() => { apply(); invalidate(); }, [plan, operation.time_s, operation.playing, center, invalidate]);
+  useFrame(() => { if (operation.playing) { apply(); invalidate(); } });
+  const pipetteOffset: Vec3 = [(pipette.position[0] - carriage.position[0]) / SCALE,
+    (pipette.position[1] - carriage.position[1]) / SCALE, (pipette.position[2] - carriage.position[2]) / SCALE];
+  return <group ref={group} name="cold-parked-jubilee-head">
+    {(!visibleIds || visibleIds.includes(carriage.id)) && <GeometryPart part={carriage} position={[0, 0, 0]} selected={selectedId === carriage.id} onSelect={onSelect} />}
+    {(!visibleIds || visibleIds.includes(pipette.id)) && <GeometryPart part={pipette} position={pipetteOffset} selected={selectedId === pipette.id} onSelect={onSelect} />}
+  </group>;
+}
+
 // All accepted deck-mounted components share the source bed's vertical pose.
 function BedContents({ operation, enabled, children }: { operation?: OperationSpec; enabled: boolean; children: ReactNode }) {
   const group = useRef<Group>(null);
@@ -475,7 +499,7 @@ function sampleInspection(extension: InspectionExtension, time: number): Compone
 
 // The inspection pose sequence describes rigid links and joints. Keep the
 // original shapes mounted and apply interpolated transforms using the shared clock.
-function SmoothInspection({ extension, center, selectedId, onSelect, visibleIds, playback, time }: {
+function SmoothInspection({ extension, center, selectedId, onSelect, visibleIds, playback, time, coldClock }: {
   extension: InspectionExtension;
   center: Vec3;
   selectedId: string | null;
@@ -483,12 +507,14 @@ function SmoothInspection({ extension, center, selectedId, onSelect, visibleIds,
   visibleIds: string[] | null;
   playback: { timeRef: { current: number }; playing: boolean };
   time: number;
+  coldClock?: { plan: MotionPlan; operation: OperationSpec };
 }) {
   const groups = useRef(new Map<string, Group>());
   const invalidate = useThree((state) => state.invalidate);
   const baseline = extension.pose_frames[0]?.components ?? extension.components;
   const apply = () => {
-    for (const part of sampleInspection(extension, playback.playing ? playback.timeRef.current : time)) {
+    const coldTime = coldClock && sampleColdTransfer(coldClock.plan, coldClock.operation.timeRef?.current ?? coldClock.operation.time_s ?? 0)?.inspection_park_ratio;
+    for (const part of sampleInspection(extension, coldTime ?? (playback.playing ? playback.timeRef.current : time))) {
       const group = groups.current.get(part.id);
       if (!group) continue;
       group.position.set((part.position[0] - center[0]) / SCALE, (part.position[1] - center[1]) / SCALE, (part.position[2] - center[2]) / SCALE);
@@ -500,13 +526,27 @@ function SmoothInspection({ extension, center, selectedId, onSelect, visibleIds,
       }
     }
   };
-  useEffect(() => { apply(); invalidate(); }, [extension, playback.timeRef, playback.playing, time, visibleIds, center[0], center[1], center[2], invalidate]);
-  useFrame(() => { if (playback.playing) { apply(); invalidate(); } });
+  useEffect(() => { apply(); invalidate(); }, [extension, playback.timeRef, playback.playing, time, coldClock?.operation.time_s, coldClock?.operation.playing, visibleIds, center[0], center[1], center[2], invalidate]);
+  useFrame(() => { if (coldClock?.operation.playing || (!coldClock && playback.playing)) { apply(); invalidate(); } });
   return <group name="inspection-motion-preview">{baseline.filter((part) => !visibleIds || visibleIds.includes(part.id)).map((part) =>
     <group key={part.id} ref={(group) => { if (group) groups.current.set(part.id, group); else groups.current.delete(part.id); }}
       position={[(part.position[0] - center[0]) / SCALE, (part.position[1] - center[1]) / SCALE, (part.position[2] - center[2]) / SCALE]}>
       <GeometryPart part={part} position={[0, 0, 0]} selected={part.id === selectedId} onSelect={onSelect} />
     </group>)}</group>;
+}
+
+function ColdInspection({ extension, parkFrame, operation, plan, initialTime, center, selectedId, onSelect, visibleIds }: {
+  extension: InspectionExtension; parkFrame: NonNullable<ColdTransferPlan['inspection_park_frame']>;
+  operation: OperationSpec; plan: MotionPlan; initialTime: number; center: Vec3;
+  selectedId: string | null; onSelect: (id: string) => void; visibleIds: string[] | null;
+}) {
+  const [derived] = useState<InspectionExtension>(() => ({ ...extension, pose_frames: [
+    { ...extension.pose_frames[0], time_s: 0, components: sampleInspection(extension, initialTime) },
+    { ...parkFrame, time_s: 1 },
+  ] }));
+  const [playback] = useState(() => ({ timeRef: { current: 0 }, playing: false }));
+  return <SmoothInspection extension={derived} center={center} selectedId={selectedId} onSelect={onSelect} visibleIds={visibleIds}
+    playback={playback} time={0} coldClock={{ plan, operation }} />;
 }
 
 function samplePhysicsFrames(frames: PhysicsFrame[], time: number): PhysicsFrame | null {
@@ -568,7 +608,7 @@ function PhysicalHead({ carriage, pipette, frame, center, selectedId, onSelect }
   );
 }
 
-function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack, labwarePlate, hasTipRack, showPlateLabels, showOpenTubes }: {
+function RackDetails({ components, center, stepCount, selectedId, onSelect, labwareRack, labwarePlate, showPlateLabels, showOpenTubes, hidePlateDetails }: {
   components: Component[];
   center: [number, number, number];
   stepCount: number;
@@ -576,8 +616,8 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
   onSelect: (id: string) => void;
   labwareRack?: LabwareRack | null;
   labwarePlate?: LabwarePlate | null;
-  hasTipRack: boolean;
   showPlateLabels?: boolean;
+  hidePlateDetails?: boolean;
   showOpenTubes?: boolean;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -612,32 +652,6 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
             <mesh key={`${prefix}-${index}`} position={[x, rackTopY + SOURCE_TUBE_MOUTH_ABOVE_RACK_MM / SCALE - height / 2, z]} {...events(rack.id)}>
               <cylinderGeometry args={[radius, radius, height, 16, 1, true]} />
               <meshStandardMaterial color={color} metalness={0.05} roughness={0.45}
-                emissive={selectedId === rack.id || hoveredId === rack.id ? '#0a6a71' : '#000000'} emissiveIntensity={selectedId === rack.id ? 0.2 : 0.09} />
-            </mesh>
-          );
-        })}
-      </group>
-    );
-  };
-
-  const tipRow = (rack: Component | undefined) => {
-    if (!rack) return null;
-    const count = 4;
-    const rackCenterX = (rack.position[0] - center[0]) / SCALE;
-    const rackCenterZ = (rack.position[2] - center[2]) / SCALE;
-    const rackTopY = (rack.position[1] - center[1]) / SCALE + rack.size[1] / SCALE / 2;
-    const spacing = Math.min(0.2, (rack.size[0] / SCALE) / (count + 1));
-    const top = rack.geometry?.primitives.find((part) => part.holes?.length);
-    return (
-      <group key="tips">
-        {Array.from({ length: count }, (_, index) => {
-          const hole = top?.holes?.[index];
-          const x = hole ? rackCenterX + (top!.position[0] + hole.x_mm) / SCALE : rackCenterX + (index - (count - 1) / 2) * spacing;
-          const z = hole ? rackCenterZ + (top!.position[2] + hole.z_mm) / SCALE : rackCenterZ;
-          return (
-            <mesh key={`tip-${index}`} position={[x, rackTopY + SCHEMATIC_TIP_TOP_ABOVE_RACK_MM / SCALE - 0.08, z]} {...events(rack.id)}>
-              <cylinderGeometry args={[0.045, 0.016, 0.16, 12]} />
-              <meshStandardMaterial color="#ffffff" metalness={0.02} roughness={0.35}
                 emissive={selectedId === rack.id || hoveredId === rack.id ? '#0a6a71' : '#000000'} emissiveIntensity={selectedId === rack.id ? 0.2 : 0.09} />
             </mesh>
           );
@@ -699,10 +713,64 @@ function RackDetails({ components, center, stepCount, selectedId, onSelect, labw
   return (
     <group>
       {tubeRow(details.sourceRack, 2, 0.06, 0.22, '#2f6f77', 'source-tube')}
-      {labwarePlate ? microplateWells() : labwareRack ? customSampleTubes() : tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
-      {!hasTipRack && tipRow(details.tipRack)}
+      {labwarePlate ? !hidePlateDetails && microplateWells() : labwareRack ? customSampleTubes() : tubeRow(details.sampleRack, sampleTubeCount, 0.06, 0.22, '#3a8a92', 'sample-tube')}
+
     </group>
   );
+}
+
+// A released tip descends into the waste envelope; time is derived from playback.
+function DiscardedTip({ waste, center, operation, active }: { waste?: Component; center: Vec3; operation?: OperationSpec; active: boolean }) {
+  const mesh = useRef<Mesh>(null);
+  const invalidate = useThree((state) => state.invalidate);
+  const plan = active ? operation?.timeline : undefined;
+  const apply = () => {
+    if (!mesh.current || !waste) return;
+    const time = operation?.timeRef?.current ?? operation?.time_s ?? 0;
+    const discarded = plan?.keyframes.filter((frame) => frame.stage === 'Discard tip' && frame.time_s <= time).at(-1);
+    mesh.current.visible = Boolean(discarded);
+    if (discarded) {
+      const fall = Math.min(1, Math.max(0, (time - discarded.time_s) / 0.35));
+      mesh.current.position.set((waste.position[0] - center[0]) / SCALE,
+        (waste.position[1] + waste.size[1] / 2 + 5 + VIRTUAL_TIP_LENGTH_MM / 2 - fall * 25 - center[1]) / SCALE,
+        (waste.position[2] - center[2]) / SCALE);
+    }
+  };
+  useEffect(() => { apply(); invalidate(); }, [plan, operation?.time_s, operation?.playing, waste, invalidate]);
+  useFrame(() => { if (plan && operation?.playing) { apply(); invalidate(); } });
+  if (!waste || !plan) return null;
+  return <mesh ref={mesh} visible={false} name="discarded-tip-preview">
+    <cylinderGeometry args={[0.035, 0.012, VIRTUAL_TIP_LENGTH_MM / SCALE, 16]} />
+    <meshStandardMaterial color="#f7fbfb" metalness={0.05} roughness={0.4} />
+  </mesh>;
+}
+
+// The same tip envelopes and hole order are used by the motion compiler.
+function TipInventory({ rack, center, operation, active, onSelect }: {
+  rack?: Component; center: Vec3; operation?: OperationSpec; active: boolean; onSelect: (id: string) => void;
+}) {
+  const group = useRef<Group>(null);
+  const invalidate = useThree((state) => state.invalidate);
+  const top = rack?.geometry?.primitives.find((primitive) => primitive.holes?.length);
+  const holes = top?.holes ?? [];
+  const plan = active ? operation?.timeline : undefined;
+  const apply = () => {
+    if (!group.current) return;
+    const available = plan ? availableTipSlots(plan, operation?.timeRef?.current ?? operation?.time_s ?? 0, holes.length) : holes.map(() => true);
+    group.current.children.forEach((child, index) => { child.visible = available[index]; });
+  };
+  useEffect(() => { apply(); invalidate(); }, [plan, operation?.time_s, operation?.playing, holes.length, invalidate]);
+  useFrame(() => { if (plan && operation?.playing) { apply(); invalidate(); } });
+  if (!rack || !top) return null;
+  const topY = rack.position[1] + rack.size[1] / 2 + SCHEMATIC_TIP_TOP_ABOVE_RACK_MM;
+  return <group ref={group} name="tip-inventory">{holes.map((hole, index) => <mesh key={index}
+    name={`rack-tip-${index}`} position={[(rack.position[0] + top.position[0] + hole.x_mm - center[0]) / SCALE,
+      (topY - VIRTUAL_TIP_LENGTH_MM / 2 - center[1]) / SCALE,
+      (rack.position[2] + top.position[2] + hole.z_mm - center[2]) / SCALE]}
+    onClick={(event) => { event.stopPropagation(); onSelect(rack.id); }}>
+    <cylinderGeometry args={[0.035, 0.012, VIRTUAL_TIP_LENGTH_MM / SCALE, 16]} />
+    <meshStandardMaterial color="#f7fbfb" metalness={0.05} roughness={0.4} />
+  </mesh>)}</group>;
 }
 
 export default function Scene({ project, selectedId, onSelect, operation, physics, inspectionTime = 0, inspectionPlayback, captureRef }: {
@@ -724,7 +792,19 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     setSourceLoading(!ready);
   }, []);
   const extension = project.inspection_extension;
+  const cold = project.cold_transfer_extension;
   const physicsActive = Boolean(physics && physics.result.project_id === project.id && physics.result.revision === project.revision && physics.result.frames.length > 0 && designComponents.some((part) => part.id === 'carriage') && designComponents.some((part) => part.id === 'pipette'));
+  const coldSample = designComponents.find((part) => part.id === cold?.payload_component_id);
+  const coldTimeline = operation?.timeline;
+  const inspectionPark = (coldTimeline as ColdTransferPlan | undefined)?.inspection_park_frame;
+  const showColdHardware = Boolean(!physicsActive && cold && coldSample && project.labware_plate &&
+    ['cold-transfer-lid', 'cold-transfer-carriage', 'cold-transfer-gripper', 'cold-transfer-shaft'].every((id) => cold.components.some((part) => part.id === id)));
+  const showCold = Boolean(showColdHardware && cold && coldSample && project.labware_plate && coldTimeline &&
+    coldTimeline.status === 'ready' && coldTimeline.mode === 'cold-transfer' &&
+    coldTimeline.project_id === project.id && coldTimeline.revision === project.revision &&
+    (!extension || Boolean(inspectionPark)) &&
+    sampleColdTransfer(coldTimeline, operation?.time_s ?? 0));
+  const coldIds = useMemo(() => new Set(cold?.component_ids ?? []), [cold]);
   const components = useMemo(() => {
     if (!extension) return designComponents;
     const displayed = sampleInspection(extension, physicsActive ? 0 : inspectionTime);
@@ -757,8 +837,22 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     if (!components.length) return { center: [0, 0, 0] as [number, number, number], height: 0 };
     const min = [0, 1, 2].map((axis) => Math.min(...components.map((part) => part.position[axis] - part.size[axis] / 2), extension?.bounds.min_mm[axis] ?? Infinity));
     const max = [0, 1, 2].map((axis) => Math.max(...components.map((part) => part.position[axis] + part.size[axis] / 2), extension?.bounds.max_mm[axis] ?? -Infinity));
+    // Include the complete lid swing, even when playback is paused or sought.
+    const lid = cold?.components.find((part) => part.id === 'cold-transfer-lid');
+    if (lid && cold && Number.isFinite(cold.lid_open_angle_deg)) {
+      const hingeZ = lid.position[2] + lid.size[2] / 2;
+      for (let i = 0; i <= 48; i += 1) {
+        const angle = cold.lid_open_angle_deg * Math.PI / 180 * i / 48;
+        for (const y of [-lid.size[1] / 2, lid.size[1] / 2]) for (const z of [-lid.size[2], 0]) {
+          const movedY = lid.position[1] + y * Math.cos(angle) - z * Math.sin(angle);
+          const movedZ = hingeZ + y * Math.sin(angle) + z * Math.cos(angle);
+          min[1] = Math.min(min[1], movedY); max[1] = Math.max(max[1], movedY);
+          min[2] = Math.min(min[2], movedZ); max[2] = Math.max(max[2], movedZ);
+        }
+      }
+    }
     return { center: [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2] as [number, number, number], width: max[0] - min[0], height: max[1] - min[1], depth: max[2] - min[2] };
-  }, [designComponents, extension]);
+  }, [designComponents, extension, cold]);
   const target: [number, number, number] = [0, bounds.height / SCALE / 2, 0];
 
   const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
@@ -766,11 +860,16 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
     if (!isolation || isolation.id !== selectedId) return null;
     const parts = components.filter((part) => isolation.ids.includes(part.id));
     if (!parts.length) return null;
+    // Keep the full travel in view when an isolated cold-transfer part moves.
+    if (isolation.ids.some((id) => (showCold && id === coldSample?.id) || (showColdHardware && coldIds.has(id)))) {
+      return { ...isolation, position: [0, bounds.height / SCALE / 2, 0] as Vec3,
+        size: [(bounds.width ?? 0) / SCALE, bounds.height / SCALE, (bounds.depth ?? 0) / SCALE] as Vec3 };
+    }
     const min = [0, 1, 2].map((axis) => Math.min(...parts.map((part) => part.position[axis] - part.size[axis] / 2)));
     const max = [0, 1, 2].map((axis) => Math.max(...parts.map((part) => part.position[axis] + part.size[axis] / 2)));
     return { ...isolation, position: min.map((value, axis) => ((value + max[axis]) / 2 - bounds.center[axis]) / SCALE) as Vec3,
       size: min.map((value, axis) => (max[axis] - value) / SCALE) as Vec3 };
-  }, [isolation, selectedId, components, bounds.center]);
+  }, [isolation, selectedId, components, bounds, showCold, showColdHardware, coldSample, coldIds]);
   const selectedPart = selectedId ? byId.get(selectedId) : undefined;
   const canInspectWork = Boolean(project.design.foundation && selectedId && WORKING_AREA_IDS.includes(selectedId));
   const canInspectArm = Boolean(selectedId && extension?.component_ids.includes(selectedId));
@@ -877,9 +976,13 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   }, [project.labware_rack, project.labware_plate, byId, bounds.center, carriagePart, pipettePart, normalizedStepCount, operation?.steps]);
 
   const staticParts = useMemo(() => {
-    if (!showAnimation && !showTimeline && !physicsActive) return components;
+    if (!showAnimation && !showTimeline && !showCold && !physicsActive) return components;
     return components.filter((part) => part.id !== 'carriage' && part.id !== 'pipette');
-  }, [components, showAnimation, showTimeline, physicsActive]);
+  }, [components, showAnimation, showTimeline, showCold, physicsActive]);
+  const bedPartForDisplay = (part: Component): Component => {
+    if (!showCold || part.id !== coldSample?.id || !part.geometry) return part;
+    return { ...part, geometry: { ...part.geometry, primitives: part.geometry.primitives.filter((primitive) => !primitive.id.startsWith('reference-plate-')) } };
+  };
 
   return (
     <>
@@ -903,26 +1006,35 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
         <FitCamera enabled={!isolated} width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
         <FocusCamera request={isolated?.mode === 'arm' ? isolation : isolated} focusKey={isolated?.mode === 'part' && isolated.id === 'tip-rack' ? `${project.id}:tip-rack` : null} />
         <group>
-          {(isolated && !showTimeline ? components : staticParts).filter((part) => part.kind !== 'upstream-cad' && !BED_PART_IDS.has(part.id) && (!smoothInspection || !extension?.component_ids.includes(part.id)) && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={part}
+          {(isolated && !showTimeline && !showCold ? components : staticParts).filter((part) => part.kind !== 'upstream-cad' && !BED_PART_IDS.has(part.id) && (!showColdHardware || !coldIds.has(part.id)) && (!(smoothInspection || showCold) || !extension?.component_ids.includes(part.id)) && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={part}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
             selected={part.id === selectedId} onSelect={onSelect} />)}
         </group>
-        {smoothInspection && extension && inspectionPlayback && <SmoothInspection extension={extension} center={bounds.center}
+        {!showCold && smoothInspection && extension && inspectionPlayback && <SmoothInspection extension={extension} center={bounds.center}
           selectedId={selectedId} onSelect={onSelect} visibleIds={isolated?.ids ?? null} playback={inspectionPlayback} time={inspectionTime} />}
+        {showCold && extension && inspectionPark && operation && coldTimeline && <ColdInspection extension={extension} parkFrame={inspectionPark}
+          operation={operation} plan={coldTimeline} initialTime={inspectionPlayback?.timeRef.current ?? inspectionTime} center={bounds.center}
+          selectedId={selectedId} onSelect={onSelect} visibleIds={isolated?.ids ?? null} />}
         {project.design.foundation && <Suspense fallback={<SourceState ready={false} onChange={updateSourceReady} />}>
           <SourceState ready onChange={updateSourceReady} />
           <group visible={!isolated || isolated.ids.includes('foundation-jubilee')} position={[-bounds.center[0] / SCALE, -bounds.center[1] / SCALE, -bounds.center[2] / SCALE]}>
             <FoundationMesh bedDropMm={project.design.foundation.bed_drop_mm}
-              motion={showTimeline ? operation : undefined}
+              motion={showTimeline || showCold ? operation : undefined}
               selected={selectedId === 'foundation-jubilee'} onSelect={onSelect} />
           </group>
         </Suspense>}
         <BedContents enabled={Boolean(project.design.foundation && showTimeline)} operation={operation}>
-          {(isolated && !showTimeline ? components : staticParts).filter((part) => BED_PART_IDS.has(part.id) && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={part}
+          {(isolated && !showTimeline && !showCold ? components : staticParts).filter((part) => BED_PART_IDS.has(part.id) && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={bedPartForDisplay(part)}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}
             selected={part.id === selectedId} onSelect={onSelect} />)}
-          <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} labwarePlate={project.labware_plate} hasTipRack={Boolean(project.tip_rack)} showPlateLabels={isolated?.mode === 'part' && selectedId === project.labware_plate?.target_component_id} showOpenTubes={showTimeline} />
+          <RackDetails components={isolated ? components.filter((part) => isolated.ids.includes(part.id)) : components} center={bounds.center} stepCount={operation ? normalizedStepCount : project.plan?.steps.length ?? 0} selectedId={selectedId} onSelect={onSelect} labwareRack={project.labware_rack} labwarePlate={project.labware_plate} showPlateLabels={isolated?.mode === 'part' && selectedId === project.labware_plate?.target_component_id} showOpenTubes={showTimeline} hidePlateDetails={showCold} />
+          {(!isolated || isolated.ids.includes('tip-waste')) && <DiscardedTip waste={byId.get('tip-waste')} center={bounds.center} operation={operation} active={showTimeline} />}
+          {(!isolated || isolated.ids.includes('tip-rack')) && <TipInventory rack={byId.get('tip-rack')} center={bounds.center} operation={operation} active={showTimeline} onSelect={onSelect} />}
         </BedContents>
+        {showColdHardware && cold && coldSample && project.labware_plate && <ColdTransferScene extension={cold} sample={coldSample} plate={project.labware_plate}
+          center={bounds.center} operation={showCold ? operation : undefined} selectedId={selectedId} onSelect={onSelect} visibleIds={isolated?.ids ?? null} renderPayload={showCold} />}
+        {showCold && coldTimeline && operation && carriagePart && pipettePart && <ColdParkedHead carriage={carriagePart} pipette={pipettePart}
+          plan={coldTimeline} operation={operation} center={bounds.center} selectedId={selectedId} onSelect={onSelect} visibleIds={isolated?.ids ?? null} />}
         {!isolated && physicsActive && physics && physics.result.obstacles.map((obstacle) => (
           <mesh
             key={obstacle.id}

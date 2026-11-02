@@ -983,6 +983,34 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
                     )
                 ],
             )
+        cold_transfer = project.get("cold_transfer_extension")
+        if cold_transfer:
+            add(
+                "cold-transfer-extension",
+                "Engineer the dedicated refrigerator and plate-transfer subsystem",
+                cold_transfer.get("component_ids", []),
+                [
+                    "Keep the canonical cabinet, lid, landing shelf, gantry, mast, carriage, "
+                    "shaft and gripper at their recorded placements. These are custom concept "
+                    "envelopes, not a selected commercial refrigerator or compatible gripper.",
+                    "Move only the named rigid 96-well plate; leave its custom holder on the "
+                    "deck. The operating preview illustrates planned kinematics only.",
+                    "Select and price refrigeration, actuators, guides, jaws, sensors, power, "
+                    "mounts and guarding before procurement. No control adapter is implemented.",
+                    "The original on-deck cold-storage bay, when present, remains a separate "
+                    "manual-access module; this external transfer concept does not automate it.",
+                    *cold_transfer.get("limitations", []),
+                ],
+                ["Review plate grip and liquid retention, holder access, complete motion "
+                 "clearance, lid sequencing, recovery and stop interlocks before commissioning."],
+                prerequisites=["frame", "racks"],
+                tasks=[(
+                    "Specify the independent gantry attachment, refrigerator landing interface, "
+                    "gripper, wiring and controller boundaries.",
+                    "Obtain reviewed drawings and hardware prices; measure sample temperature "
+                    "and verify supervised transfer/retention and failure recovery separately.",
+                )],
+            )
         extension = project.get("inspection_extension")
         if extension and route != "opentrons-ot2":
             from app.inspection import footprint_notice

@@ -9,7 +9,7 @@
   "license_url": "https://creativecommons.org/licenses/by/4.0/",
   "source_license_url": "https://github.com/machineagency/jubilee/blob/c877bd2e889560c83da2a68479641a4f7f0d9b83/license.txt",
   "scope": "Renderer-only approximate meshes, not fabrication files or a physics/control adapter. CAD export retains the unchanged pinned STEP.",
-  "source_hierarchy": "Paths below use the 0-based child index in the imported STEP assembly. Parent locations are applied to extracted descendants; no source solids are cut.",
+  "source_hierarchy": "Paths below use the 0-based child index in the imported STEP assembly. Parent locations are applied to extracted descendants; no source solids are cut. Subsequent connected-component reclassification moves local fasteners from the fixed preview to nearby moving groups; see geometric_association.",
   "partition": {
     "fixed": {
       "root_children": "all except build_plate_assembly and jubilee_xy_frame_assembly_Centered_Carriage",
@@ -98,31 +98,31 @@
     "crossbar": "source Z = -app delta Z",
     "carriage": "source X = app delta X; source Z = -app delta Z",
     "bed": "source Y = -bed_drop_mm; deck content follows bed",
-    "belts": "Hidden away from original horizontal rest pose because fixed STEP solids cannot depict flexible belts."
+    "belts": "Renderer interpolates source mesh straight runs between fixed frame turns, crossbar turns and the carriage belt endpoints; original shape is preserved at rest. This is illustrative geometry, not tension or belt dynamics."
   },
   "tessellation": {
     "linear_deflection_mm": 0.8,
     "angular_deflection_rad": 0.5,
     "vertex_merge": "exact positions in float32 STL",
     "simplifier": "meshoptimizer 1.1.1, target 900000 indices, relative error 0.002 maximum",
-    "fixed_reported_error": 0.00025233617634512484,
+    "fixed_reported_error": 0.00024411617778241634,
     "other_reported_error": 0
   },
   "preview_assets": {
     "fixed": {
       "path": "web/public/assets/jubilee-c877bd2-motion-fixed.glb",
-      "sha256": "9428ee0be890b8f7dd95b77d8f3d3a1e6d7552733c29740c26cb883f28b9c23e",
-      "bytes": 5393688
+      "sha256": "f3d764a55b0e6ea39947cf5f8e1aa5ede13354ce48d6bbfbbf112588986208eb",
+      "bytes": 5393316
     },
     "crossbar": {
       "path": "web/public/assets/jubilee-c877bd2-motion-crossbar.glb",
-      "sha256": "9ae2cf255d9cab51f97fbe72c5448e5ceffb7466f4c2b49c075195fe9abd224d",
-      "bytes": 3507184
+      "sha256": "1661f27a8389cfee07942f9b763ebc88127bee364d319c8c9eff8c9aaf48a7da",
+      "bytes": 4437260
     },
     "carriage": {
       "path": "web/public/assets/jubilee-c877bd2-motion-carriage.glb",
-      "sha256": "72ad8773237ad9f46dcc7dd25a027e06793af2a8da7486a41bce6678a8584305",
-      "bytes": 1638680
+      "sha256": "0a7ac5210f6886cd30f6a89d1a7c7bb7cf1770f7fc7df5ff40270fee79f77070",
+      "bytes": 2838896
     },
     "belts": {
       "path": "web/public/assets/jubilee-c877bd2-motion-belts.glb",
@@ -167,10 +167,28 @@
     "python scripts/prepare_jubilee_mesh.py",
     "python scripts/prepare_jubilee_motion.py",
     "python scripts/verify_jubilee_motion.py",
-    "node scripts/prepare_jubilee_motion_glb.mjs motion-fixed",
-    "node scripts/prepare_jubilee_motion_glb.mjs motion-crossbar",
-    "node scripts/prepare_jubilee_motion_glb.mjs motion-carriage",
+    "python scripts/correct_jubilee_motion_mesh.py",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-fixed-corrected",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-crossbar-corrected",
+    "node scripts/prepare_jubilee_motion_glb.mjs motion-carriage-corrected",
     "node scripts/prepare_jubilee_motion_glb.mjs motion-belts"
   ],
-  "limitations": "Rigid component transforms are an illustrative concept. Belts, individual fasteners and flexible connections are not dynamically modeled. Stroke limits, tool coupling, clearance, collision, fluid handling, calibration and laboratory operation are unverified."
+  "limitations": "Rigid component transforms and spatial fastener associations are illustrative. The belt mesh uses an illustrative deformation, not a dynamic flexible belt. Stroke limits, tool coupling, clearance, collision, fluid handling, calibration and laboratory operation are unverified.",
+  "geometric_association": {
+    "method": "Complete connected components in the original fixed tessellation, selected by their bounds within the central carriage or gantry end-block envelopes. Triangle membership is unchanged; these spatial associations are illustrative rather than source assembly constraints.",
+    "carriage_connected_components": 16,
+    "crossbar_connected_components": 14,
+    "script": "scripts/correct_jubilee_motion_mesh.py"
+  },
+  "belt_deformation": {
+    "source_asset": "web/public/assets/jubilee-c877bd2-motion-belts.glb",
+    "implementation": "web/src/beltDeformation.ts",
+    "fixed_turn_z_mm": "<=162.386 or >=707.086",
+    "crossbar_turn_z_mm": "404.786\u2013420.983",
+    "carriage_endpoint_x_mm": [
+      255.935,
+      290.635
+    ],
+    "scope": "Interpolation of renderer mesh vertices only. Physical belt length, tension, pulley interaction, drive kinematics, collisions and travel limits are not validated."
+  }
 }

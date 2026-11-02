@@ -1,5 +1,24 @@
 # Delivery verification
 
+## Plate transfer and motion continuity
+
+On 2026-11-02, 1,104 regular automated tests passed. The compiled browser
+journey opened the source model before layout acceptance, ran preparation
+without an arm, changed labware and supplier, then added cold transfer beside
+an inspection camera. Desktop and mobile checks covered pickup, parking, release,
+reset, Save/Open, motion-plan download and removal of the cold module. No page
+errors were reported. The copied workspace with an 800 mm width limit produced
+a 795.64 mm static assembly envelope.
+
+The motion tests exercise the actual TypeScript compiler and source belt mesh.
+They check tip slot occupancy across pickup, seeking and reset, jaw contact
+geometry, plate support at deposit, rigid inspection links and refusal of
+unsupported parking poses. All eight cold-module components were exported to
+STEP and reimported with matching volumes and bounds. The existing large
+upstream foundation export was excluded from this run. The revision-bound
+assembly guide was checked in HTML, Markdown, JSON and a browser-printed PDF.
+These checks cover the digital model. The cold module has no physical test data.
+
 ## Revision-bound operating previews — 2026-11-02
 
 The [operating preview](operating-previews.md) animates the current Jubilee

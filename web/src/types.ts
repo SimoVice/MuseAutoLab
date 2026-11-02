@@ -60,6 +60,23 @@ export type InspectionExtension = {
   limitations: string[];
 };
 
+export type ColdTransferExtension = {
+  schema_version: '1';
+  kind: 'prepared_plate_cold_transfer';
+  payload_component_id: string;
+  payload_primitive_prefix: string;
+  pickup_mm: [number, number, number];
+  storage_mm: [number, number, number];
+  transfer_height_mm: number;
+  shelf_top_mm: number;
+  lid_open_angle_deg: number;
+  components: Component[];
+  component_ids: string[];
+  assembly_bounds: InspectionExtension['assembly_bounds'];
+  checks: InspectionExtension['checks'];
+  limitations: string[];
+};
+
 export type PlanStep = {
   id: string;
   target: string;
@@ -210,6 +227,7 @@ export type Project = {
   plan?: PreparationPlan | null;
   engineering_design?: EngineeringDesign | null;
   inspection_extension?: InspectionExtension | null;
+  cold_transfer_extension?: ColdTransferExtension | null;
   design_basis?: SourceBasis;
   rebuild_notice?: string;
   engineering?: { schema_version: string; selected_platform_id: string | null;

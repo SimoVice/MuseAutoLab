@@ -42,6 +42,11 @@ def _components(project: dict) -> list[dict]:
     if not isinstance(components, list) or not components:
         raise ValueError("project.design.components must be a non-empty list.")
     out: list[dict] = []
+    cold_parts = {}
+    if project.get("cold_transfer_extension"):
+        from app.cold_transfer import compile_cold_transfer
+
+        cold_parts = {p["id"]: p for p in compile_cold_transfer(project)["components"]}
     foundation = project["design"].get("foundation")
     if foundation is not None:
         if not isinstance(foundation, dict):
@@ -93,6 +98,14 @@ def _components(project: dict) -> list[dict]:
             )
             continue
         geometry = comp.get("geometry") or geometry_for_component(comp)
+        if comp["id"] in cold_parts:
+            canonical = cold_parts[comp["id"]]
+            if any(comp.get(key) != canonical[key] for key in (
+                "kind", "position", "size", "geometry"
+            )):
+                raise ValueError("Cold-transfer geometry does not match its canonical compiler.")
+        elif comp["id"].startswith("cold-transfer-"):
+            raise ValueError("Cold-transfer component has no canonical extension binding.")
         rack = project.get("labware_rack")
         is_parametric_rack = (
             isinstance(rack, dict)
@@ -194,6 +207,8 @@ def _components(project: dict) -> list[dict]:
     ids = [c["id"] for c in out]
     if len(set(ids)) != len(ids):
         raise ValueError("Component ids must be unique.")
+    if cold_parts and not set(cold_parts).issubset(ids):
+        raise ValueError("A canonical cold-transfer component is missing.")
     if foundation is not None and ids.count("foundation-jubilee") != 1:
         raise ValueError("Pinned foundation component is missing.")
     return out

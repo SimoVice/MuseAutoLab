@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { MeshoptSimplifier } from '../web/node_modules/meshoptimizer/index.js';
 
 const name = process.argv[2];
-if (!['motion-fixed', 'motion-crossbar', 'motion-carriage', 'motion-belts'].includes(name)) throw new Error('Choose a known motion group.');
+if (!['motion-fixed', 'motion-crossbar', 'motion-carriage', 'motion-belts', 'motion-fixed-corrected', 'motion-crossbar-corrected', 'motion-carriage-corrected'].includes(name)) throw new Error('Choose a known motion group.');
 await MeshoptSimplifier.ready;
 const positionBytes = readFileSync(`.local/upstream-cad/${name}-vertices.bin`);
 const indexBytes = readFileSync(`.local/upstream-cad/${name}-indices.bin`);
@@ -63,7 +63,7 @@ jsonHeader.write('JSON', 4);
 const binaryHeader = Buffer.alloc(8);
 binaryHeader.writeUInt32LE(binary.length, 0);
 binaryHeader.write('BIN\0', 4);
-writeFileSync(`web/public/assets/jubilee-c877bd2-${name}.glb`, Buffer.concat([
+writeFileSync(`web/public/assets/jubilee-c877bd2-${name.replace('-corrected', '')}.glb`, Buffer.concat([
   header, jsonHeader, json, binaryHeader, binary,
 ]));
 console.log({ name, triangles: indices.length / 3, vertices: vertices.length / 3, error, min, max });

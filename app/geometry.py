@@ -188,6 +188,10 @@ def add_geometry(project: dict) -> dict:
             inspection = {part["id"]: part for part in compiled["components"]}
         except (ValueError, TypeError, KeyError):
             pass
+    cold = {}
+    if result.get("cold_transfer_extension"):
+        from app.cold_transfer import compile_cold_transfer
+        cold = {p["id"]: p for p in compile_cold_transfer(result)["components"]}
     rack_geometry = None
     labware = result.get("labware_rack")
     if isinstance(labware, dict) and labware.get("kind") == "rim_supported_tube_rack":
@@ -222,7 +226,7 @@ def add_geometry(project: dict) -> dict:
                 labware["spec"]["count"] if rack_geometry else
                 max(1, min(6, len(result.get("plan", {}).get("steps", []))))
             )
-        canonical = inspection.get(comp["id"])
+        canonical = inspection.get(comp["id"]) or cold.get(comp["id"])
         if tip_geometry and comp["id"] == tips.get("target_component_id"):
             if comp["kind"] != "tiprack" or len(comp["size"]) != 3 or any(
                 abs(float(a) - b) > 1e-7

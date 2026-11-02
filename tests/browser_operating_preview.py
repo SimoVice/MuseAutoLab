@@ -15,7 +15,11 @@ from pathlib import Path
 
 import browser_smoke as harness
 
-OUTPUT = harness.ROOT / ".local/operating-preview-20261102/qa"
+OUTPUT = Path(
+    os.environ.get(
+        "OPERATING_PREVIEW_OUTPUT", str(harness.ROOT / ".local/cold-transfer-20261102/qa/browser")
+    )
+)
 
 
 def serve():
@@ -156,9 +160,24 @@ def run(url):
             expect(initial_preview).to_have_count(0)
             expect(page.get_by_role("button", name="Play", exact=True)).to_have_count(0)
             checks.append("unaccepted-general-project-unavailable")
+            expect(page.locator("canvas")).to_have_count(0)
+            send("Help me compare the platform options.")
+            expect(page.locator("canvas")).to_have_count(0)
+            selected = send("I prefer the open-source buildable one.")
+            assert selected["engineering"]["selected_platform_id"] == "jubilee"
+            assert not selected.get("engineering_design")
+            source_preview = page.get_by_role("region", name="Selected Jubilee platform preview")
+            expect(source_preview).to_be_visible()
+            expect(source_preview.locator("canvas")).to_have_count(1)
+            expect(source_preview.get_by_role("status")).to_have_count(0, timeout=60000)
+            source_preview.screenshot(path=str(OUTPUT / "selected-source-before-layout.png"))
+            checks.append("explicit-platform-source-preview-before-layout")
             with page.expect_response(lambda response: response.url.endswith("/open")) as opened:
                 page.get_by_label("Open saved project").set_input_files(
-                    str(harness.ROOT / "docs/examples/parametric-tube-rack-project.json")
+                    os.environ.get(
+                        "OPERATING_PREVIEW_PROJECT",
+                        str(harness.ROOT / "docs/examples/parametric-tube-rack-project.json"),
+                    )
                 )
             assert opened.value.ok, opened.value.text()
             expect(page.locator(".prep-plan")).to_be_visible()
@@ -243,9 +262,7 @@ def run(url):
                     response.url.endswith("/tip-rack-options") and response.request.method == "POST"
                 )
             ) as response:
-                panel.get_by_role("article").nth(1).get_by_role(
-                    "button", name="Use this rack", exact=True
-                ).click()
+                panel.get_by_role("button", name="Use this rack", exact=True).first.click()
             assert response.value.ok, response.value.text()
             verify_motion("plate-supplier")
             with page.expect_download() as download:
@@ -263,6 +280,108 @@ def run(url):
             expect(page.get_by_role("slider", name="Operating timeline")).to_have_value("0")
             expect(page.get_by_role("button", name="Pause", exact=True)).to_be_disabled()
             checks.append("save-open-reset")
+            # The camera concept and cold manipulator are independent optional modules.
+            # Exercise actual ordinary chat, compiler, download and portable restore.
+            cold = send(
+                "Add a gripper to move the prepared 96-well plate into a dedicated refrigerator."
+            )
+            assert cold.get("inspection_extension") and cold.get("cold_transfer_extension")
+            assert len(cold["cold_transfer_extension"]["component_ids"]) == 8
+            bounds = cold["cold_transfer_extension"]["assembly_bounds"]
+            width = bounds["max_mm"][0] - bounds["min_mm"][0]
+            width_label = f"{width:,.1f}".removesuffix(".0")
+            expect(page.locator(".footprint strong")).to_contain_text(f"{width_label} ×")
+            expect(desktop.get_by_label("Operating sequence")).to_have_value("cold-transfer")
+            details = desktop.locator("details", has=page.locator("#operation-time"))
+            if details.get_attribute("open") is None:
+                details.locator(":scope > summary").click()
+            cold_timeline = desktop.get_by_label("Operating timeline")
+            with page.expect_download() as downloaded:
+                desktop.get_by_role("button", name="Download motion plan", exact=True).click()
+            cold_plan = json.loads(downloaded.value.path().read_text(encoding="utf-8"))
+            assert cold_plan["status"] == "ready" and cold_plan["mode"] == "cold-transfer"
+            assert cold_plan["revision"] == cold["revision"]
+            assert cold_plan["execution_enabled"] is False
+            (OUTPUT / "combined-cold-motion-plan.json").write_text(
+                json.dumps(cold_plan, indent=2), encoding="utf-8"
+            )
+            guide = page.request.get(
+                f"{url.rstrip('/')}/api/projects/{cold['id']}/instructions/download?revision={cold['revision']}&format=html"
+            )
+            assert guide.ok, guide.text()
+            guide_html = guide.text()
+            assert "cold-transfer-extension" in guide_html
+            (OUTPUT / "combined-assembly-guide.html").write_text(guide_html, encoding="utf-8")
+            printable = browser.new_page()
+            printable.set_content(guide_html, wait_until="networkidle")
+            printable.pdf(
+                path=str(OUTPUT / "combined-assembly-guide.pdf"), format="A4", print_background=True
+            )
+            printable.close()
+
+            def seek_cold(time):
+                cold_timeline.evaluate(
+                    """(element, value) => {
+                    const setter = Object.getOwnPropertyDescriptor(
+                        HTMLInputElement.prototype, 'value').set;
+                    setter.call(element, String(value));
+                    element.dispatchEvent(new Event('input', {bubbles:true}));
+                    element.dispatchEvent(new Event('change', {bubbles:true}));
+                }""",
+                    time,
+                )
+                page.wait_for_timeout(120)
+                assert abs(float(cold_timeline.input_value()) - time) < 0.001
+
+            stages = [
+                "Ready",
+                "Park Jubilee and inspection",
+                "Grip",
+                "Lift",
+                "Transfer",
+                "Place",
+                "Restore Jubilee and inspection",
+            ]
+            frames = {
+                stage: next(frame for frame in cold_plan["keyframes"] if frame["stage"] == stage)
+                for stage in stages
+            }
+            assert frames["Park Jubilee and inspection"]["inspection_park_ratio"] == 1
+            assert frames["Restore Jubilee and inspection"]["inspection_park_ratio"] == 0
+            page.get_by_role("button", name="Expand 3D view", exact=True).click()
+            page.wait_for_timeout(2200)
+            page.get_by_role("button", name="Zoom in", exact=True).click()
+            for stage, frame in frames.items():
+                seek_cold(frame["time_s"])
+                canvas("combined-" + stage.lower().replace(" ", "-"))
+            desktop.get_by_role("button", name="Reset", exact=True).click()
+            assert float(cold_timeline.input_value()) == 0
+            desktop.get_by_role("button", name="Play", exact=True).click()
+            page.wait_for_timeout(500)
+            desktop.get_by_role("button", name="Pause", exact=True).click()
+            assert float(cold_timeline.input_value()) > 0
+            page.set_viewport_size({"width": 390, "height": 844})
+            seek_cold(frames["Place"]["time_s"])
+            canvas("combined-cold-stored-mobile")
+            page.set_viewport_size({"width": 1440, "height": 1100})
+            page.keyboard.press("Escape")
+            with page.expect_download() as saved:
+                page.get_by_role("button", name="Save project", exact=True).click()
+            portable = OUTPUT / "combined-cold-project.json"
+            saved.value.save_as(portable)
+            with page.expect_response(lambda response: response.url.endswith("/open")) as restored:
+                page.get_by_label("Open saved project").set_input_files(str(portable))
+            assert restored.value.ok, restored.value.text()
+            restored_project = restored.value.json()["project"]
+            assert restored_project["cold_transfer_extension"] == cold["cold_transfer_extension"]
+            assert restored_project["inspection_extension"] == cold["inspection_extension"]
+            desktop.get_by_label("Operating sequence").select_option("preparation")
+            expect(desktop.get_by_role("button", name="Play", exact=True)).to_be_enabled()
+            removed = send("Remove the refrigerator transfer manipulator.")
+            assert not removed.get("cold_transfer_extension") and removed.get(
+                "inspection_extension"
+            )
+            checks.append("combined-camera-cold-stages-download-reset-mobile-save-open-remove")
             page.set_viewport_size({"width": 390, "height": 844})
             page.get_by_role("navigation", name="Workspace view").get_by_role(
                 "button", name="Design", exact=True
@@ -312,6 +431,8 @@ if __name__ == "__main__":
     elif os.environ.get("OPERATING_PREVIEW_URL"):
         run(os.environ["OPERATING_PREVIEW_URL"])
     else:
+        if os.environ.get("OPERATING_PREVIEW_COMPILED") == "1":
+            harness.VITE_BIN = Path(__file__).with_name("browser_vite_preview.mjs")
         harness.STUB_SERVER = Path(__file__).resolve()
         harness.run_smoke = run
         raise SystemExit(harness.main())

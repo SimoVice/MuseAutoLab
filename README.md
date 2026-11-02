@@ -86,8 +86,10 @@ bounded layout revisions, dimension-driven holders, reviewed labware alternative
 US supplier listings in USD and separately labelled planning estimates. Supported
 exports include revision-specific design files, instructions and logical protocol
 previews. [Operating previews](docs/operating-previews.md) animate the supported
-Jubilee preparation sequence and inspection concept directly in the 3D workspace,
-with playback tied to the current recipe and selected labware.
+Jubilee preparation sequence directly in the 3D workspace. The selected source
+frame can be inspected before a layout is accepted. Optional modules add a
+camera sweep or a plate gripper that transfers the prepared plate to a dedicated
+refrigerator on request.
 
 Neither route has a physics or hardware-control adapter. Fit, mounting, tool
 access, calibration, liquid handling, thermal performance and complete build cost
