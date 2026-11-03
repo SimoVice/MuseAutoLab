@@ -55,8 +55,8 @@ request before a live presentation.
    | `MUSEAUTOLAB_AUTH_SIGNING_SECRET` | Output of `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
    | `MUSEAUTOLAB_AUTH_ORIGIN` | Exact HTTPS origin for the endpoint, without a trailing slash |
 
-   The endpoint label is `museautolab`. Modal supplies the prefix for your workspace
-   and environment. If the final hostname is unknown, use `https://unconfigured.invalid`
+   The endpoint label is `museautolab`. Use the full address printed by Modal,
+   including its region when present. If the final hostname is unknown, use `https://unconfigured.invalid`
    for the first deployment. Sign-in stays closed to browser requests at the assigned
    domain until you replace this value and restart the app. [Modal endpoint URLs](https://modal.com/docs/guide/webhook-urls)
 
@@ -64,6 +64,8 @@ request before a live presentation.
    source and assets selected by the deployment entry point.
 
    ```powershell
+   $env:PYTHONUTF8 = "1"
+   $env:PYTHONIOENCODING = "utf-8"
    .\.local\modal\Scripts\modal.exe deploy --strategy recreate -m scripts.deploy_modal
    ```
 
