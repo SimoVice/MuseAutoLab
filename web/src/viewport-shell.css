@@ -226,3 +226,19 @@ body { overflow: hidden; }
   .engineering-design-layout > .presentation-stage:not(.presentation-stage-expanded) { flex: 0 0 390px; }
   .engineering-design-layout .operating-preview { max-height: 180px; }
 }
+
+@media (max-width: 600px) {
+  .app-shell > .software-route-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; gap: 4px; padding: 6px 8px; }
+  .app-shell > .software-route-nav button { min-width: 0; min-height: 48px; padding: 6px 4px; white-space: normal; line-height: 1.25; font-size: 11px; }
+  .app-shell .topbar-end { flex-wrap: wrap; overflow: visible; gap: 6px; font-size: 10px; }
+  .app-shell .topbar-end > .new-project-button { padding: 7px 8px; min-height: 32px; font-size: 11px; }
+  .app-shell .connection-dot { flex: 0 0 7px; width: 7px; height: 7px; }
+  .viewer-canvas > div:first-child, .software-scene > div:first-child { position: absolute !important; inset: 26px 0 44px; height: auto !important; }
+  .viewer-canvas .scene-controls, .software-scene .scene-controls { left: 4px; bottom: 4px; gap: 1px; padding: 2px 4px; background: #fbfdfb; box-shadow: none; }
+  .scene-controls > span { display: none; }
+  .viewer-canvas .scene-controls button, .software-scene .scene-controls button { width: 29px; height: 32px; }
+  .viewer-canvas button.scene-reset, .software-scene button.scene-reset { top: auto; right: 4px; bottom: 4px; min-height: 36px; padding: 6px 8px; background: #fbfdfb; }
+  .viewer-canvas .scene-rack-occupancy, .software-scene .scene-rack-occupancy { top: 0; left: 0; max-width: 100%; padding: 5px 8px; border-radius: 0; font-size: 9px; background: #edf4f1; }
+  .viewer-canvas .scene-hint, .viewer-canvas .scene-origin { display: none; }
+  .workspace .engineering-design-layout .presentation-stage:not(.presentation-stage-expanded) .viewer-canvas { min-height: 160px; }
+}
