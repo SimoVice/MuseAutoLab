@@ -24,6 +24,7 @@ print('concept only')
 ```
 
 [Official source](https://example.com/catalog)
+Also listed at https://example.com/plain-product.
 [Contact](mailto:review@example.com)
 [Unsafe](javascript:alert(1))
 [Encoded unsafe](jav&#x61;script:alert(1))
@@ -103,6 +104,9 @@ def run(url):
         expect(bubble.get_by_role("link", name="Official source")).to_have_attribute(
             "rel", "noopener noreferrer"
         )
+        expect(bubble.get_by_role("link", name="https://example.com/plain-product")).to_have_attribute(
+            "href", "https://example.com/plain-product"
+        )
         expect(bubble.get_by_role("link", name="Unsafe", exact=True)).to_have_count(0)
         expect(bubble.get_by_role("link", name="Encoded unsafe")).to_have_count(0)
         expect(bubble.locator("img,script,iframe")).to_have_count(0)
@@ -131,7 +135,8 @@ def run(url):
         )
         page.screenshot(path=str(OUTPUT / "tip-rack-updating.png"))
         pending.pop(0).fulfill(status=502, json={"detail": "Synthetic rack failure; design kept."})
-        expect(page.get_by_role("alert")).to_contain_text("design kept")
+        expect(page.get_by_role("complementary", name="Design assistant")
+               .get_by_role("alert")).to_contain_text("design kept")
         expect(page.locator(".design-activity")).to_have_count(0)
         expect(composer).to_be_enabled()
 
@@ -164,7 +169,8 @@ def run(url):
         # A subsequent failed request clears the success notice and retains the model/draft.
         route = begin("Request a change that fails safely.")
         route.fulfill(status=502, json={"detail": "Synthetic provider failure; design kept."})
-        expect(page.get_by_role("alert")).to_contain_text("design kept")
+        expect(page.get_by_role("complementary", name="Design assistant")
+               .get_by_role("alert")).to_contain_text("design kept")
         expect(page.locator(".design-activity")).to_have_count(0)
         expect(composer).to_have_value("Request a change that fails safely.")
         assert page.evaluate("window.feedbackCanvas === document.querySelector('canvas')")

@@ -104,6 +104,9 @@ def project_with_report(project: dict, report: dict | None, estimate: dict | Non
         cost = estimate_for_project(project, estimate, bound)
         if cost is not None:
             result["cost_estimate"] = cost
+    from app.parts_proposal import build_parts_proposal
+
+    result["parts_proposal"] = build_parts_proposal(project, report, estimate)
     return result
 
 
@@ -115,7 +118,7 @@ def procurement_groups(project: dict) -> list[dict]:
         groups = []
         by_url = {p.url: p for p in PRODUCTS.values()}
         registry = concept_sources()
-        for part in concept["parts"]:
+        for part in concept.get("parts", []):
             key = "concept-" + part["key"]
             reference = registry.get(part.get("source_id"), {})
             source = reference.get("purchase_url") or part.get("source_url")

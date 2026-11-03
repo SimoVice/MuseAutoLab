@@ -137,6 +137,24 @@ missing question about process/throughput, existing equipment, bench space, budg
 assembly skills/time or priorities. Do not repeat known facts or demand every optional
 field before helping. Propose suitable alternatives with reasons and concrete tradeoffs.
 Explain the buy-assembled route versus building open hardware before choosing a base.
+When a first liquid-preparation request establishes pipetting/aliquoting/dilution, proactively
+compare the two reviewed routes in the reply, even if the user did not explicitly ask to
+compare: name each platform, link its official/open project source, give its recorded US/USD
+cost basis and one meaningful tradeoff, then ask one useful hardware question. Do the same
+when explicitly asked for a comparison. Use reviewed_platforms.cost_context; a historical
+base-parts estimate, a vendor starting price and a configured system quote are different.
+Say these are reviewed references with their checked date, unless cost_context.retrieved_at
+records a successful recent HTTP retrieval (then state its actual date/time). This confirms
+the listed amount only, never a quote or stock. Do not say you just searched,
+checked current stock or obtained a live quote unless a fresh tool result actually says so.
+After platform choice, move to tangible compatibility discovery: ask the current pipette and
+tips make/model or part number if equipment details are missing. Use the answer in the
+recorded brief and explain what interface still needs checking. Do not repeat a known model
+or ask for recipe quantities during hardware design. For an OT-2, ask which compatible
+instrument pipette/labware configuration is needed rather than assuming a manual pipette fits.
+When concrete parts/costs are requested, use recorded parts_proposal rows and their source
+links, price kinds, quantities and exclusions. A generic project deserves relevant component
+and control suggestions; do not force it into liquid handling.
 Never automatically choose Jubilee. Liquid workstation design requires an explicitly
 selected platform. Custom equipment can be designed directly from its own brief.
 'Prebuilt dock' normally means an assembled automation base; if the context
@@ -562,6 +580,14 @@ paraphrases such as giving the prepared plate its own fridge, putting the finish
 plate away in a dedicated refrigerated cabinet, or taking that module out.
 Only an explicit present request changes the design. Questions about cost,
 feasibility, alternatives, conditional/future wishes and negative requests discuss.
+Polite imperatives such as "can you add a refrigerator and maybe an arm to store completed
+samples in it?" are present design requests, not merely questions. The optional arm wording
+is uncertainty about the implementation. If a rigid plate is already selected, ground
+"completed samples" to that selected plate only when context is unambiguous; otherwise ask
+whether the payload is individual tubes, a rack or a plate. Never change tubes into plates.
+For tubes or generic assemblies, propose a separate custom equipment revision or concrete
+sourced options and ask the payload/temperature detail needed; do not claim the plate adapter
+was added. A fridge+transfer arm is one subsystem request, not unrelated mixed changes.
 Mixed changes, uncertain payload/destination, requirements beyond this adapter
 (e.g. dimensions, temperatures, door design or timing) clarify without changing.
 The sole adapter is the selected rigid 96-well plate and its dedicated new fridge
@@ -1145,6 +1171,15 @@ async def generate_turn(
         state["reviewed_reference_library"]["architecture"] = "Custom concept assembly"
     from app.platform_profiles import platform_profiles
 
+    if (os.getenv("MUSEAUTOLAB_LIVE_PLATFORM_PRICES") == "1" and client is None
+            and not project.get("engineering_design") and not project.get("concept_design")
+            and not state["bench_station"] and (
+                project.get("workflow", {}).get("kind") == "liquid_preparation"
+                or re.search(r"pipet|liquid.handl|dilut|jubilee|\bot[- ]?2\b",
+                             user_message, re.I))):
+        from app.platform_research import refresh_platform_prices
+
+        await refresh_platform_prices()
     state["reviewed_platforms"] = platform_profiles()
     if state["bench_station"]:
         state["reviewed_platforms"] = []
@@ -1209,6 +1244,9 @@ async def generate_turn(
         state = {"design_workflow": state["design_workflow"],
                  "brief": state["brief"], "workflow": workflow, "custom_assembly": concept,
                  "pricing": pricing, "market": "US", "currency": "USD"}
+    from app.parts_proposal import build_parts_proposal
+
+    state["parts_proposal"] = build_parts_proposal(project)
     focused_tip_turn = is_tip_only_turn(project, user_message)
     response_model = TipRackTurn if focused_tip_turn else ExtractedTurn
     focused_instructions = (

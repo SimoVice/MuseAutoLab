@@ -64,3 +64,6 @@
 @media (max-width: 760px) { .software-general-program { width: 100%; } }
 
 .software-field { display: grid; gap: 8px; }
+.software-hardware-guide { margin-top: .5rem; }
+.software-hardware-guide summary { cursor: pointer; color: #285f5c; }
+.software-hardware-guide p { max-width: 62ch; margin: .65rem 0; }

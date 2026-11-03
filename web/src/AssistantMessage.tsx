@@ -1,9 +1,10 @@
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 /** Render assistant prose as CommonMark without HTML, embedded media or unsafe URLs. */
 export default function AssistantMessage({ text }: { text: string }) {
   return <div className="assistant-markdown">
-    <Markdown skipHtml disallowedElements={['img']} unwrapDisallowed
+    <Markdown remarkPlugins={[remarkGfm]} skipHtml disallowedElements={['img']} unwrapDisallowed
       urlTransform={(value) => {
         try {
           const url = new URL(value);

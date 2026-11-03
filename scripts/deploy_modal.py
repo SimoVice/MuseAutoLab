@@ -107,6 +107,7 @@ server_secrets = modal.Secret.from_name(
     volumes={"/data": volume},
     env={
         "MUSEAUTOLAB_HOSTED": "1",
+        "MUSEAUTOLAB_LIVE_PLATFORM_PRICES": "1",
         "MUSEAUTOLAB_LIBRARY_DIRECTORY": "/data/projects",
         "MUSEAUTOLAB_MODAL_VOLUME_NAME": VOLUME_NAME,
     },

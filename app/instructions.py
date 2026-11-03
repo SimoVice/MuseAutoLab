@@ -167,6 +167,7 @@ def readable_text(text: object, names: dict[str, str]) -> str:
 
 def build_instruction_guide(project: dict, procurement: dict | None = None) -> dict:
     """Build a deterministic preview from canonical accepted/draft geometry and selections."""
+    from app.assembly_steps import assembly_steps
     design = project.get("design") or {}
     parts = _parts(project)
     index = {p["component_id"]: p for p in parts}
@@ -178,6 +179,7 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         else "legacy-concept"
     )
     report = _procurement(project, procurement)
+    from app.parts_proposal import build_parts_proposal
     from app.price_estimation import estimate_for_project
 
     cost_estimate = estimate_for_project(project, project.get("cost_estimate"), report)
@@ -1110,6 +1112,7 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         status: sum(step["status"] == status for step in steps)
         for status in ("ready", "reference_only", "needs_design")
     }
+    proposal = build_parts_proposal(project, report, cost_estimate)
     return {
         "schema_version": 1,
         "presentation_names": presentation_names(project, steps),
@@ -1130,6 +1133,8 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
         "procurement_report_id": report["report_id"] if report else None,
         "procurement": report,
         "cost_estimate": cost_estimate,
+        "parts_proposal": proposal,
+        "assembly_steps": assembly_steps(project, steps, proposal),
         "software_guidance": build_software_guidance(project),
         "parts": parts,
         "steps": steps,
@@ -1408,6 +1413,76 @@ def procurement_html(guide: dict) -> str:
     )
 
 
+def _budget_range(low, high):
+    def usd(number):
+        return f"${number:,.2f}".removesuffix(".00")
+
+    return usd(low) if low == high else f"{usd(low)}–{usd(high)}"
+
+
+def _parts_budget(proposal):
+    summary = proposal["summary"]
+    total = _budget_range(summary["total_low_usd"], summary["total_high_usd"])
+    labels = {"verified_supplier": "Supplier price", "included_in_base": "Included in base",
+              "model_estimate": "Model estimate", "planning_allowance": "Planning estimate"}
+    records = []
+    for row in proposal["rows"]:
+        records.append((
+            row.get("selected_product_label") or row["label"], row["quantity"],
+            _budget_range(row["unit_price_low_usd"], row["unit_price_high_usd"]),
+            _budget_range(row["line_total_low_usd"], row["line_total_high_usd"]),
+            labels.get(row["price_kind"], "Estimate"), _safe_url(row.get("source_url") or ""),
+        ))
+    return total, records
+
+
+def parts_budget_html(proposal):
+    if not proposal or not proposal["rows"]:
+        return ""
+    total, records = _parts_budget(proposal)
+    rows = []
+    for name, qty, unit, amount, basis, url in records:
+        part = html.escape(name)
+        if url:
+            part = f'<a href="{html.escape(url, quote=True)}">{part}</a>'
+        rows.append(f'<tr><th scope="row">{part}</th><td>{qty}</td><td>{unit}</td>'
+                    f"<td>{amount}</td><td>{basis}</td></tr>")
+    return ('<section class="card"><h2>Parts &amp; prices</h2>'
+            f"<p><strong>{total}</strong> for the listed parts, in USD. "
+            "Excludes shipping, tax and labor.</p>"
+            '<div class="table-scroll"><table><thead><tr><th>Part or purchase group</th>'
+            '<th>Qty</th><th>Per unit or set</th><th>Line total</th><th>Price basis</th>'
+            "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div></section>")
+
+
+def assembly_checklist_html(guide):
+    items = []
+    for step in guide.get("assembly_steps", []):
+        notes = "".join(f"<p>{html.escape(s)}</p>" for s in step["instructions"])
+        links = " · ".join(f'<a href="{html.escape(url, quote=True)}">{html.escape(s["title"])}</a>'
+                           for s in step["sources"] if (url := _safe_url(s["url"])))
+        items.append(f'<li><strong>{html.escape(step["title"])}</strong>{notes}{links}</li>')
+    if not items:
+        return ""
+    return '<section class="card"><h2>Assembly</h2><ol>' + "".join(items) + "</ol></section>"
+
+
+def _parts_budget_markdown(proposal, plain):
+    if not proposal["rows"]:
+        return []
+    total, records = _parts_budget(proposal)
+    lines = ["## Parts & prices", "", f"**{total}** for the listed parts, in USD. "
+             "Excludes shipping, tax and labor.", "",
+             "| Part or purchase group | Qty | Per unit or set | Line total | Price basis |",
+             "| --- | ---: | ---: | ---: | --- |"]
+    for name, qty, unit, amount, basis, url in records:
+        part = plain(name)
+        if url:
+            part = f"[{part}](<{url}>)"
+        lines.append(f"| {part} | {qty} | {unit} | {amount} | {basis} |")
+    return [*lines, ""]
+
+
 def build_guide_markdown(guide: dict) -> bytes:
     """Readable text counterpart of the exact structured preview."""
 
@@ -1432,6 +1507,17 @@ def build_guide_markdown(guide: dict) -> bytes:
         guide["coordinate_system"],
         "",
     ]
+    if proposal := guide.get("parts_proposal"):
+        lines.extend(_parts_budget_markdown(proposal, plain))
+    if checklist := guide.get("assembly_steps"):
+        lines.extend(["## Assembly", ""])
+        for index, step in enumerate(checklist, 1):
+            lines.append(f"{index}. **{plain(step['title'])}**")
+            lines.extend("   " + plain(action) for action in step["instructions"])
+            lines.extend(f"   [{plain(s['title'])}](<{url}>)" for s in step["sources"]
+                         if (url := _safe_url(s["url"])))
+            lines.append("")
+        lines.extend(["## Technical details", ""])
     if guide.get("labware_plate") and guide.get("preparation"):
         plan = guide["preparation"]
         wells = guide["labware_plate"]["compatibility"]["occupied_wells"]

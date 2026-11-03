@@ -491,6 +491,37 @@ def _check_procurement_revision(project: dict, revision: int) -> None:
         )
 
 
+@app.get("/api/projects/{project_id}/parts")
+async def get_parts_proposal(project_id: str, revision: int) -> dict:
+    from app.parts_proposal import build_parts_proposal
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        return build_parts_proposal(
+            session.project, session.procurement_report, session.cost_estimate
+        )
+
+
+@app.get("/api/projects/{project_id}/parts/{component_id}/model.{format}")
+async def get_part_model(project_id: str, component_id: str, format: str, revision: int):
+    from starlette.concurrency import run_in_threadpool
+
+    from app.parts_proposal import render_part_model
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        project = deepcopy(session.project)
+    try:
+        data = await run_in_threadpool(render_part_model, project, component_id, format)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from None
+    return Response(data, media_type='application/octet-stream', headers={
+        'Content-Disposition': f'attachment; filename="{component_id}-r{revision}.{format}"'
+    })
+
+
 @app.get("/api/projects/{project_id}/procurement")
 async def get_procurement(project_id: str, revision: int) -> dict:
     session = session_for(project_id)
@@ -814,16 +845,20 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     else:
                         reply = "This design already has no cold-transfer module."
                 elif cold_intent == "clarify":
-                    reply = ("Please clarify the plate-transfer request separately from other "
-                             "changes. Only the selected rigid plate and its dedicated fridge "
-                             "concept are supported; custom constraints need further review.")
+                    reply = ("A refrigerator and transfer mechanism can be developed as a separate "
+                             "subsystem. The current transfer preview handles a rigid 96-well "
+                             "plate; it cannot pick individual tubes or a rack. Should the "
+                             "stored payload be individual tubes, their rack, or a plate?")
                 else:
-                    reply = ("Cold transfer is available as an optional Jubilee digital "
-                             "concept for a rigid "
-                             "96-well plate, with a dedicated refrigerator and Cartesian gripper. "
-                             "Hardware is unselected and unpriced. Ask explicitly to add it "
-                             "when ready; "
-                             "this discussion has not changed the project.")
+                    reply = ("A separate refrigerator and transfer mechanism can be added. "
+                             "The current Jubilee motion adapter transfers a selected rigid "
+                             "96-well plate; tubes need a separately designed grip or rack "
+                             "interface. This discussion has preserved the design.")
+                if cold_intent != "remove":
+                    from app.chat_sourcing import cold_component_reply
+
+                    reply += cold_component_reply(updated, session.procurement_report,
+                                                  session.cost_estimate)
                 if status == "accepted":
                     _accept_project(session, updated, preserve_cold=cold_intent != "remove")
                 session.history.extend([{"role":"user", "content":request.message},
@@ -1021,6 +1056,15 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     )
             reply += _cooling_feedback(patch, updated)
 
+        from app.chat_sourcing import (
+            complete_component_changes,
+            complete_equipment_question,
+            complete_platform_comparison,
+        )
+
+        reply = complete_platform_comparison(current, updated, request.message, reply)
+        reply = complete_component_changes(current, updated, reply)
+        reply = complete_equipment_question(current, updated, reply)
         display_reply = reply
         if recommendations:
             reply += "\n\nReviewed references:\n" + "\n".join(
@@ -1174,6 +1218,9 @@ async def _custom_assembly_turn(session, turn, message, usage):
             status, reply = "rejected", str(exc)
     elif design and "show_files" in actions:
         reply += " Download the complete package in the design workspace to use it offline."
+    from app.chat_sourcing import complete_component_changes
+
+    reply = complete_component_changes(previous, updated, reply)
     if updated is not previous:
         _accept_project(session, updated)
     session.history.extend([{"role": "user", "content": message},

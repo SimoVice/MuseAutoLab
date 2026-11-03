@@ -1,0 +1,71 @@
+.parts-total { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:18px 0; border-bottom:1px solid #d8e0e9; }
+.parts-total h3 { margin:0 0 8px; font-size:15px; }
+.parts-total strong { font-size:24px; font-variant-numeric:tabular-nums; }
+.parts-total p { max-width:40ch; margin:0; font-size:13px; color:#45566b; line-height:1.6; }
+.parts-table-scroll { overflow-x:auto; }
+.parts-table { width:100%; border-collapse:collapse; font-size:13px; text-align:left; }
+.parts-table caption { text-align:left; padding:14px 0; color:#45566b; }
+.parts-table th,.parts-table td { padding:16px 10px; border-bottom:1px solid #d8e0e9; vertical-align:top; }
+.parts-table thead th { background:#f4f7fa; font-size:12px; color:#45566b; }
+.parts-table tbody th { width:48%; font-weight:400; }
+.parts-table tbody th>strong { display:block; font-size:14px; }
+.parts-table small { display:block; margin-top:6px; font-size:12px; color:#45566b; line-height:1.5; }
+.parts-table p { margin:8px 0; font-size:12px; line-height:1.5; }
+.parts-table td { font-variant-numeric:tabular-nums; }
+.parts-table tfoot { background:#f4f7fa; font-weight:600; }
+.parts-links { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-top:10px; }
+.parts-links button { border:0; background:transparent; color:#1455a0; padding:5px 0; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.parts-proposal details { margin-top:12px; }
+.parts-proposal summary { cursor:pointer; padding:8px 0; color:#234d7c; }
+.parts-proposal a { color:#1455a0; text-underline-offset:3px; }
+.parts-proposal :is(a,button,summary):focus-visible { outline:2px solid #205db1; outline-offset:4px; }
+.project-resource-anchor { scroll-margin-top:20px; }
+.software-route-nav { flex-wrap:wrap; }
+@media(max-width:600px) { .parts-total { align-items:flex-start; flex-direction:column; gap:12px; } .parts-table { min-width:520px; } .software-route-nav button { flex:1 1 40%; min-height:44px; } }
+
+.assembly-overview { margin:20px 0; padding-left:24px; }
+.assembly-overview li { padding:10px 0 16px 5px; }
+.assembly-overview button { border:0; background:transparent; color:#1455a0; font:inherit; font-weight:600; text-align:left; padding:4px 0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.assembly-overview p { margin:5px 0 0; line-height:1.6; font-size:13px; }
+.parts-alternatives { margin-top:12px; font-size:12px; }
+.parts-alternatives ul { padding-left:18px; }
+.parts-alternatives li { margin:8px 0; }
+@media(max-width:600px) {
+  .parts-table { min-width:0; }
+  .parts-table thead { display:none; }
+  .parts-table :is(tbody,tfoot) { display:block; }
+  .parts-table tbody tr { display:grid; grid-template-columns:0.6fr 1.2fr 1.2fr; border-bottom:1px solid #d8e0e9; padding:12px 0; }
+  .parts-table tbody th { display:block; grid-column:1/-1; width:auto; padding:10px 0 14px; border:0; }
+  .parts-table tbody td { border:0; padding:8px 6px 8px 0; overflow-wrap:anywhere; }
+  .parts-table tbody td::before { display:block; margin-bottom:8px; color:#45566b; font-size:11px; }
+  .parts-table tbody td:nth-child(2)::before { content:'Qty'; }
+  .parts-table tbody td:nth-child(3)::before { content:'Unit price'; }
+  .parts-table tbody td:nth-child(4)::before { content:'Line total'; }
+  .parts-table tfoot tr { display:flex; justify-content:space-between; gap:12px; }
+  .parts-table tfoot :is(th,td) { border:0; padding:14px 6px; }
+}
+
+[hidden] { display:none !important; }
+.parts-table td { white-space:nowrap; overflow-wrap:normal; }
+.parts-table tbody th { width:45%; }
+.parts-table tbody th>span { display:block; margin-top:5px; font-size:12px; color:#45566b; }
+.design-budget-entry { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; font-size:13px; }
+.design-budget-entry strong { display:block; margin-top:5px; }
+.assembly-overview h3 { margin:0 0 8px; font-size:15px; }
+.project-resource-anchor .project-resources { margin-top:0; }
+@media(max-width:600px) {
+  .parts-table tbody tr { grid-template-columns:0.4fr 1.3fr 1.3fr; }
+  .parts-table tbody td { font-size:12px; white-space:normal; word-break:normal; overflow-wrap:normal; }
+  .parts-table tbody td:nth-child(3),.parts-table tbody td:nth-child(4) { white-space:nowrap; font-size:11px; }
+  .parts-table tbody th { width:auto; }
+  .design-budget-entry { flex-wrap:wrap; }
+}
+
+@media(max-width:600px) {
+  .parts-total { flex-direction:row; align-items:flex-start; gap:10px; padding:12px 0; }
+  .parts-total strong { font-size:19px; }
+  .parts-total p { font-size:11px; max-width:15ch; }
+  .parts-table caption { padding:10px 0; font-size:11px; }
+  .parts-table tbody th>span { display:none; }
+  .parts-table tbody td:nth-child(3),.parts-table tbody td:nth-child(4) { font-size:10px; }
+}

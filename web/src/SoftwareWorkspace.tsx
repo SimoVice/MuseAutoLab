@@ -8,6 +8,7 @@ import { compileMotionPlan } from './motionPlan';
 import type { MotionMode } from './motionPlan';
 import type { Project } from './types';
 import PoweredByMeta from './PoweredByMeta';
+import AssistantMessage from './AssistantMessage';
 import './software-workspace.css';
 
 type Props = {
@@ -188,7 +189,9 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
         <div>
           <h1 id="software-title">Software & protocols</h1>
           <p>
-            Program your approved workstation. Review each operation before hardware integration.
+            {liquid
+              ? 'Write a recipe for your workstation and see how it runs in the 3D preview.'
+              : 'Review the operating sequence and software for your workstation.'}
           </p>
         </div>
       </div>
@@ -314,7 +317,7 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
             </button>
           </form>
           {error && <p className="software-error" role="alert">{error}</p>}
-          {notice && <p className="software-notice" role="status">{notice}</p>}
+          {notice && <div className="software-notice" role="status"><AssistantMessage text={notice} /></div>}
         </section>
 
         {liquid && (
@@ -469,15 +472,15 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
               onSpeed={setSpeed}
             />
             <p className="software-scope">
-              Planned kinematics for this project revision. Hardware execution is unavailable.
+              Play moves the 3D model in your browser. No commands are sent to a physical machine.
             </p>
-            {project.design.foundation && (
-              <p className="software-scope">
-                The Python program runs locally as a logical simulation. Science Jubilee and Duet
-                device integration, tool configuration and commissioning are still required for
-                hardware use.
-              </p>
-            )}
+            {project.design.foundation && <details className="software-scope software-hardware-guide">
+              <summary>How would I run this on my Jubilee?</summary>
+              <p>Use the transfer list to write a Science Jubilee protocol for your controller.
+                Configure the pipette, calibrate the deck positions and dry-run the moves before loading samples.</p>
+              <a href="https://science-jubilee.readthedocs.io/en/latest/getting_started/index.html"
+                target="_blank" rel="noopener noreferrer">Science Jubilee setup guide</a>
+            </details>}
           </section>
         ) : (
           <div className="software-general-program">

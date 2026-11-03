@@ -16,6 +16,12 @@ The library keeps accepted project state, conversation, model selection and save
 pricing observations. Export jobs and simulation runs can be generated again. Text
 still in the message box stays with its browser tab.
 
+The hosted chat reads the Jubilee project's base-cost reference and the US Opentrons robot
+catalogue during liquid-handler discovery. Only the two public page addresses are requested.
+Successful readings are cached for six hours. When a site blocks access or its price cannot
+be identified, the chat uses the dated reviewed reference. For local operation, set
+`MUSEAUTOLAB_LIVE_PLATFORM_PRICES=1` to enable these reads.
+
 ## Deploy on Modal
 
 Use one workspace, one environment and one active writer for the project volume.

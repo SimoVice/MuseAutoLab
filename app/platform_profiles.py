@@ -4,10 +4,11 @@ from copy import deepcopy
 
 from app.commercial_design import commercial_metadata
 from app.design_sources import resolve_reference
+from app.platform_research import apply_recent_prices
 
 
 def platform_profiles() -> list[dict]:
-    return [
+    return apply_recent_prices([
         {
             "id": "jubilee",
             "label": "Build an open-hardware Jubilee platform",
@@ -19,6 +20,16 @@ def platform_profiles() -> list[dict]:
             "geometry": "Original pinned STEP with bounded custom insert and bed pose",
             "supports_inspection_concept": True,
             "price": None,
+            "cost_context": {
+                "currency": "USD", "amount": 1400,
+                "kind": "historical_upstream_base_parts_estimate",
+                "checked_on": "2026-11-03",
+                "source_url": "https://jubilee3d.com/index.php?title=Specs",
+                "detail": "Upstream estimates about $1,400 for self-sourced US base parts. "
+                "Historical project estimate, not a fresh supplier basket "
+                "or complete liquid handler; "
+                "custom tools, fixtures, labor, shipping and tax remain additional.",
+            },
             "availability": "Parts, kits and regional suppliers need verification",
             "limits": "Not a ready liquid handler. Pipette actuation/mounts, travel, controls, "
             "calibration and assembly labor are not validated or fully priced.",
@@ -36,12 +47,21 @@ def platform_profiles() -> list[dict]:
             "manufacturer": commercial_metadata(),
             "supports_inspection_concept": False,
             "price": None,
+            "cost_context": {
+                "currency": "USD", "amount": 15950,
+                "kind": "reviewed_vendor_starting_price",
+                "checked_on": "2026-11-03",
+                "source_url": "https://opentrons.com/products/categories/robots",
+                "detail": "Official robot catalogue lists OT-2 starting at $15,950. "
+                "Reviewed reference, not a live quote; verify selected pipette configuration, "
+                "labware, consumables, services, shipping and tax separately.",
+            },
             "availability": "Configuration, price, stock and delivery require a quote",
             "limits": "Requires compatible instrument pipettes; the user's manual pipette is "
             "not assumed reusable. Custom arms/cooling integration and hardware "
             "control are not implemented. Calibration and labware checks remain necessary.",
         },
-    ]
+    ])
 
 
 def selected_profile(project: dict) -> dict | None:

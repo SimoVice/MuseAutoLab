@@ -361,6 +361,11 @@ async def _run_job(job_id: str) -> None:
 
 async def start_export(project: dict) -> dict:
     global _seq
+    # UI proposals are derived views, not canonical inputs in the export snapshot.
+    # Guides rebuild the same proposal from the bound project and price sidecars.
+    if "parts_proposal" in project:
+        project = deepcopy(project)
+        project.pop("parts_proposal")
     _ensure_supported(project)
     project_id = project.get("id")
     revision = project.get("revision")

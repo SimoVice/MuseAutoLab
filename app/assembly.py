@@ -332,6 +332,8 @@ def _source_basis_html(project: dict) -> str:
 
 def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = None) -> bytes:
     from app.instructions import (
+        assembly_checklist_html,
+        parts_budget_html,
         presentation_names,
         procurement_html,
         readable_text,
@@ -582,6 +584,8 @@ STEPS
         )
         page = page.replace("</main>", table + "</main>")
     if guide is not None:
+        overview = parts_budget_html(guide.get("parts_proposal")) + assembly_checklist_html(guide)
+        page = page.replace("<main>", "<main>" + overview, 1)
         page = page.replace(
             "</main>", software_guidance_html(guide) + procurement_html(guide) + "</main>"
         )

@@ -108,6 +108,18 @@ def post_message(project_id, message):
             "its own fridge",
             False,
         ),
+        (
+            "Can you add a refrigerator and maybe an arm to store completed samples in it?",
+            "add_cold_transfer", "completed samples", "refrigerator", True,
+        ),
+        (
+            "Can you add a refrigerator and maybe an arm to store completed tubes in it?",
+            "add_cold_transfer", "completed tubes", "refrigerator", False,
+        ),
+        (
+            "Maybe add an arm to transfer the prepared plate to its own fridge later.",
+            "add_cold_transfer", "prepared plate", "its own fridge", False,
+        ),
         ("Could this work for plates and a fridge?", "discuss_cold_transfer", None, None, False),
     ],
 )

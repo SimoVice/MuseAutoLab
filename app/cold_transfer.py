@@ -57,12 +57,20 @@ def semantic_cold_transfer_intent(turn, message: str, project: dict | None = Non
     if re.search(r"(?:[;.]\s*|\band\s+(?:then\s+|also\s+)?)(?:switch|replace|"
                  r"change|buy|reduce|increase|add|remove|set|give|install|design)\b", text):
         return "clarify"
+    # A polite request remains operative when only the arm implementation is tentative.
+    polite_add = bool(re.search(
+        r"^\s*(?:please\s+)?(?:can|could|would)\s+you\s+(?:please\s+)?add\b", text
+    ))
+    tentative_arm = polite_add and bool(re.search(
+        r"\bmaybe\s+(?:(?:a|an|the)\s+)?(?:arm|gripper|manipulator)\b", text
+    ))
+    guard_text = re.sub(r"\bmaybe\b", "", text) if tentative_arm else text
     # Independent guard against an unsafe model classification of an information
     # request, prohibition, hypothetical or extra engineering requirement.
     if re.search(r"^\s*(?:what|why|how|when\s+(?:will|would|can|could|does|is)|"
                  r"where|is|are|does|do we|can we|could we|would it)\b",
                  text) or re.search(r"\b(?:don't|do not|not|never|without|instead|if|maybe|later|"
-                                    r"eventually|unless|only if)\b", text):
+                                    r"eventually|unless|only if)\b", guard_text):
         return "discuss"
     if re.search(r"\b(?:mm|cm|degrees?|celsius|fahrenheit|minutes?|seconds?|litres?|liters?)\b|"
                  r"\b\d+\s*\u00b0?[cf]\b", text):
