@@ -167,6 +167,10 @@ export default function ProjectResources({ imageCapability = null, project, busy
 
   useEffect(() => {
     setGuide(null); setGuideError(null); setStepIndex(0); setAssemblyIndex(0);
+  }, [base, revision]);
+
+  useEffect(() => {
+    setGuideError(null);
     if (panel !== 'instructions' && panel !== 'software') return;
     const controller = new AbortController();
     setGuideLoading(true);

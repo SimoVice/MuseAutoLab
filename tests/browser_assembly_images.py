@@ -21,8 +21,8 @@ def run(url):
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
-        requests, errors, pending = [], [], []
-        state = {"mode": "failure"}
+        requests, errors, pending, pending_costs = [], [], [], []
+        state = {"mode": "failure", "hold_cost": True}
         page.on("pageerror", lambda error: errors.append(str(error)))
 
         def models(route):
@@ -70,6 +70,13 @@ def run(url):
                 return
             route.fulfill(json=result)
 
+        def cost(route):
+            if state["hold_cost"]:
+                pending_costs.append(route)
+            else:
+                route.fulfill(status=503, json={"detail": "Offline budget fixture complete."})
+
+        page.route("**/cost-estimate*", cost)
         page.route("**/api/models?*", models)
         page.route("**/instructions/illustration", image)
         try:
@@ -136,6 +143,25 @@ def run(url):
             reader.get_by_role("button", name="Next assembly step").click()
             expect(reader.get_by_role("status")).to_contain_text("Generating an illustration")
             assert len(requests) == 6, "Step navigation must preserve the in-flight request"
+            # A background budget result reloads the same-revision guide while the image runs.
+            expect(page.get_by_label("Assembly step", exact=True)).to_have_value("2")
+            assert pending_costs, "Expected the delayed background budget request"
+            state["hold_cost"] = False
+            with page.expect_response(lambda response: "/instructions?revision=" in response.url):
+                pending_costs.pop().fulfill(
+                    json={
+                        "state": "current",
+                        "estimate": {
+                            "project_id": project["id"],
+                            "project_revision": project["revision"],
+                            "status": "failed",
+                            "rows": [],
+                            "exclusions": [],
+                        },
+                    }
+                )
+            expect(page.get_by_label("Assembly step", exact=True)).to_have_value("2")
+            expect(reader.get_by_role("status")).to_contain_text("Generating an illustration")
             route, result = pending.pop()
             route.fulfill(json=result)
             expect(
