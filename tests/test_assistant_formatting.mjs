@@ -37,3 +37,20 @@ test('bare links have descriptive labels without exposing long pinned hashes', (
   assert.equal(sourceLinkLabel('https://opentrons.com/products/categories/robots'), 'Opentrons reference');
   assert.equal(sourceLinkLabel('https://example.org/catalog'), 'example.org reference');
 });
+
+test('hosted Build/Buy sections separate bold fields on soft lines and the same line', () => {
+  const body = '### Build\n\n[Build an open-hardware Jubilee platform](https://github.com/machineagency/jubilee/tree/0123456789abcdef)\n**Cost:** ~$1,400 historical upstream base-parts estimate, checked 2026-11-03. Reviewed reference only, not a quote.\n**Scope:** Source the pinned BOM and fabricate specified parts; pipette tools and fixtures need review.\n**Tradeoff:** More assembly and calibration work, but flexible for custom tube racks.\n\n### Buy\n\n[Buy an assembled Opentrons OT-2 platform](https://opentrons.com/) **Cost:** Starting at $15,950 vendor price, checked 2026-11-03. Reviewed reference only, verify configuration separately. **Scope:** Request official configuration/quote for robot, compatible pipettes and labware, then manufacturer setup. **Tradeoff:** Less building, but needs compatible instrument pipettes and confirmed labware.\n\nDo you already own compatible pipettes or labware you want this to fit?';
+  const result = formatAssistantText(body);
+  for (const field of ['Cost', 'Scope', 'Tradeoff']) {
+    assert.equal((result.match(new RegExp(`\\n\\n\\*\\*${field}:\\*\\*`, 'g')) || []).length, 2);
+  }
+  assert.equal(formatAssistantText(result), result);
+  assert.ok(result.endsWith('Do you already own compatible pipettes or labware you want this to fit?'));
+  const generic = 'Project help:\n**Cost:** Keep this generic GFM. **Scope:** No route comparison.';
+  assert.equal(formatAssistantText(generic), generic);
+  const fresh = '### Build\n**Cost:** ~$1,400 historical estimate; [Jubilee project](https://github.com/machineagency/jubilee/) and [Science Jubilee tools](https://github.com/science-jubilee/science-jubilee/).\n**Scope:** Source and fabricate the parts.\n**Tradeoff:** Assembly work remains.\n\n### Buy\n**Cost:** Starting at $15,950; [Opentrons catalogue](https://opentrons.com/).\n**Scope:** Request a quote.\n**Tradeoff:** Compatible instruments required.';
+  const formattedFresh = formatAssistantText(fresh);
+  assert.equal((formattedFresh.match(/\n\n\*\*(?:Cost|Scope|Tradeoff):\*\*/g) || []).length, 6);
+  assert.ok(formattedFresh.includes('[Science Jubilee tools](https://github.com/science-jubilee/science-jubilee/)'));
+  assert.equal(formatAssistantText(formattedFresh), formattedFresh);
+});

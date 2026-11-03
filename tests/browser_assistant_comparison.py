@@ -24,6 +24,21 @@ UNSAFE = """[Unsafe](javascript:alert(1))
 <script>window.injected=true</script>
 <img src=x onerror="window.injected=true">
 """
+HOSTED = """For 1.5 mL tubes I can set this up as a reusable pipetting workstation.
+
+### Build
+
+[Build an open-hardware Jubilee platform](https://github.com/machineagency/jubilee/)
+**Cost:** ~$1,400 historical upstream base-parts estimate, checked 2026-11-03. Reviewed reference only, not a quote.
+**Scope:** Source the pinned BOM and fabricate specified parts; pipette tools and fixtures need review.
+**Tradeoff:** More assembly and calibration work, but flexible for custom tube racks.
+
+### Buy
+
+[Buy an assembled Opentrons OT-2 platform](https://opentrons.com/) **Cost:** Starting at $15,950 vendor price, checked 2026-11-03. Reviewed reference only, verify configuration separately. **Scope:** Request official configuration/quote for robot, compatible pipettes and labware, then manufacturer setup. **Tradeoff:** Less building, but needs compatible instrument pipettes and confirmed labware.
+
+Do you already own compatible pipettes or labware you want this to fit?
+"""  # noqa: E501
 
 
 def run(url):
@@ -62,6 +77,12 @@ def run(url):
             assert not any(text.endswith("-") for text in page.locator("h3").all_text_contents())
             assert "0123456789abcdef" not in page.locator(".assistant-markdown").inner_text()
             page.screenshot(path=str(output / f"comparison-{width}.png"), full_page=True)
+        page.evaluate("text=>window.renderMessage(text)", HOSTED)
+        expect(page.locator(".assistant-markdown p > strong:first-child")).to_have_count(6)
+        for width in (1440, 390):
+            page.set_viewport_size({"width": width, "height": 1000})
+            assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+            page.screenshot(path=str(output / f"hosted-shape-{width}.png"), full_page=True)
         page.evaluate("text=>window.renderMessage(text)", UNSAFE)
         expect(page.locator(".assistant-markdown img, .assistant-markdown script")).to_have_count(0)
         expect(page.locator(".assistant-markdown a")).to_have_count(0)
