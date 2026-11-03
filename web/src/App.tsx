@@ -1,4 +1,5 @@
 import PartsProposal from './PartsProposal';
+import ProjectNotes from './ProjectNotes';
 import SoftwareWorkspace from './SoftwareWorkspace';
 import PoweredByMeta from './PoweredByMeta';
 import ProjectLibrary from './ProjectLibrary';
@@ -21,6 +22,8 @@ import IllustrationPanel from './IllustrationPanel';
 import VoiceDictation from './VoiceDictation';
 import AgentActivity, { activityCopy, nextDesignPaint } from './AgentActivity';
 import type { AgentPhase } from './AgentActivity';
+import { watchChatActivity } from './chatActivity';
+import type { RequestActivity } from './chatActivity';
 import AssistantMessage from './AssistantMessage';
 import ProjectResources from './ProjectResources';
 import CostSummary from './CostSummary';
@@ -62,10 +65,10 @@ function readableError(message: string) {
   }[field] ?? field));
 }
 
-async function request(path: string, body?: unknown, signal?: AbortSignal): Promise<ProjectResponse> {
+async function request(path: string, body?: unknown, signal?: AbortSignal, requestId?: string): Promise<ProjectResponse> {
   const response = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(requestId ? { 'X-Chat-Request-Id': requestId } : {}) },
     signal,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
@@ -168,6 +171,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const inputRef = useRef(input);
   inputRef.current = input;
   const [busy, setBusy] = useState(false);
+  const [requestActivity, setRequestActivity] = useState<RequestActivity | null>(null);
   const [modelBusy, setModelBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceEpoch, setVoiceEpoch] = useState(0);
@@ -571,6 +575,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
     if (!project || !message || uiBusy || voiceBusy) return;
     if (message.length > 4000) { setError('The message exceeds 4,000 characters. Shorten it before sending; your draft is kept.'); return; }
     setMobileView('chat');
+    setRequestActivity(null);
     const session = sessionRef.current;
     chatAbort.current?.abort();
     const controller = new AbortController();
@@ -581,10 +586,16 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
     setError(null);
     setInput('');
     setMessages((current) => [...current, { id: Date.now(), role: 'user', text: message }]);
+    const requestId = crypto.randomUUID();
+    const stopActivity = watchChatActivity(project.id, requestId, controller.signal, activity => {
+      if (sessionRef.current === session) setRequestActivity(activity);
+    });
     try {
       const root = `/api/projects/${encodeURIComponent(project.id)}`;
       const raw = await request(root + (fromBrief ? '/concept' : '/messages'),
-        fromBrief ? { project_revision: project.revision } : { message, project_revision: project.revision }, controller.signal) as ChatResponse;
+        fromBrief ? { project_revision: project.revision } : { message, project_revision: project.revision }, controller.signal, requestId) as ChatResponse;
+      stopActivity();
+      setRequestActivity(null);
       if (controller.signal.aborted || sessionRef.current !== session) return;
       const runs = Array.isArray(raw.action_runs) ? raw.action_runs : [];
       if (!await presentProject(raw.project, controller.signal, session)) return;
@@ -603,7 +614,9 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
       setInput(message);
       setError(reason instanceof Error ? reason.message : 'The request could not be completed. Please try again.');
     } finally {
+      stopActivity();
       if (!controller.signal.aborted && sessionRef.current === session) {
+        setRequestActivity(null);
         setBusy(false);
       }
     }
@@ -952,7 +965,10 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
         </section>
 
         <aside id="chat-workspace" className="conversation-panel" aria-labelledby="conversation-title">
-          <div className="chat-heading"><div className="assistant-emblem"><Icon name="spark" size={19} /></div><div><h2 id="conversation-title">Design assistant</h2><p>Let’s make your workflow easier.</p></div><span className="chat-status">{project?.status === 'confirmed' ? 'Confirmed' : 'Draft'}</span></div>
+          <div className="chat-heading"><div className="assistant-emblem"><Icon name="spark" size={19} /></div><div><h2 id="conversation-title">Design assistant</h2><p>Let’s make your workflow easier.</p></div><span className="chat-status">{project?.status === 'confirmed' ? 'Confirmed' : 'Draft'}</span>
+            {project && <ProjectNotes key={project.id} project={project} busy={uiBusy}
+              onSave={(id, notes) => setProject(current => current?.id === id ? { ...current, project_notes: notes } : current)} />}
+          </div>
           <div className="assistant-controls">{project && <ModelSelector key={project.id} projectId={project.id} busy={uiBusy || voiceBusy} onBusyChange={setModelBusy} onVoiceCapability={setVoiceCapability} onImageCapability={setImageCapability} />}</div>
           <div className="conversation-scroll" ref={conversation}>
             <div className="chat-date">Your design conversation</div>
@@ -961,7 +977,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.role === 'assistant' ? <AssistantMessage text={message.text} /> : message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
             </div>)}
             {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && (!agentPhase || agentPhase === 'ready') && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
-            {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} />}
+            {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} activity={requestActivity} />}
+            {!agentPhase && costState.loading && <AgentActivity phase="pending" activity={{ title: 'Updating budget', detail: 'Preparing the cost estimate for the current project revision.' }} />}
             <div ref={lastMessage} />
 
           </div>

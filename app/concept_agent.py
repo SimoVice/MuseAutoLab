@@ -346,6 +346,8 @@ async def develop_concept(
     width = project["summary"].get("workspace_width_mm")
     context = {"request": message, "recorded_brief": project["brief"],
                "maximum_width_mm": width, "prior_design": previous, "reviewed_sources": sources}
+    if project.get("project_notes"):
+        context["user_project_notes"] = project["project_notes"]
     if history:
         context["recent_conversation"] = list(history)[-4:]
     prompt = json.dumps(context, ensure_ascii=False, allow_nan=False)

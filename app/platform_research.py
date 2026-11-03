@@ -8,6 +8,8 @@ from time import monotonic
 
 import httpx
 
+from app.chat_activity import activity_scope
+
 
 class _PageText(HTMLParser):
     def __init__(self):
@@ -88,10 +90,11 @@ async def refresh_platform_prices() -> None:
                 and _cache.get(item["id"], (0, None))[0] <= monotonic()]
     if not profiles:
         return
-    async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
-        observations = await asyncio.gather(*(
-            _read(item["id"], item["cost_context"]["source_url"], client) for item in profiles
-        ))
+    with activity_scope("sourcing"):
+        async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
+            observations = await asyncio.gather(*(
+                _read(item["id"], item["cost_context"]["source_url"], client) for item in profiles
+            ))
     for item, observation in zip(profiles, observations, strict=True):
         key = item["id"]
         expires, cached = _cache.get(key, (0, None))

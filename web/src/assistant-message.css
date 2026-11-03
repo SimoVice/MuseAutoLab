@@ -1,0 +1,17 @@
+/* Conversation reading rhythm, shared by restored messages and new replies. */
+.assistant-markdown { min-width: 0; overflow-wrap: anywhere; line-height: 1.65; }
+.assistant-markdown > :is(h2, h3) { margin-top: 1.4em; padding-top: .9em; border-top: 1px solid #cbded9; color: #214a52; font-size: 1.08em; line-height: 1.4; }
+.assistant-markdown > :is(h2, h3):first-child { padding-top: 0; border-top: 0; }
+.assistant-markdown > :is(h2, h3) + p { margin-top: .55em; }
+.assistant-markdown p:has(> strong:first-child) { margin-bottom: .65em; }
+.assistant-markdown a:hover { color: #064d4b; text-decoration-thickness: 2px; }
+.assistant-markdown ::selection { background: #c7e5dd; color: #153e43; }
+.assistant-table-scroll { max-width: 100%; overflow-x: auto; margin: .8em 0; }
+.assistant-table-scroll:focus-visible { outline: 2px solid #126865; outline-offset: 2px; }
+.assistant-table-scroll table { width: 100%; border-collapse: collapse; font-size: .95em; }
+.assistant-table-scroll :is(th, td) { padding: .6em .75em; text-align: left; vertical-align: top; border-bottom: 1px solid #cbded9; min-width: 9em; }
+.assistant-table-scroll th { color: #214a52; font-weight: 700; }
+@media (max-width: 480px) {
+  .assistant-markdown { line-height: 1.6; }
+  .assistant-table-scroll :is(th, td) { padding: .5em; }
+}

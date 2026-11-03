@@ -108,6 +108,59 @@ def test_fallback_uses_current_profile_amount_and_per_source_date(monkeypatch):
     assert "reference reviewed 2026-11-02" in reply
 
 
+def test_comparison_separates_cost_scope_tradeoff_and_keeps_one_final_question():
+    current = new_project()
+    reply = complete_platform_comparison(
+        current, current, "Compare Jubilee and OT-2", "Two routes fit. Which do you prefer?")
+    assert reply.count("### ") == 2
+    for label in ("**Cost:**", "**Scope:**", "**Tradeoff:**"):
+        assert reply.count(label) == 2
+    assert reply.count("Which do you prefer?") == 1
+    assert reply.endswith("Which do you prefer?")
+    assert "historical upstream estimate" in reply
+    assert "[Project reference]" in reply and "[Cost reference]" in reply
+    assert "web search" not in reply.lower()
+
+
+def test_partial_model_options_get_evidence_without_duplicate_option_sections():
+    current = new_project()
+    text = ("### Build Jubilee\n\nFlexible tools. Cost: about $1,400 for base parts.\n\n"
+            "### Buy OT-2\n\nAssembled instrument. Cost: starting at $15,950.\n\n"
+            "Which route fits your lab?")
+    reply = complete_platform_comparison(current, current, "Compare Jubilee and OT-2", text)
+    assert reply.count("### ") == 2
+    assert reply.count("$1,400") == 1 and reply.count("$15,950") == 1
+    assert reply.count("Which route fits your lab?") == 1
+    assert reply.endswith("Which route fits your lab?")
+    assert "**Jubilee cost & source:**" in reply and "**OT-2 cost & source:**" in reply
+    assert complete_platform_comparison(
+        current, current, "Compare Jubilee and OT-2", reply) == reply
+
+
+@pytest.mark.parametrize("selected", ["jubilee", "opentrons-ot2"])
+def test_proposed_equipment_is_schematic_and_corrections_are_optional(selected):
+    from app.chat_sourcing import complete_equipment_question
+    from app.engineering import state_for
+
+    current = new_project()
+    updated = deepcopy(current)
+    updated["engineering"] = {**state_for(current), "selected_platform_id": selected}
+    updated["engineering_design"] = {"id": "layout"}
+    reply = complete_equipment_question(current, updated, "Proposed layout.")
+    assert "schematic references" in reply
+    assert "when available" in reply
+    assert "You can correct the proposal" in reply
+    assert complete_equipment_question(current, updated, reply) == reply
+    if selected == "opentrons-ot2":
+        assert "manual pipette is not assumed compatible" in reply
+
+    demanding = complete_equipment_question(
+        current, updated, "Proposed layout. What make/model are your pipette and tips?")
+    assert "What make/model" not in demanding
+    assert "when available" in demanding
+    assert not demanding.endswith("?")
+
+
 @pytest.mark.parametrize("machine_key", ["engineering_design", "concept_design", "bench_station"])
 def test_added_and_changed_components_get_concise_proposals(monkeypatch, machine_key):
     from app import chat_sourcing
@@ -173,6 +226,7 @@ def test_equipment_question_waits_for_layout_and_generic_manual_pipette_is_incom
     assert complete_equipment_question(current, updated, reply) == reply
     updated["engineering_design"] = {"id": "developed-layout"}
     reply = complete_equipment_question(current, updated, "Layout updated.")
-    assert "make/model or part number" in reply and reply.endswith("?")
+    assert "make/model or part number" in reply and "when available" in reply
+    assert reply.endswith("Tell me if you would like to change this proposed setup.")
     assert complete_equipment_question(updated, updated, "Equipment recorded.") == (
         "Equipment recorded.")

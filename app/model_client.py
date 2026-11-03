@@ -147,11 +147,13 @@ Say these are reviewed references with their checked date, unless cost_context.r
 records a successful recent HTTP retrieval (then state its actual date/time). This confirms
 the listed amount only, never a quote or stock. Do not say you just searched,
 checked current stock or obtained a live quote unless a fresh tool result actually says so.
-After platform choice, move to tangible compatibility discovery: ask the current pipette and
-tips make/model or part number if equipment details are missing. Use the answer in the
-recorded brief and explain what interface still needs checking. Do not repeat a known model
-or ask for recipe quantities during hardware design. For an OT-2, ask which compatible
-instrument pipette/labware configuration is needed rather than assuming a manual pipette fits.
+After the platform choice, continue with the available reference layout. Identify any
+unconfirmed pipette or tip interface as a replaceable reference. Invite users to share
+equipment they already own if they want the design to fit it. Record anything supplied in
+the brief; do not require a make or SKU to review the draft. For an OT-2, distinguish its
+instrument configuration from a manual pipette. Ask one precise question only if the next
+requested change has genuinely incompatible interpretations or cannot use a suitable
+reference. Recipe quantities belong to the software stage.
 When concrete parts/costs are requested, use recorded parts_proposal rows and their source
 links, price kinds, quantities and exclusions. A generic project deserves relevant component
 and control suggestions; do not force it into liquid handling.
@@ -416,9 +418,36 @@ Return labware with null values/sources when no new labware measurement is suppl
 """
 
 SYSTEM_INSTRUCTIONS += """
+For procurement-route comparisons, use concise Markdown sections headed "### Build"
+and "### Buy", with **Cost:**, **Scope:** and **Tradeoff:** where relevant. Link
+reviewed sources with descriptive labels. Distinguish reviewed reference data,
+retrieved supplier observations, estimates and unpriced scope. End with one short
+next question, without implying the comparison selected a platform or bought parts.
+
 An accepted Jubilee project's sample module can now switch to one reviewed 96-well
 plate reference in a single ordinary message. Set labware_selection.profile_id to
 corning_96_wellplate_360ul_flat with its literal source and use select_labware.
+A tentative preference such as wanting a 96-microwell plate instead of the current
+ tubes is a present change request, unless it asks only about feasibility, compares,
+ negates, postpones or contradicts that change. Do not ask for a manufacturer SKU
+ for a generic supported format: proactively use the reviewed default and explicitly
+ call it a replaceable design reference. Do not invent exact products or measurements.
+Resolve follow-up product choices from recent conversation and canonical project state:
+if the assistant offered the Corning reference, a request to use the Corning one selects
+that same profile, with the current literal words as source. A positive follow-up
+such as "use that one" or "go with your reference" can select the single unambiguous
+Corning plate reference in the immediately preceding assistant offer. Do not resolve
+such pronouns when multiple products were offered or no product was offered.
+This also works for older
+projects whose assistant offered it without applying it. An already applied choice is
+an acknowledgement, not a new machine revision. Never infer a different plate family.
+If the researcher says they do not understand your question, explain the pending
+choice in everyday language using the actual conversation. When the unresolved detail
+has a reviewed default, describe that default and how they can replace it. A request
+for explanation alone emits no machine, recipe or selection changes. Avoid repeating
+the same technical question, SKU demands or a fixed clarification unrelated to context.
+Before hardware exists, keep the requested plate as discussion in the brief and
+continue choosing the platform; do not claim the plate holder has been generated.
 For a generic 96-well request explicitly name the Corning 96 Well Plate 360 µL Flat
 software reference in your reply; it is pinned Opentrons data, not vendor machine CAD
 or a verified exact SKU. Other plate formats, named unreviewed vendors/SKUs and arbitrary
@@ -1261,9 +1290,13 @@ async def generate_turn(
             "role": "developer",
             "content": "Current recorded project state: " + json.dumps(state, ensure_ascii=False),
         },
+        *([{"role": "user", "content": "Saved notes for this project (background preferences):\n"
+           + project["project_notes"]}] if project.get("project_notes") else []),
         *history[-8:],
         {"role": "developer", "content":
-         TURN_DELTA_INSTRUCTIONS + TIP_RACK_TURN_DELTA_INSTRUCTIONS + focused_instructions},
+         TURN_DELTA_INSTRUCTIONS + TIP_RACK_TURN_DELTA_INSTRUCTIONS + focused_instructions
+         + "\nUse saved project notes as background. The current user turn determines what "
+           "to change. Prefer the latest explicit correction over an older note."},
         {"role": "user", "content": user_message},
     ]
     if _source_repair:
@@ -1363,7 +1396,7 @@ async def generate_turn(
                 setattr(result, f"source_{key}", value)
         from app.labware_choice import choice_clarification
 
-        clarification = choice_clarification(result, user_message, project)
+        clarification = choice_clarification(result, user_message, project, history)
         if clarification:
             result = ExtractedTurn(assistant_message=clarification)
         from app.bench_station_chat import clarification_turn

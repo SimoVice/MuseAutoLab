@@ -9,12 +9,13 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app import project_library
 from app.chat_actions import execute_chat_actions, extension_only_patch
+from app.chat_activity import activity_dependency, install_activity, report_activity
 from app.design_agent import develop_design
 from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
@@ -29,7 +30,7 @@ from app.illustration import (
 )
 from app.inspection import clear_extension, develop_inspection
 from app.labware import reapply_labware, update_labware_brief
-from app.microplates import canonical_labware_reply, reapply_plate
+from app.microplates import labware_chat_reply, reapply_plate
 from app.model_catalog import (
     AGENT_MODELS,
     IMAGE_MODEL,
@@ -59,7 +60,13 @@ from app.project_exports import (
     media_type_for,
     start_export,
 )
-from app.project_storage import MAX_SNAPSHOT_BYTES, decode_snapshot, make_snapshot, restore_snapshot
+from app.project_storage import (
+    MAX_SNAPSHOT_BYTES,
+    ProjectNotes,
+    decode_snapshot,
+    make_snapshot,
+    restore_snapshot,
+)
 from app.simulation_jobs import (
     SimulationError,
     simulation_file,
@@ -245,7 +252,7 @@ def _configuration_message(project: dict) -> str:
     sourcing = project["sourcing"]
     if cooling["enabled"]:
         status = (
-            f"Refrigerated bay enabled. Target {cooling['target_c']:g} °C; manual sample transfer."
+            f"Refrigerated bay enabled. Target {cooling['target_c']:g} Â°C; manual sample transfer."
         )
     else:
         status = "Refrigerated bay is off."
@@ -316,6 +323,27 @@ async def save_named_project(project_id: str, request: LibrarySaveRequest) -> di
             raise HTTPException(status_code=409, detail="Save the current project revision.")
         saved = _persist_session(session, title=request.title)
     return {"saved_project": saved}
+
+
+class ProjectNotesEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    previous: ProjectNotes
+    notes: ProjectNotes
+
+
+@app.put("/api/projects/{project_id}/notes")
+async def edit_project_notes(project_id: str, edit: ProjectNotesEdit) -> dict:
+    session = session_for(project_id)
+    async with session.model_lock():
+        existing = session.project.get("project_notes", "")
+        notes = edit.notes.strip()
+        if existing != edit.previous and existing != notes:
+            raise HTTPException(status_code=409, detail={"notes": existing})
+        if notes:
+            session.project["project_notes"] = notes
+        else:
+            session.project.pop("project_notes", None)
+    return {"project_id": project_id, "notes": notes}
 
 
 async def _resume_project(project_id: str) -> dict:
@@ -780,7 +808,8 @@ async def open_project(request: Request) -> dict:
             "assistant_message": "Project reopened. Geometry was rebuilt from saved inputs."}
 
 
-@app.post("/api/projects/{project_id}/messages")
+@app.post("/api/projects/{project_id}/messages",
+          dependencies=[Depends(activity_dependency(session_for))])
 async def send_message(project_id: str, request: MessageRequest) -> dict:
     session = session_for(project_id)
     # Serialize each project's turns: a slow model call cannot overwrite a newer revision.
@@ -801,6 +830,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
             # Ordinary natural language always goes through Muse. A provider outage
             # permits only the narrow documented canonical offline commands.
             try:
+                report_activity("interpreting")
                 turn, usage = await generate_turn(
                     project_with_report(current, session.procurement_report, session.cost_estimate),
                     request.message, list(session.history)
@@ -893,6 +923,14 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     kind="select_labware", source=turn.labware_selection.source
                 ))
             patch = extension_only_patch(turn.patch(), actions)
+            # The plate compiler owns its holder and sample placement. An echoed
+            # layout action on a selection-only turn must not redesign the source
+            # machine or make an otherwise valid switch fail atomically.
+            if (turn.labware_selection.profile_id is not None
+                    and current.get("engineering_design") and not patch
+                    and not turn.engineering.requirements and not turn.engineering.options
+                    and turn.engineering.platform_choice is None):
+                actions = [action for action in actions if action.kind != "develop_layout"]
             from app.design_workflow import RECIPE_FIELDS, workflow_state
 
             recipe_changed = any(key in patch and patch[key] != current["summary"].get(key)
@@ -971,6 +1009,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 actions = [action for action in actions if action.kind not in bench_messages]
             if actions:
                 if any(action.kind in ("select_labware", "select_tip_rack") for action in actions):
+                    report_activity("applying")
                     updated, action_runs = await execute_chat_actions(
                         updated, actions, request.message, turn.labware_selection, tip_update
                     )
@@ -1001,7 +1040,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 detail=f"{exc} The project was not changed.",
             ) from None
 
-        canonical_reply = canonical_labware_reply(updated, action_runs, patch)
+        canonical_reply = labware_chat_reply(current, updated, action_runs, patch)
         if any(run.get("bench_station") for run in action_runs):
             canonical_reply = "\n\n".join(run["message"] for run in action_runs)
         tip_runs = [run for run in action_runs if run["kind"] in (
@@ -1184,6 +1223,7 @@ async def _custom_assembly_turn(session, turn, message, usage):
             patch["brief_objective"] = message[:1000]
         candidate = apply_update(previous, {**patch, "workflow_kind": "general"})
         try:
+            report_activity("assembling")
             compiled, reply, calls = await develop_concept(
                 candidate, message, history=session.history)
         except ModelClientError as exc:
@@ -1233,7 +1273,8 @@ async def _custom_assembly_turn(session, turn, message, usage):
             ]}
 
 
-@app.post("/api/projects/{project_id}/concept")
+@app.post("/api/projects/{project_id}/concept",
+          dependencies=[Depends(activity_dependency(session_for))])
 async def generate_custom_project(project_id: str, request: ProcurementRefreshRequest) -> dict:
     from app.concept_agent import attach_concept, develop_concept
 
@@ -1248,6 +1289,7 @@ async def generate_custom_project(project_id: str, request: ProcurementRefreshRe
             raise HTTPException(409, "Describe the custom equipment in a new general brief first.")
         instruction = "Design a custom laboratory assembly for my recorded brief."
         try:
+            report_activity("assembling")
             compiled, reply, calls = await develop_concept(
                 project, instruction, history=session.history)
         except ModelClientError as exc:
@@ -1822,3 +1864,6 @@ async def bench_station_runner(project_id: str, revision: int) -> Response:
             raise HTTPException(status_code=404, detail="No bench station concept exists.")
         return Response(content=inspect.getsource(runner), media_type="text/x-python",
                         headers={"Content-Disposition": 'attachment; filename="run.py"'})
+
+
+install_activity(app)

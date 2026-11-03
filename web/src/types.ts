@@ -203,6 +203,7 @@ export type BenchStation = {
 };
 
 export type Project = {
+  project_notes?: string;
   design_workflow?: { phase: 'hardware_design' | 'software'; machine_approved: boolean; approval: { machine_signature: string; revision: number } | null; recipe_started: boolean };
   concept_design?: import('./ConceptWorkspace').ConceptDesign;
   id: string;

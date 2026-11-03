@@ -48,10 +48,38 @@ def complete_platform_comparison(current, updated, message, reply):
                       "pipette configuration and consumables to verify.")
         checked = ("page retrieved " + cost["retrieved_at"] if cost.get("retrieved_at")
                    else "reference reviewed " + cost["checked_on"])
-        missing.append(f"- [{profile['label']}]({cost['source_url']}): {detail} ({checked})")
+        named = re.search(
+            r"\bjubilee\b" if profile["id"] == "jubilee" else r"\bot[- ]?2\b",
+            reply, re.I,
+        )
+        if named:
+            # A partial model comparison needs evidence, not a second copy of its options.
+            label = "Jubilee" if profile["id"] == "jubilee" else "OT-2"
+            price_detail = f"{detail} " if not priced else ""
+            missing.append(
+                f"**{label} cost & source:** {price_detail}"
+                f"[Cost reference]({cost['source_url']}) ({checked}). "
+                f"[Project reference]({profile['source_url']})."
+            )
+            continue
+        missing.append(
+            f"### {profile['label']}\n\n"
+            f"**Cost:** {detail}\n\n"
+            f"**Scope:** {profile['acquisition']}\n\n"
+            f"**Tradeoff:** {profile['limits']}\n\n"
+            f"[Project reference]({profile['source_url']}) · "
+            f"[Cost reference]({cost['source_url']}) — {checked}."
+        )
     if missing:
-        reply += ("\n\nPlatform cost references (USD):\n" + "\n".join(missing)
-                  + "\nConfiguration, shipping, tax and commissioning require a quote.")
+        # Keep the model's final question at the end of the complete answer.
+        question = re.search(r"(?:^|(?<=[.!?])\s+|\n)([^.!?\n]+\?)\s*$", reply)
+        ending = question.group(1).strip() if question else ""
+        if question:
+            reply = reply[:question.start(1)].rstrip()
+        reply += ("\n\n" + "\n\n".join(missing)
+                  + "\n\nConfiguration, shipping, tax and commissioning require a quote.")
+        if ending:
+            reply += "\n\n" + ending
     return reply
 
 
@@ -96,17 +124,25 @@ def complete_equipment_question(current, updated, reply):
     equipment_questions = [question.strip() for question in re.findall(r"[^.!?\n]+\?", reply)
                            if re.search(r"pipette|tip|instrument", question, re.I)]
     if equipment_questions:
-        question = equipment_questions[-1]
-        if reply.rstrip().endswith(question):
+        demanding = [question for question in equipment_questions if re.search(
+            r"make|model|part number|which|what|configuration", question, re.I)]
+        if not demanding:
             return reply
-        return reply.replace(question, "", 1).rstrip() + "\n\n" + question
+        for question in demanding:
+            reply = reply.replace(question, "", 1).rstrip()
+    if "schematic references" in reply and "when available" in reply:
+        return reply
     if selected == "jubilee":
-        question = ("The pipette mount and tip interface still need checking. "
-                    "What make/model or part number are your current pipette and tips?")
+        question = ("The shown pipette and tips are schematic references; the mount and tip "
+                    "interface still need checking. You can correct the proposal or share your "
+                    "pipette/tip make/model or part number when available. "
+                    "Tell me if you would like to change this proposed setup.")
     else:
-        question = ("A manual pipette is not assumed compatible. "
-                    "Which OT-2 instrument pipette and tip/labware configuration do you have, "
-                    "or should we propose one?")
+        question = ("The shown OT-2 instrument pipette and tips are schematic references, "
+                    "pending configuration and compatibility checks. A manual pipette is not "
+                    "assumed compatible. You can correct the proposal or share your existing "
+                    "instrument and tip/labware configuration when available. "
+                    "Tell me if you would like to change this proposed setup.")
     return reply + "\n\n" + question
 
 

@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 
+from app.chat_activity import activity_scope
 from app.design_agent import develop_design
 from app.engineering import state_for
 from app.foundation_design import adopt_foundation, is_source_based
@@ -100,7 +101,8 @@ async def execute_chat_actions(
                     base["sourcing"] = commercial_sourcing()
                 else:
                     base = deepcopy(result) if is_source_based(result) else adopt_foundation(result)
-                result, run = await develop_design(base, instruction)
+                with activity_scope("assembling"):
+                    result, run = await develop_design(base, instruction)
                 if run["status"] == "accepted" and result.get("labware_rack"):
                     result = reapply_labware(result)
                 if run["status"] == "accepted" and result.get("labware_plate"):
@@ -113,7 +115,8 @@ async def execute_chat_actions(
                 if run["status"] != "accepted":
                     return _rollback(project, runs)
             elif kind == "add_inspection":
-                result, run = await develop_inspection(result, instruction)
+                with activity_scope("assembling"):
+                    result, run = await develop_inspection(result, instruction)
                 runs.append({**run, "kind": kind})
                 if run["status"] != "accepted":
                     return _rollback(project, runs)
@@ -133,9 +136,10 @@ async def execute_chat_actions(
                 result, run = develop_labware(result)
                 runs.append(run)
             elif kind == "select_labware":
-                result, run = select_plate(
-                    result, labware_selection or LabwareSelection(), instruction
-                )
+                with activity_scope("assembling"):
+                    result, run = select_plate(
+                        result, labware_selection or LabwareSelection(), instruction
+                    )
                 runs.append(run)
             elif kind == "select_tip_rack":
                 result, run = select_tip_rack(

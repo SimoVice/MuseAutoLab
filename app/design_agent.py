@@ -188,6 +188,9 @@ async def propose_layout(
     The candidate is NOT validated here; semantic and schema diagnostics belong
     to check_candidate so the caller can run one bounded correction.
     """
+    if project.get("project_notes"):
+        instruction = ("Saved project preferences:\n" + project["project_notes"]
+                       + "\n\nRequested design change:\n" + instruction)
     return await request_design_proposal(
         _developer_instructions(project), proposal_schema(project), "layout_proposal", instruction,
         feedback, client=client, settings=settings,

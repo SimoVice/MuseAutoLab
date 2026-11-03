@@ -10,7 +10,7 @@ import re
 from copy import deepcopy
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from app.labware import SavedLabwareRack, rack_inputs
 
@@ -25,6 +25,8 @@ class StrictModel(BaseModel):
 
 
 class LabwareSelection(StrictModel):
+    _reference_context: str | None = PrivateAttr(default=None)
+
     profile_id: Literal["corning_96_wellplate_360ul_flat", "previous_tube_rack"] | None = None
     source: Annotated[str | None, Field(min_length=1, max_length=1000)] = None
 
@@ -35,11 +37,20 @@ class LabwareSelection(StrictModel):
             return
         if not self.source or self.source not in message:
             raise ValueError("Labware selection needs a literal span from this message.")
-        verify_selection(self.profile_id, self.source, message)
+        verify_selection(self.profile_id, self.source, message, self._reference_context)
 
 
-def verify_selection(profile_id: str, source: str, message: str) -> None:
+def verify_selection(
+    profile_id: str, source: str, message: str, reference_context: str | None = None,
+) -> None:
     lowered = source.casefold()
+    if re.search(
+        r"\b(?:don't|don’t|do not|never|not)\b.{0,35}\b(?:use|select|choose|switch)\b|"
+        r"\b(?:use|select|choose)\b.{0,25}\bnot\b.{0,25}\bcorning\b|"
+        r"\b(?:later|someday|future|eventually)\b.{0,40}\bcorning\b",
+        message, re.I,
+    ):
+        raise ValueError("A negated or future product choice cannot change labware.")
     if noncurrent_plate_choice(message, profile_id):
         raise ValueError(
             "A question, hypothetical or withdrawn plate choice cannot change labware."
@@ -63,7 +74,17 @@ def verify_selection(profile_id: str, source: str, message: str) -> None:
         return
     if profile_id != PROFILE_ID:
         raise ValueError("This plate profile is not in the reviewed allowlist.")
-    if not re.search(r"\b96\s*[- ]?(?:micro)?(?:well|pozzett)|" + re.escape(PROFILE_ID), lowered):
+    contextual = bool(reference_context and re.search(
+        r"corning.{0,60}96|96.{0,60}corning", reference_context, re.I,
+    ) and re.fullmatch(
+        r"\s*(?:please\s+)?(?:use|choose|select|go with)\s+"
+        r"(?:that one|this one|your reference|that reference|the reference)\s*[.!]?\s*",
+        message, re.I,
+    ))
+    if not contextual and not re.search(
+        r"\b96\s*[- ]?(?:micro)?(?:well|pozzett)|\bcorning\b|" + re.escape(PROFILE_ID),
+        lowered,
+    ):
         raise ValueError("Choose the reviewed 96-well reference explicitly.")
     if re.search(r"\b(?:384|1536|48|24)\s*[- ]?(?:micro)?(?:well|pozzett)", message, re.I):
         raise ValueError(
@@ -94,6 +115,10 @@ def verify_selection(profile_id: str, source: str, message: str) -> None:
         re.I,
     ):
         if match[1].casefold() not in {
+            "use",
+            "choose",
+            "select",
+            "prefer",
             "corning",
             "well",
             "flat",
@@ -161,6 +186,7 @@ class PlateProvenance(StrictModel):
     compiler: Literal["microplate-v1"]
     selection_literal: Annotated[str, Field(min_length=1, max_length=1000)]
     source_project_revision: Annotated[int, Field(strict=True, ge=0, le=1000000)]
+    selection_context: Annotated[str | None, Field(max_length=1000)] = None
 
 
 class SavedPlate(StrictModel):
@@ -308,6 +334,52 @@ def reconcile_plate_plan(project: dict) -> None:
     project["plan"] = plan
 
 
+def labware_chat_reply(
+    previous: dict, project: dict, action_runs: list[dict], patch: dict,
+) -> str | None:
+    """Summarize a committed plate choice without replaying its technical report."""
+    selections = [run for run in action_runs if run.get("kind") == "select_labware"]
+    if not selections:
+        # Quantity edits retain the detailed canonical checks; ordinary advice
+        # and explanation requests are left entirely to the conversation model.
+        return canonical_labware_reply(project, action_runs, patch)
+    if any(run.get("status") in ("rejected", "failed") for run in action_runs):
+        return canonical_labware_reply(project, action_runs, patch)
+    plate = project.get("labware_plate")
+    if not plate or not any(run.get("status") == "accepted" for run in selections):
+        return canonical_labware_reply(project, action_runs, patch)
+    compatibility = plate["compatibility"]
+    recipe_fields = {"stock_concentration", "target_concentrations", "final_volume"}
+    same_profile = (previous.get("labware_plate") or {}).get("profile_id") == plate["profile_id"]
+    if same_profile and not recipe_fields.intersection(patch):
+        reply = "Yes—the Corning 96-well 360 µL flat-bottom reference is already selected."
+        if compatibility.get("blocking_issues"):
+            reply += " " + " ".join(compatibility["blocking_issues"])
+        return reply
+    reply = (
+        "Replaced the tubes in the sample position with the Corning 96-well "
+        "360 µL flat-bottom plate and its proposed holder. "
+        "It is a replaceable design reference; you can specify a different plate if you prefer."
+    )
+    issues = compatibility.get("blocking_issues")
+    if issues:
+        return reply + "\n\n" + " ".join(issues) + " Resolve this before approval."
+    if any(project.get("summary", {}).get(key) for key in recipe_fields):
+        volume = compatibility.get("requested_volume_ul")
+        count = compatibility["current_target_count"]
+        wells = compatibility.get("occupied_wells", [])
+        facts = []
+        if volume is not None:
+            facts.append(f"{volume:g} µL per well")
+        if count:
+            facts.append(f"{count} existing preparations in {', '.join(wells)}")
+        if facts:
+            reply += "\n\nKept the current recipe: " + "; ".join(facts) + "."
+        if project.get("plan", {}).get("status") != "ready":
+            reply += " " + project.get("plan", {}).get("message", "")
+    return reply
+
+
 def canonical_labware_reply(project: dict, action_runs: list[dict], patch: dict) -> str | None:
     """Describe a bounded labware action using only its committed post-action facts.
 
@@ -343,6 +415,7 @@ def canonical_labware_reply(project: dict, action_runs: list[dict], patch: dict)
         prefix = "Selected" if accepted_selection else "Current plate:"
         paragraphs.append(
             f"{prefix} {profile['display_name']} software reference and proposed holder. "
+            "This replaceable reference can be changed if you specify another supported product. "
             "This is a pinned labware definition, not manufacturer CAD or verified physical fit."
         )
         volume = compatibility.get("requested_volume_ul")
@@ -532,6 +605,12 @@ def select_plate(project: dict, selection: LabwareSelection, message: str) -> tu
     from app.microplate_geometry import compile_microplate
 
     _platform_guard(project, True)
+    if project.get("labware_plate", {}).get("profile_id") == PROFILE_ID:
+        return deepcopy(project), {
+            "kind": "select_labware", "status": "accepted",
+            "message": "The reviewed Corning plate reference is already selected; "
+            "the machine and its approval are unchanged.",
+        }
     result = deepcopy(project)
     compiled = compile_microplate(PROFILE_ID)
     parts = _index(result)
@@ -553,6 +632,8 @@ def select_plate(project: dict, selection: LabwareSelection, message: str) -> tu
         "provenance": {
             "compiler": COMPILER,
             "selection_literal": selection.source,
+            **({"selection_context": selection._reference_context}
+               if selection._reference_context else {}),
             "source_project_revision": project["revision"],
         },
         "previous_sample": previous,
@@ -657,7 +738,7 @@ def restore_plate(project: dict, saved: object) -> dict:
     if module["provenance"]["source_project_revision"] > project["revision"]:
         raise ValueError("Saved plate provenance cannot refer to a future project revision.")
     literal = module["provenance"]["selection_literal"]
-    verify_selection(PROFILE_ID, literal, literal)
+    verify_selection(PROFILE_ID, literal, literal, module["provenance"].get("selection_context"))
     if previous["rack_inputs"]:
         rack = previous["rack_inputs"]
         validate_saved_brief(_brief(rack["spec"], rack["provenance"]["sources"]))

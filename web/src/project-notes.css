@@ -1,0 +1,25 @@
+.project-notes-trigger {
+  background: transparent;
+  border: 0;
+  color: var(--teal, #176765);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 3px;
+  white-space: nowrap;
+}
+.project-notes-trigger:hover { text-decoration: underline; }
+.project-notes-dialog textarea {
+  background: white;
+  border: 1px solid #9cb5b6;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #18363a;
+  font: inherit;
+  line-height: 1.5;
+  padding: 12px;
+  resize: vertical;
+  width: 100%;
+}
+.project-notes-dialog blockquote { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -33,6 +33,7 @@ from app.workflows import describe_workflow, has_workstation_design_context
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
 Text = Annotated[str, Field(max_length=1000)]
+ProjectNotes = Annotated[str, Field(max_length=2400, strict=True)]
 Number = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
 
@@ -63,6 +64,7 @@ class Inputs(StrictModel):
     brief: Brief
     workflow_kind: Literal["unclassified", "general", "liquid_preparation"]
     selections: Annotated[dict[Text, Text], Field(max_length=20)]
+    project_notes: ProjectNotes = ""
 
 
 class SavedDesign(StrictModel):
@@ -163,6 +165,7 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
             "brief": deepcopy(project["brief"]),
             "workflow_kind": project["workflow"]["kind"],
             "selections": deepcopy(project["selections"]),
+            **({"project_notes": project["project_notes"]} if project.get("project_notes") else {}),
         },
         "foundation_id": (project.get("design", {}).get("foundation") or {}).get("id"),
         "foundation_bed_drop_mm": (project.get("design", {}).get("foundation") or {}).get(
@@ -413,6 +416,8 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     from app.platform_profiles import engineering_guidance
 
     project["engineering_guidance"] = engineering_guidance(project)
+    if inputs.project_notes:
+        project["project_notes"] = inputs.project_notes
     from app.design_workflow import refresh_workflow
 
     if saved.machine_approval and not upgraded and not clearance_upgrade:
