@@ -188,6 +188,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const [selectedMode, setOperationMode] = useState<MotionMode>('preparation');
   const operationMode = (selectedMode === 'cold-transfer' && !project?.cold_transfer_extension) ||
     (selectedMode === 'inspection' && !project?.inspection_extension) ? 'preparation' : selectedMode;
+  const pendingColdPreview = useRef(false);
+  const [coldTransferFocusKey, setColdTransferFocusKey] = useState(0);
   const [operationTime, setOperationTime] = useState(0);
   const [operationSpeed, setOperationSpeed] = useState(1);
   const operationClock = useRef(0);
@@ -365,6 +367,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || project?.plan?.status === 'ready');
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
+  const coldPreviewPlan = project?.cold_transfer_extension ? compileMotionPlan(project, 'cold-transfer') : null;
+  const coldPreviewUnavailable = coldPreviewPlan?.status !== 'ready';
   const showPreview = project?.plan?.status === 'ready' && hasEngineeringDesign;
   const acceptedLayoutId = project?.engineering_design?.provenance.run_id;
   useEffect(() => {
@@ -381,8 +385,23 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   }, [acceptedLayoutId]);
   useEffect(() => {
     if (!currentMotion) setPlaying(false);
-  }, [currentMotion]);
+    else if (pendingColdPreview.current && operationMode === 'cold-transfer') {
+      pendingColdPreview.current = false; setPlaying(true);
+    }
+  }, [currentMotion, operationMode]);
 
+  function previewPlateTransfer() {
+    if (!project?.cold_transfer_extension || compileMotionPlan(project, 'cold-transfer').status !== 'ready') return;
+    setMobileView('design'); setSoftwareOpen(false); setSelectedId(null);
+    setPhysicsActive(false); setPhysicsView(null);
+    setColdTransferFocusKey(value => value + 1);
+    if (operationMode === 'cold-transfer' && currentMotion) {
+      handleReset(); setPlaying(true);
+    } else {
+      pendingColdPreview.current = true; setOperationMode('cold-transfer');
+    }
+    requestAnimationFrame(() => viewer.current?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+  }
   function handlePlay() {
     if (!motionPlan || motionPlan.status !== 'ready' || !currentMotion) return;
     if (operationClock.current >= motionPlan.duration_s) { operationClock.current = 0; setOperationTime(0); }
@@ -876,9 +895,20 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             <>
               <PresentationStage viewerRef={viewer} compact={isConfirmed} title={hasFoundation ? 'Jubilee workstation' : hasPlatform ? 'OT-2 setup' : 'Interactive 3D concept'}
                 sourceNote={hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'}
+                actions={project?.cold_transfer_extension && <div className="stage-preview-controls" aria-label="Plate transfer playback">
+                  <button type="button" className="stage-expand-button stage-preview-button"
+                    title={coldPreviewUnavailable ? coldPreviewPlan?.message : undefined}
+                    disabled={uiBusy || coldPreviewUnavailable}
+                    onClick={operationMode === 'cold-transfer' && currentMotion && operationTime < (motionPlan?.duration_s ?? 0) && (playing || operationTime > 0) ? (playing ? handlePause : handlePlay) : previewPlateTransfer}>
+                    {operationMode === 'cold-transfer' && currentMotion ? playing ? 'Pause transfer' : operationTime >= (motionPlan?.duration_s ?? 0) ? 'Replay transfer' : operationTime > 0 ? 'Resume transfer' : 'Preview plate transfer' : 'Preview plate transfer'}
+                  </button>
+                  {operationMode === 'cold-transfer' && currentMotion && operationTime > 0 && operationTime < (motionPlan?.duration_s ?? 0) &&
+                    <button type="button" className="stage-expand-button" disabled={uiBusy} onClick={previewPlateTransfer}>Replay transfer</button>}
+
+                </div>}
                 components={project?.design.components ?? []} selectedPart={part} onSelect={setSelectedId}>
                 <div aria-busy={agentPhase === 'pending' || agentPhase === 'updating'} className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
-                  {project ? <Scene captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} inspectionPlayback={{ timeRef: operationClock, playing: !uiBusy && Boolean(currentMotion) && operationMode === 'inspection' && playing }} operation={{ playing: !uiBusy && operationMode !== 'inspection' && currentMotion && !physicsView ? playing : false, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey, timeline: !physicsView ? motionPlan ?? undefined : undefined, time_s: currentMotion ? operationTime : 0, timeRef: operationClock }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
+                  {project ? <Scene coldTransferFocusKey={coldTransferFocusKey} captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} inspectionPlayback={{ timeRef: operationClock, playing: !uiBusy && Boolean(currentMotion) && operationMode === 'inspection' && playing }} operation={{ playing: !uiBusy && operationMode !== 'inspection' && currentMotion && !physicsView ? playing : false, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey, timeline: !physicsView ? motionPlan ?? undefined : undefined, time_s: currentMotion ? operationTime : 0, timeRef: operationClock }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
                   {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} scene />}
                   <div className="scene-hint"><Icon name="rotate" size={15} /> Drag to rotate <span>·</span> Scroll to zoom</div>
                   <div className="scene-origin"><span className="origin-x">X</span><span className="origin-y">Y</span><span className="origin-z">Z</span></div>
@@ -972,9 +1002,9 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
           <div className="assistant-controls">{project && <ModelSelector key={project.id} projectId={project.id} busy={uiBusy || voiceBusy} onBusyChange={setModelBusy} onVoiceCapability={setVoiceCapability} onImageCapability={setImageCapability} />}</div>
           <div className="conversation-scroll" ref={conversation}>
             <div className="chat-date">Your design conversation</div>
-            {messages.map((message) => <div key={message.id} className={`message-row ${message.role}`}>
+            {messages.map((message, index) => <div key={message.id} className={`message-row ${message.role}`}>
               {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
-              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.role === 'assistant' ? <AssistantMessage text={message.text} /> : message.text}</div>{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
+              <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.role === 'assistant' ? <AssistantMessage text={message.text} /> : message.text}</div>{message.role === 'assistant' && index === messages.length - 1 && project?.cold_transfer_extension && /preview plate transfer|cold.transfer|refrigerator|fridge/i.test(message.text) && <button type="button" className="stage-expand-button chat-preview-button" title={coldPreviewUnavailable ? coldPreviewPlan?.message : undefined} disabled={uiBusy || coldPreviewUnavailable} onClick={previewPlateTransfer}>Preview plate transfer</button>}{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
             </div>)}
             {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && (!agentPhase || agentPhase === 'ready') && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
             {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} activity={requestActivity} />}

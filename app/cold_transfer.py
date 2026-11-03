@@ -43,6 +43,66 @@ COLD_ACTIONS = {
 }
 
 
+def contextual_cold_transfer_intent(turn, message: str, project: dict, history: list) -> str | None:
+    """Resolve a narrow adoption of the current proposal, independently of approval.
+
+    The model still interprets every online turn. This guard repairs an ambiguous
+    confirm label only when the user's complete request adopts an identifiable
+    cold-transfer proposal and contains no other changes.
+    """
+    from app.model_client import EngineeringUpdate, LabwareSelection, TipRackUpdate
+
+    if (turn.patch() or turn.labware.patch()
+            or turn.engineering != EngineeringUpdate()
+            or turn.labware_selection != LabwareSelection()
+            or turn.tip_rack != TipRackUpdate()
+            or any(a.kind not in {"confirm", *COLD_ACTIONS} for a in turn.actions)):
+        return None
+    text = message.casefold().strip().rstrip(".!")
+    explicit = re.fullmatch(
+        r"(?:please )?(?:go with|use|proceed with|let's use|let us use|adopt) "
+        r"(?:the |your )?(?:plate and )?cold[ -]transfer "
+        r"(?:design|proposal|module)(?: (?:that )?you (?:proposed|suggested))?", text)
+    reference = re.fullmatch(
+        r"(?:please )?(?:go with|use|proceed with|let's use|let us use|adopt) "
+        r"(?:the |your )?reference (?:components|parts)(?: (?:that )?you proposed)?", text)
+    if not (explicit or reference):
+        return None
+    replies = [item.get("content", "").casefold() for item in reversed(history[-6:])
+               if item.get("role") == "assistant"]
+    last_reply = replies[0] if replies else ""
+    if (project.get("cold_transfer_extension") and len(replies) > 1
+            and re.fullmatch(
+                r"please explicitly approve the current machine after reviewing it[.]?"
+                r"(?: questions and hardware changes do not approve a design[.]?)?",
+                last_reply.strip())):
+        # Recover the old erroneous approval prompt only for inspection of an
+        # active module. No new module is authorized by an earlier turn.
+        last_reply = replies[1]
+    proposed = bool(re.search(r"cold[ -]transfer|(?:refrigerator|fridge).{0,80}"
+                             r"(?:gripper|transfer)|(?:gripper|transfer).{0,80}"
+                             r"(?:refrigerator|fridge)", last_reply, re.S))
+    # Generic reference adoption needs the immediate proposal, never a stale
+    # mention elsewhere in the conversation. Explicit adoption can name an active module.
+    if not proposed and not (explicit and project.get("cold_transfer_extension")):
+        return None
+    unresolved_question = any(
+        re.search(r"\b(?:or|which|choose|prefer)\b", question)
+        for question in re.findall(r"[^.!?\n]+\?", last_reply)
+    )
+    comparison_only = re.match(r"\s*(?:compare|comparison of|choose between)\b", last_reply)
+    if reference and (unresolved_question or comparison_only):
+        return None
+    if (reference or not project.get("cold_transfer_extension")) and re.search(
+        r"(?:cold[ -]transfer|transfer (?:module|adapter)).{0,60}"
+        r"(?:unsupported|unavailable|not supported|cannot|can't)|"
+        r"(?:cannot|can't|do not|don't).{0,30}(?:add|support|develop).{0,30}"
+        r"cold[ -]transfer", last_reply, re.S
+    ):
+        return None
+    return "add"
+
+
 def semantic_cold_transfer_intent(turn, message: str, project: dict | None = None) -> str | None:
     """Validate model interpretation against this turn, never against prior wishes."""
     actions = [a for a in turn.actions if a.kind in COLD_ACTIONS]

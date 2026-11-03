@@ -169,7 +169,7 @@ function PlateAxisLabel({ position, label }: { position: Vec3; label: string }) 
   return <group ref={group} position={position} />;
 }
 
-type FocusRequest = { position: Vec3; size: Vec3 };
+type FocusRequest = { position: Vec3; size: Vec3; direction?: Vec3 };
 type Isolation = FocusRequest & { id: string; ids: string[]; mode: 'part' | 'work' | 'arm' };
 
 // Move only in response to an explicit inspection request; orbiting remains manual afterwards.
@@ -188,7 +188,7 @@ function FocusCamera({ request, focusKey }: { request: FocusRequest | null; focu
     const target = new Vector3(...request.position);
     const direction = focusKey && focusKey === previousFocusKey.current
       ? camera.position.clone().sub(controls.target).normalize()
-      : new Vector3(0.45, 1, -1).normalize();
+      : new Vector3(...(request.direction ?? [0.45, 1, -1])).normalize();
     previousFocusKey.current = focusKey ?? null;
     const distance = Math.max(4, Math.max(...request.size) * 3);
     const [width, height, depth] = request.size;
@@ -773,7 +773,7 @@ function TipInventory({ rack, center, operation, active, onSelect }: {
   </mesh>)}</group>;
 }
 
-export default function Scene({ project, selectedId, onSelect, operation, physics, inspectionTime = 0, inspectionPlayback, captureRef }: {
+export default function Scene({ project, selectedId, onSelect, operation, physics, inspectionTime = 0, inspectionPlayback, captureRef, coldTransferFocusKey = 0 }: {
   project: Project;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -782,6 +782,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   inspectionTime?: number;
   inspectionPlayback?: { timeRef: { current: number }; playing: boolean };
   captureRef?: RefObject<(() => Promise<string>) | null>;
+  coldTransferFocusKey?: number;
 }) {
   const { components: designComponents, footprint } = project.design;
   const sourceReady = useRef(false);
@@ -815,6 +816,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   const smoothInspection = Boolean(extension && inspectionPlayback && !physicsActive);
   const [viewKey, setViewKey] = useState(0);
   const [isolation, setIsolation] = useState<Isolation | null>(null);
+  const [coldFocus, setColdFocus] = useState<FocusRequest | null>(null);
   const isolatedRevision = useRef(`${project.id}:${project.revision}`);
   const layoutKey = JSON.stringify(project.engineering_design?.proposal ?? null);
   const isolationContext = useRef({ projectId: project.id, layoutKey });
@@ -855,6 +857,23 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   }, [designComponents, extension, cold]);
   const target: [number, number, number] = [0, bounds.height / SCALE / 2, 0];
 
+  const lastColdFocusKey = useRef(0);
+  useEffect(() => {
+    if (lastColdFocusKey.current === coldTransferFocusKey) return;
+    if (!cold || !showColdHardware) return;
+    const fridge = cold.components.find((part) => part.id === 'cold-transfer-fridge');
+    if (!fridge) return;
+    lastColdFocusKey.current = coldTransferFocusKey;
+    const points = [fridge.position, cold.pickup_mm];
+    const minX = Math.min(...points.map((point) => point[0])) - fridge.size[0] / 2;
+    const maxX = Math.max(...points.map((point) => point[0])) + fridge.size[0] / 2;
+    const top = Math.max(cold.transfer_height_mm, fridge.position[1] + fridge.size[1] / 2) + 100;
+    const bottom = Math.max(0, Math.min(cold.pickup_mm[1], fridge.position[1]) - 60);
+    setIsolation(null);
+    setColdFocus({ position: [((minX + maxX) / 2 - bounds.center[0]) / SCALE, ((top + bottom) / 2 - bounds.center[1]) / SCALE, (fridge.position[2] - bounds.center[2]) / SCALE],
+      size: [(maxX - minX) / SCALE, (top - bottom) / SCALE, Math.max(fridge.size[2], 300) / SCALE], direction: [0.45, 1, -1.5] });
+  }, [coldTransferFocusKey, cold, showColdHardware, bounds.center]);
+
   const byId = useMemo(() => new Map(components.map((part) => [part.id, part])), [components]);
   const isolated = useMemo(() => {
     if (!isolation || isolation.id !== selectedId) return null;
@@ -875,6 +894,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   const canInspectArm = Boolean(selectedId && extension?.component_ids.includes(selectedId));
   const inspectSelection = (mode: Isolation['mode']) => {
     if (!selectedPart) return;
+    setColdFocus(null);
     const ids = mode === 'work' ? WORKING_AREA_IDS : mode === 'arm' ? extension?.component_ids ?? [] : [selectedPart.id];
     const parts = components.filter((part) => ids.includes(part.id));
     if (!parts.length) return;
@@ -890,6 +910,7 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
   };
   const resetView = () => {
     setIsolation(null);
+    setColdFocus(null);
     setViewKey((value) => value + 1);
   };
   const carriagePart = byId.get('carriage');
@@ -1003,8 +1024,8 @@ export default function Scene({ project, selectedId, onSelect, operation, physic
           shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
         <directionalLight position={[-8, 6, -3]} intensity={0.38} color="#e2f1ee" />
         <directionalLight position={[1, 8, 10]} intensity={0.6} color="#fff7e9" />
-        <FitCamera enabled={!isolated} width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
-        <FocusCamera request={isolated?.mode === 'arm' ? isolation : isolated} focusKey={isolated?.mode === 'part' && isolated.id === 'tip-rack' ? `${project.id}:tip-rack` : null} />
+        <FitCamera enabled={!isolated && !coldFocus} width={Math.max(footprint.width_mm, bounds.width ?? 0)} height={Math.max(footprint.height_mm, bounds.height)} depth={Math.max(footprint.depth_mm, bounds.depth ?? 0)} />
+        <FocusCamera request={coldFocus ?? (isolated?.mode === 'arm' ? isolation : isolated)} focusKey={isolated?.mode === 'part' && isolated.id === 'tip-rack' ? `${project.id}:tip-rack` : null} />
         <group>
           {(isolated && !showTimeline && !showCold ? components : staticParts).filter((part) => part.kind !== 'upstream-cad' && !BED_PART_IDS.has(part.id) && (!showColdHardware || !coldIds.has(part.id)) && (!(smoothInspection || showCold) || !extension?.component_ids.includes(part.id)) && (!isolated || isolated.ids.includes(part.id))).map((part) => <GeometryPart key={part.id} part={part}
             position={[(part.position[0] - bounds.center[0]) / SCALE, (part.position[1] - bounds.center[1]) / SCALE, (part.position[2] - bounds.center[2]) / SCALE]}

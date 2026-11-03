@@ -197,20 +197,20 @@ def run(url):
                     )
                 )
             assert opened.value.ok, opened.value.text()
-            expect(page.locator(".prep-plan")).to_be_visible()
+            expect(page.get_by_role("region", name="Operating preview", exact=True)).to_be_visible()
             expect(page.locator(".scene-loading")).to_have_count(0, timeout=60000)
             page.set_viewport_size({"width": 1440, "height": 900})
             page.wait_for_timeout(300)
             page.evaluate("window.scrollTo(0, 0)")
             layout = page.evaluate("""() => Object.fromEntries(
-                ['.cost-summary', '.viewer-shell', '.operating-preview'].map(selector => {
+                ['.design-budget-entry', '.viewer-shell', '.operating-preview'].map(selector => {
                   const r = document.querySelector(selector).getBoundingClientRect();
                   return [selector, {top:r.top,bottom:r.bottom,height:r.height}];
                 }))""")
             layout["cost_without_player_current_styles"] = page.evaluate("""() => {
                 const player = document.querySelector('.operating-preview');
                 const display = player.style.display; player.style.display = 'none';
-                const r = document.querySelector('.cost-summary').getBoundingClientRect();
+                const r = document.querySelector('.design-budget-entry').getBoundingClientRect();
                 const result = {top:r.top,bottom:r.bottom,height:r.height};
                 player.style.display = display; return result;
             }""")
@@ -299,7 +299,56 @@ def run(url):
             checks.append("save-open-reset")
             # The camera concept and cold manipulator are independent optional modules.
             # Exercise actual ordinary chat, compiler, download and portable restore.
+            def visible_transfer_entry(label, mobile=False):
+                page.set_viewport_size(
+                    {"width": 390 if mobile else 2048, "height": 844 if mobile else 738}
+                )
+                if mobile:
+                    page.get_by_role("button", name="Chat", exact=True).click()
+                    entry = page.locator(".chat-preview-button").last
+                else:
+                    page.evaluate("window.scrollTo(0, 0)")
+                    entry = page.locator(".stage-preview-button")
+                expect(entry).to_be_enabled()
+                expect(page.locator(".stage-preview-controls button")).to_have_count(1)
+                if mobile:
+                    entry.scroll_into_view_if_needed()
+                box = entry.bounding_box()
+                assert box and box["y"] >= 0
+                assert box["y"] + box["height"] <= page.viewport_size["height"]
+                entry.focus()
+                page.keyboard.press("Enter")
+                controls = page.locator(".stage-preview-controls")
+                pause = controls.get_by_role("button", name="Pause transfer", exact=True)
+                expect(pause).to_be_visible()
+                page.wait_for_timeout(600)
+                pause.click()
+                expect(controls.get_by_role("button", name="Resume transfer")).to_be_visible()
+                expect(controls.locator("button")).to_have_count(2)
+                expect(desktop.get_by_label("Operating sequence")).to_have_value("cold-transfer")
+                details = desktop.locator("details", has=page.locator("#operation-time"))
+                if details.get_attribute("open") is None:
+                    details.locator(":scope > summary").click()
+                assert float(desktop.get_by_label("Operating timeline").input_value()) > 0
+                controls.get_by_role("button", name="Replay transfer", exact=True).click()
+                page.wait_for_timeout(250)
+                pause.click()
+                # Keep the screenshot at the watched 3D stage, not the lower details.
+                page.locator(".viewer-shell").scroll_into_view_if_needed()
+                page.screenshot(path=str(OUTPUT / f"{label}.png"))
+                desktop.get_by_role("button", name="Reset", exact=True).click()
+                expect(controls.locator("button")).to_have_count(1)
+                desktop.get_by_label("Operating timeline").focus()
+                page.keyboard.press("End")
+                expect(controls.get_by_role("button", name="Replay transfer")).to_be_visible()
+                expect(controls.locator("button")).to_have_count(1)
+                desktop.get_by_role("button", name="Reset", exact=True).click()
+                checks.append(label)
+                page.set_viewport_size({"width": 1440, "height": 1100})
+
             cold = send(ADD_COLD)
+            visible_transfer_entry("cold-entry-2048x738")
+            visible_transfer_entry("cold-entry-mobile-chat", mobile=True)
             assert cold.get("inspection_extension") and cold.get("cold_transfer_extension")
             assert len(cold["cold_transfer_extension"]["component_ids"]) == 8
             bounds = cold["cold_transfer_extension"]["assembly_bounds"]
@@ -394,6 +443,7 @@ def run(url):
             with page.expect_response(lambda response: response.url.endswith("/open")) as restored:
                 page.get_by_label("Open saved project").set_input_files(str(portable))
             assert restored.value.ok, restored.value.text()
+            visible_transfer_entry("cold-entry-reopened-2048x738")
             restored_project = restored.value.json()["project"]
             assert restored_project["cold_transfer_extension"] == cold["cold_transfer_extension"]
             assert restored_project["inspection_extension"] == cold["inspection_extension"]

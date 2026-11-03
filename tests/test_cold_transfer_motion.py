@@ -75,6 +75,27 @@ def test_pickup_transfer_release_is_continuous_and_seekable():
         assert sample["payload_position_mm"] == pytest.approx(extension["storage_mm"])
 
 
+def test_unapproved_reference_plate_reaches_refrigerator_with_no_recipe_after_reopen():
+    from test_design_workflow import hardware
+    from test_motion_plan import compile_plan
+
+    from app.project_storage import make_snapshot, restore_snapshot
+
+    original = apply_cold_transfer(select(hardware()))
+    restored, _ = restore_snapshot(make_snapshot(original, []))
+    for project in (original, restored):
+        assert not project.get("machine_approval")
+        assert project["plan"]["status"] == "incomplete"
+        assert project["labware_plate"]["compatibility"]["status"] == "needs_recipe"
+        plan = compile_plan(project, "cold-transfer")["plan"]
+        assert plan["status"] == "ready", plan["message"]
+        assert plan["scope"] == "illustrative"
+        extension = project["cold_transfer_extension"]
+        assert plan["keyframes"][0]["payload_position_mm"] == extension["pickup_mm"]
+        assert plan["keyframes"][-1]["payload_position_mm"] == extension["storage_mm"]
+        assert all(frame["volume_ul"] is None for frame in plan["keyframes"])
+
+
 def test_preview_rejects_invalid_binding_or_failed_check():
     project = select(before())
     project["summary"]["workspace_width_mm"] = None

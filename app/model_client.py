@@ -620,6 +620,12 @@ Cold-transfer operations use add_cold_transfer, remove_cold_transfer,
 discuss_cold_transfer or clarify_cold_transfer. Interpret meaning, including
 paraphrases such as giving the prepared plate its own fridge, putting the finished
 plate away in a dedicated refrigerated cabinet, or taking that module out.
+Adopting a proposed plate/cold-transfer design or its reference components is a
+design selection, not machine approval. Use add_cold_transfer alone for that
+adoption; the backend resolves the named current proposal from conversation.
+An already active module remains unchanged. Operating preview does not require
+machine approval. Reserve confirm for explicit approval of the complete machine
+for software work (including a subsequent "I approve").
 Only an explicit present request changes the design. Questions about cost,
 feasibility, alternatives, conditional/future wishes and negative requests discuss.
 Polite imperatives such as "can you add a refrigerator and maybe an arm to store completed

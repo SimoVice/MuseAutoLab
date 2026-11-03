@@ -87,3 +87,13 @@
   .presentation-stage-expanded .stage-selection { padding-top: 7px; padding-bottom: 7px; }
   .presentation-stage-expanded .viewer-bottomline { min-height: 43px; padding-top: 7px; padding-bottom: 7px; }
 }
+
+.stage-preview-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
+.stage-preview-controls .stage-preview-button { background: #226b65; color: #fff; border-color: #226b65; }
+.stage-preview-controls button { min-height: 40px; }
+.stage-preview-controls button:disabled, .chat-preview-button:disabled { opacity: .5; cursor: default; }
+.chat-preview-button { margin-top: 10px; min-height: 44px; }
+@media (max-width: 760px) {
+  .presentation-stage .stage-topline { flex-wrap: wrap; }
+  .stage-preview-controls { flex: 1 1 100%; order: 2; justify-content: flex-start; margin-left: 0; }
+}

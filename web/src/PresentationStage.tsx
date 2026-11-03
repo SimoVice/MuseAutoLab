@@ -12,9 +12,10 @@ type Props = {
   selectedPart?: Component;
   onSelect: (id: string | null) => void;
   children: ReactNode;
+  actions?: ReactNode;
 };
 
-export default function PresentationStage({ viewerRef, compact, title, sourceNote, components, selectedPart, onSelect, children }: Props) {
+export default function PresentationStage({ viewerRef, compact, title, sourceNote, components, selectedPart, onSelect, children, actions }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [reservedHeight, setReservedHeight] = useState(0);
   const stage = useRef<HTMLDivElement | null>(null);
@@ -90,6 +91,7 @@ export default function PresentationStage({ viewerRef, compact, title, sourceNot
       aria-labelledby="presentation-stage-title" aria-describedby="presentation-stage-source">
       <div className="viewer-topline stage-topline">
         <strong id="presentation-stage-title">{title}</strong>
+        {actions}
         <button ref={toggle} className="stage-expand-button" type="button" onClick={toggleExpanded}
           aria-expanded={expanded} aria-controls="presentation-stage-model">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

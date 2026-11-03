@@ -79,7 +79,9 @@ With a compatible 96-well plate on an accepted Jubilee layout, try this request.
 > Add a gripper to move the prepared 96-well plate into a dedicated refrigerator.
 
 The design gains a top-opening cabinet with a landing shelf and a separate
-Cartesian gripper. Select **Cold transfer** and press **Play**. The pipette
+Cartesian gripper. Select **Preview plate transfer** above the 3D view to
+frame the refrigerator and start the transfer. An empty reference plate can
+make the trip before you approve the machine or enter a recipe. The pipette
 carriage and any inspection camera park to clear the pickup path. Inspect the open
 jaws as they descend around the plate, then pause after release to see the plate
 resting on the shelf. Its holder stays on the deck and the occupied well markers

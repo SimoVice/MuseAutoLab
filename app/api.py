@@ -821,6 +821,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         from app.cold_transfer import (
             apply_cold_transfer,
             clear_cold_transfer,
+            contextual_cold_transfer_intent,
             offline_cold_transfer_intent,
             require_supported_payload_request,
             semantic_cold_transfer_intent,
@@ -841,7 +842,9 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 if (current.get("concept_design") or
                         any(action.kind == "develop_concept" for action in turn.actions)):
                     return await _custom_assembly_turn(session, turn, request.message, usage)
-                cold_intent = semantic_cold_transfer_intent(turn, request.message, current)
+                cold_intent = (contextual_cold_transfer_intent(
+                    turn, request.message, current, session.history
+                ) or semantic_cold_transfer_intent(turn, request.message, current))
             except ModelClientError as exc:
                 cold_intent = (offline_cold_transfer_intent(request.message)
                                if exc.failure_kind == "provider_unavailable" else None)
@@ -855,12 +858,12 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                         require_supported_payload_request(request.message)
                         if current.get("cold_transfer_extension"):
                             reply = ("The dedicated refrigerator and plate gripper are already "
-                                     "in this design. Select Cold transfer in Operating preview.")
+                                     "in this design. Select Preview plate transfer to watch it.")
                         else:
                             updated = apply_cold_transfer(current)
                             status = "accepted"
-                            reply = ("Added a dedicated refrigerator and plate gripper. Press Play "
-                                     "in Operating preview to follow the 96-well plate from its "
+                            reply = ("Added a dedicated refrigerator and plate gripper. Select "
+                                     "Preview plate transfer to follow the 96-well plate from its "
                                      "holder to the cabinet shelf. Grip, clearances and cooling "
                                      "performance "
                                      "still need physical verification.")
@@ -885,7 +888,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                              "The current Jubilee motion adapter transfers a selected rigid "
                              "96-well plate; tubes need a separately designed grip or rack "
                              "interface. This discussion has preserved the design.")
-                if cold_intent != "remove":
+                if (cold_intent != "remove"
+                        and not (cold_intent == "add" and current.get("cold_transfer_extension"))):
                     from app.chat_sourcing import cold_component_reply
 
                     reply += cold_component_reply(updated, session.procurement_report,

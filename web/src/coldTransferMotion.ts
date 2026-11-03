@@ -40,7 +40,11 @@ export function compileColdTransferMotion(project: Project, extension: ColdTrans
   if (project.inspection_extension && !inspectionPark) return unavailable('The inspection arm has no supported clear parking pose for this cold transfer. Revise or remove the inspection concept.');
   const sample = project.design.components.find((part) => part.id === extension?.payload_component_id);
   const plate = project.labware_plate;
-  if (!extension || !sample || !plate || plate.target_component_id !== sample.id || plate.compatibility.status !== 'ready') return unavailable('A checked cold-transfer design and compatible 96-well plate are required.');
+  if (!extension || !sample || !plate || plate.target_component_id !== sample.id) return unavailable('Select a compatible 96-well plate and add the refrigerator transfer to preview it.');
+  const compatibility = plate.compatibility;
+  if (compatibility.blocking_issues.length || !['ready', 'needs_recipe'].includes(compatibility.status)) {
+    return unavailable(compatibility.blocking_issues[0] ?? 'Resolve the plate compatibility issue before previewing the transfer.');
+  }
   if (!extension.checks.length || extension.checks.some((check) => !check.passed)) return unavailable('Resolve the cold-transfer layout checks before previewing.');
   if (!validPoint(extension.pickup_mm) || !validPoint(extension.storage_mm) || !Number.isFinite(extension.transfer_height_mm) ||
       extension.pickup_mm.some((value, axis) => Math.abs(value - sample.position[axis]) > 0.01) ||
@@ -87,7 +91,10 @@ export function compileColdTransferMotion(project: Project, extension: ColdTrans
   add(13.9, highPickup, storage, 1, 1, 'Return', 'Home');
   add(14.9, highPickup, storage, 1, 0, 'Close cabinet', 'Cold cabinet');
   park = [0, 0]; inspectionParkRatio = 0; add(16.4, highPickup, storage, 1, 0, project.inspection_extension ? 'Restore Jubilee and inspection' : 'Restore Jubilee', 'Home');
-  return { ...plan, status: 'ready', message: 'Cold transfer · conceptual planned motion', duration_s: 16.4, keyframes: frames, inspection_park_frame: inspectionPark,
+  const referencePlate = compatibility.status === 'needs_recipe';
+  return { ...plan, status: 'ready', scope: referencePlate ? 'illustrative' : plan.scope,
+    message: referencePlate ? 'Preview the reference plate moving from the deck to the refrigerator shelf.' : 'Cold transfer · conceptual planned motion',
+    duration_s: 16.4, keyframes: frames, inspection_park_frame: inspectionPark,
     limitations: ['Illustrative gantry and plate transfer; no robot control, collision or physical validation.', 'Cabinet shelf, gripper fit, mounting, cooling performance and sample stability remain unverified.'] } as ColdTransferPlan;
 }
 
