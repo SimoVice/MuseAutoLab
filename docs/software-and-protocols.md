@@ -5,13 +5,24 @@ recipe can reuse compatible hardware; a different tool, vessel or working area
 may require a design revision. MuseAutoLab currently calculates direct dilutions
 and guides upstream protocol programming. It does not run a physical robot.
 
-## Open the guide
+## Approve and program
 
-Choose **Software & protocols** below the model. It explains the selected
-platform's software route, the current recipe and the steps for programming
-another task. **Build instructions → Open software & protocols** opens the same
-guide. Its HTML, Markdown and JSON downloads also contain the guidance and the
-current protocol configuration; no CAD generation is needed.
+Develop the equipment in the hardware workspace, review the selected design and
+choose **Approve design & open software**. Approval of the equipment is separate
+from defining a recipe. In **Software & protocols**, enter stock concentration,
+target concentrations and final volume with units, then choose **Create protocol**.
+The resulting transfer table, Python program and operating preview use that
+project revision. Return to hardware design to change the equipment; review and
+approve it again if the machine changes.
+
+For a supported Jubilee design with no recipe yet, the 3D operating preview
+uses a clearly labelled example. Its example values are not saved as the user's
+recipe or included in downloads. A partially entered or invalid saved recipe
+does not silently become an example. See [operating previews](operating-previews.md).
+The bench-station and custom-equipment paths expose their own supported runners
+and controls; other processes may stop at a functional specification rather than
+an executable program. See [bench station](bench-station.md) and
+[custom equipment](custom-equipment.md).
 
 You can also ask in ordinary chat:
 
@@ -19,7 +30,10 @@ You can also ask in ordinary chat:
 > What software should I use, and how would I program a new protocol? Keep the
 > current design and preparation unchanged.
 
-A software-only question should preserve the recipe and hardware. Assistant
+A software-only question should preserve the recipe and hardware. Natural-language
+program changes use the configured Meta service and its allowance; entering a
+recipe in the form, local calculation and playback do not require a new model
+request. Assistant
 replies display headings, lists, emphasis, code and ordinary links as Markdown;
 raw HTML and embedded images are not rendered. Unsafe link schemes are excluded.
 **Reviewing your request** means a request is pending. **Updating design** appears
@@ -46,38 +60,38 @@ their mention does not add those workflows to MuseAutoLab's arithmetic engine.
 
 ## Download and preview the current recipe
 
-Download **protocol template** and **local preview** into the same folder:
-
-- `protocol-template.json` records the project revision, selected platform and
-  labware, reference well coordinates and the current stock/diluent volumes.
-- `protocol-preview.py` is a standalone Python standard-library script.
-
-Run:
+For a ready liquid-handling recipe, choose **Download Python program** in
+**Software & protocols**. The self-contained `program.py` contains the selected
+platform, project revision and calculated transfers. Run it with Python 3:
 
 ```console
-python protocol-preview.py protocol-template.json
+python program.py
 ```
 
-The script checks the recorded binding structure, wells, finite volumes and
-stock-plus-diluent arithmetic, then prints the logical transfer schedule. It has
-no hardware connection or actuator commands. It does not authenticate a source,
-calibrate coordinates or verify liquid-handling performance. Physical source
-positions, offsets, rates, mixing and tip policy remain parameters to define.
+The program prints the transfer schedule and simulates accumulated destination
+volumes in memory. Its generation validates the source protocol and arithmetic.
+It has no hardware connection or actuator commands. It does not authenticate a
+source, calibrate coordinates or verify liquid-handling performance. Physical
+source positions, offsets, rates, mixing and tip policy remain parameters to
+define. **Protocol data (JSON)** is available separately; the older paired
+`protocol-template.json` and `protocol-preview.py` downloads are also available
+through the instruction download API for existing workflows.
 
 ## Compare two recipes on the same hardware
 
 Starting with the recorded plate example: 5 mg/mL stock, targets of
 0.5/0.25/0.05 mg/mL, and 200 µL per preparation:
 
-1. Save the hardware project and download both preview files. The three
+1. Approve the hardware, enter the recipe, save the project and download its
+   Python program. The three
    destinations are A1/B1/C1; stock/diluent amounts are 20/180, 10/190 and 2/198 µL.
 2. Ask: **“Keep the stock at 5 mg/mL. Use target concentrations of 1, 0.2 and
    0.1 mg/mL with 150 µL per preparation. Keep the selected platform, plate,
    tip rack, suppliers and layout unchanged.”**
-3. Review the new preparation plan and download its new template. The recorded
+3. Review the new preparation plan and download its new program. The recorded
    second recipe uses stock/diluent amounts of 30/120, 6/144 and 3/147 µL at the
    same A1/B1/C1 wells. Compare the revision and selected hardware, then rerun
-   the local preview.
+   the local program.
 4. Use the selected upstream software to author and review a real protocol.
    Commission the actual setup and perform supervised clearance and dispensing
    checks before using samples.

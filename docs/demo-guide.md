@@ -1,6 +1,6 @@
 # Reviewer and demo guide
 
-Current product path, updated **2026-10-31**. MuseAutoLab helps a researcher turn
+Current product path, updated **2026-11-03**. MuseAutoLab helps a researcher turn
 repetitive laboratory work into a sourced, editable automation proposal. The first
 engineering demonstrator is dilution and aliquot preparation. The result is a
 digital project with consistent geometry, calculations, source attribution and
@@ -24,10 +24,16 @@ records are not the script for the English demonstration.
 | Run offline checks | Actual application/compiler/browser with explicitly substituted Meta responses | [Locked setup](getting-started.md#setup-on-windows-powershell), local Chrome for browser checks; no key or live inference |
 | Use the product with Meta | Natural conversation, platform choice, design and revisions | [Local configuration](getting-started.md#local-meta-configuration), your own account access/allowance, then [two local servers](getting-started.md#run-locally) |
 
-The interactive product runs locally. Offline fixtures test software behavior;
-they are not fresh model responses. A saved project rebuilds
+Use the [hosted workspace](https://simonevicentini02--museautolab.us-east.modal.run)
+with your assigned sign-in, or run the app locally. Offline fixtures test software behavior.
+A saved project rebuilds
 locally without inference but does not restore export jobs or authenticate imported
 historical model metadata.
+
+Previously confirmed projects with a supported machine can reopen in the
+software workspace. Choose **Hardware design** to inspect their model, parts,
+pricing and build guidance; return to **Software & protocols** for the recipe.
+Older screenshots capture the interface at the time of their recorded tests.
 
 ## Inspect the expanded 3D view
 
@@ -111,7 +117,7 @@ application. Follow the [measurement and first-article guidance](procurement-and
 These inputs do not establish fit to a commercial 1.5–2 mL tube. Printed fit,
 material suitability, deck retention and pipetting are unverified. The current
 Jubilee adapter offers an [illustrative operating preview](operating-previews.md)
-when its recipe and pose checks pass.
+when its recipe or labelled example and pose checks are available.
 
 ![Real recorded rack and its dimension card](images/parametric-rack-workspace.png)
 
@@ -196,51 +202,53 @@ All numerical inputs below are synthetic test data, not measured labware or
 validated liquid-handling conditions. Answer the agent's missing-information
 questions before moving to the next step.
 
-1. **Describe the problem.** “I prepare dilutions and
-   aliquots manually using a pipette and 1.5–2 mL tubes. Help me design a workstation.
-   Use US suppliers and USD. Ask for the requirements you need.”
+1. **Describe the problem.** “I prepare dilutions and aliquots manually using a
+   pipette and 1.5–2 mL tubes. Help me design a workstation. Use US suppliers
+   and USD. Ask for the requirements you need.”
 2. **Choose the platform.** “Compare an assembled platform with an open-source
    buildable one.” After reviewing the choices: “Choose the Jubilee route and
    proceed with the design.” The modules below are supported on this route.
-3. **Set the preparation.** “Use a stock concentration of 5 mg/mL, targets of
-   0.5, 0.25 and 0.05 mg/mL, and a final volume of 200 µL per preparation.
-   Keep the machine layout unchanged.” Expect three preparations.
-4. **Create the tube rack.** “Design a tube rack with these dimensions:
-   maximum body diameter 12 mm, minimum supporting rim diameter 15 mm, maximum
-   closed cap envelope including the hinge 18 mm, length below the rim 40 mm,
-   12 positions and 4 columns. Keep the recipe and other components unchanged.”
-5. **Switch format.** “Replace the sample tubes with a 96-well plate. Keep the
-   recipe and all other components unchanged.” Expect three assigned wells,
-   not 96 new preparations. “Restore the previous tube rack” reverses the format.
-6. **Compare supplier products.** “Compare tip racks from different US suppliers.
-   Keep the plate, recipe and other components unchanged.” Review the placement
-   proposal and use **Use this rack**. Select **Tip rack → Selected part only**
-   in the expanded viewer to compare TipOne and Opentrons openings. Their similar
-   footprints do not imply a dramatic change in the workstation silhouette.
-7. **Check the output.** Review US prices and explicitly missing prices, open
-   **Build instructions**, then **Save project** and reopen it. Confirm only after
-   reviewing the final design. Generate the full CAD package last; it can take
-   several minutes.
-8. **Plan reuse.** “I want to reuse this workstation for aliquoting and other
-   pipetting protocols. What software should I use, and how would I program a
-   new protocol? Keep the current design and preparation unchanged.” Open
-   **Software & protocols**, or use its direct button in **Build instructions**.
-   Download the protocol template and local Python preview; they describe a
-   logical schedule, not hardware commands.
-9. **Try a second recipe.** “Keep the stock at 5 mg/mL. Use target concentrations
-   of 1, 0.2 and 0.1 mg/mL with 150 µL per preparation. Keep the selected platform,
-   plate, tip rack, suppliers and layout unchanged.” Review the same A1/B1/C1
-   destinations with stock/diluent pairs 30/120, 6/144 and 3/147 µL. Download the
-   new revision's template and compare the local schedules. Check the actual
-   pipette's transfer range before interpreting either recipe as a practical
-   protocol. The [recorded second recipe](examples/software-protocol-project.json)
-   preserves the successful live API result; its
-   [verification record](examples/software-protocol-verification.json) separates
-   actual model calls from offline browser checks.
+3. **Develop the equipment.** For example: “Design a tube rack with maximum body
+   diameter 12 mm, minimum supporting rim diameter 15 mm, maximum closed cap
+   envelope including the hinge 18 mm, length below the rim 40 mm, 12 positions
+   and 4 columns.” Review the layout, costs and source distinctions. Quantities
+   for a specific recipe can be entered later.
+4. **Inspect motion before programming.** For a supported Jubilee layout without
+   any recipe quantities, **Operating preview** offers a labelled, local example:
+   1 mg/mL stock, 0.5 mg/mL target and 100 µL final volume, with 50 µL each of
+   stock and diluent. It does not become the project recipe or a downloadable
+   motion plan. Use **Play**, **Pause** and **Reset** to inspect the sequence.
+5. **Change the tip rack.** Ask “What other tip racks can I buy from a US supplier?”
+   Compare the alternatives, choose **Use this rack** and inspect the part in
+   the expanded viewer. Check the supplier and price in the parts list.
+6. **Change the labware.** Ask “Switch the sample tubes to a 96-well plate.”
+   Inspect the well layout and replay the example. For an extended workstation,
+   ask separately for a camera inspection arm, then for a gripper to transfer
+   the plate to a dedicated cold bay. Select each new sequence to see its motion.
+7. **Approve the machine.** Tell the assistant “This is the machine I want. Let's
+   program it.” You can also choose **Approve design & open software**. The
+   approved layout stays available under **Hardware design**.
+8. **Create the recipe.** In **Software & protocols**, enter stock 5 mg/mL,
+   targets 0.5, 0.25 and 0.05 mg/mL, and final volume 200 µL per preparation.
+   Choose **Create protocol**. Review the calculated transfers and the operating
+   preview bound to the new revision. Download **Python program** and run
+   `python program.py` locally to print its logical transfer schedule.
+9. **Try another recipe.** In the software workspace ask: “Keep the stock at
+   5 mg/mL. Use target concentrations of 1, 0.2 and 0.1 mg/mL with 150 µL per
+   preparation. Keep the selected platform, plate, tip rack, suppliers and layout
+   unchanged.” Review A1/B1/C1 stock/diluent pairs 30/120, 6/144 and 3/147 µL,
+   then download the new revision's program. Natural-language changes use the
+   configured Meta service; local playback and running the program do not.
+10. **Check the output.** Review available US prices, build instructions and the
+    revision, then **Save project** and reopen it. Generate the full CAD package
+    when needed; it can take several minutes. Check the actual pipette's range,
+    calibrate the setup and commission a hardware integration before use.
 
-The [software and protocol guide](software-and-protocols.md) gives the paired
-download command, official route documentation and the distinction between
-offline checks and any separately recorded live-model outcome.
+The [software and protocol guide](software-and-protocols.md) explains the standalone
+program, platform-specific integration and the separate scope of model-assisted
+editing, local simulation and physical operation. The [recorded second recipe](examples/software-protocol-project.json)
+and its [verification record](examples/software-protocol-verification.json) retain
+their historical results, rather than claiming a new run of this sequence.
 
 For the optional printable-holder branch, answer the printer-access question
 truthfully, then follow the [holder measurement example](tip-rack-options.md#printing-a-holder-for-purchased-tips).
@@ -270,12 +278,13 @@ that force an outcome. Actual Meta wording, latency and choices vary.
    an inspection arm and camera to this workstation.” Finish layout/cooling changes
    first: a new layout clears an earlier extension. The sidecar and sweep are a bounded
    kinematic concept; mounting, collisions, loads and camera coverage are unverified.
-6. **Choose a preparation.** For example, supply 10 mg/mL stock, targets 1, 0.5 and
+6. **Approve and choose a preparation.** Review the equipment, choose **Approve
+   design & open software**, then supply 10 mg/mL stock, targets 1, 0.5 and
    0.1 mg/mL and 1 mL final volume per tube, preserving the layout. The deterministic
    direct-dilution calculation gives 100, 50 and 10 µL of stock. Missing stock must be
    asked, not inferred. Pipette range, capacity, mixing and dead volume are unchecked.
-7. **Confirm and generate.** Review the Preparation plan, confirm, then open Project
-   details and Generate project files. Progress follows completed work. Full Jubilee
+7. **Review and generate.** Review the Preparation plan and current revision,
+   then return to hardware design, open Project details and Generate project files. Progress follows completed work. Full Jubilee
    source-CAD export can take several minutes. Read the actual guide, inspect downloads
    and verify that the package revision matches the final accepted project.
 

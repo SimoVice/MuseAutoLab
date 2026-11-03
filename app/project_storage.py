@@ -93,6 +93,8 @@ class Snapshot(StrictModel):
     bench_station: dict[str, JsonValue] | None = None
     custom_assembly_v1: dict[str, JsonValue] | None = None
     inspection_extension: dict[str, JsonValue] | None = None
+    generic_sample_capacity: Annotated[int, Field(ge=1, le=6)] | None = None
+    machine_approval: dict[str, JsonValue] | None = None
     cold_transfer_extension: dict[str, JsonValue] | None = None
     labware_brief: SavedLabwareBrief | None = None
     labware_rack: SavedLabwareRack | None = None
@@ -154,6 +156,8 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         "project_id": project.get("lineage_id", project["id"]),
         "revision": project["revision"],
         "status": project["status"],
+        "machine_approval": deepcopy(project.get("machine_approval")),
+        "generic_sample_capacity": project.get("generic_sample_capacity"),
         "inputs": {
             "summary": deepcopy(project["summary"]),
             "brief": deepcopy(project["brief"]),
@@ -269,6 +273,8 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         **{f"brief_{key}": value for key, value in brief.items()},
     }
     project = apply_update(new_project(), patch)
+    if saved.generic_sample_capacity is not None:
+        project["generic_sample_capacity"] = saved.generic_sample_capacity
     if saved.engineering is not None:
         project["engineering"] = saved.engineering.model_dump()
     elif saved.foundation_id and saved.compiler_version == "3":
@@ -373,7 +379,15 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
         from app.cold_transfer import apply_cold_transfer
         project = apply_cold_transfer(project, bump=False)
     if saved.status == "confirmed" and not upgraded and not clearance_upgrade:
-        project = confirm_project(project)
+        if (project["workflow"]["kind"] == "liquid_preparation"
+                and project.get("plan", {}).get("status") != "ready"):
+            raise ValueError("A confirmed preparation requires a ready recipe.")
+        if saved.machine_approval:
+            from app.design_workflow import approve_machine
+
+            project = approve_machine(project)
+        else:
+            project = confirm_project(project)
     project["revision"] = saved.revision + int(upgraded or clearance_upgrade)
     project["status"] = "draft" if upgraded or clearance_upgrade else saved.status
     project["lineage_id"] = saved.project_id
@@ -399,4 +413,9 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
     from app.platform_profiles import engineering_guidance
 
     project["engineering_guidance"] = engineering_guidance(project)
+    from app.design_workflow import refresh_workflow
+
+    if saved.machine_approval and not upgraded and not clearance_upgrade:
+        project["machine_approval"] = saved.machine_approval
+    refresh_workflow(project)
     return project, [entry.model_dump() for entry in saved.history]

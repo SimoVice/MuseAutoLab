@@ -400,6 +400,11 @@ async def develop_design(project: dict, instruction: str) -> tuple[dict, dict]:
     runs return an unchanged deep copy. Transport errors raise ModelClientError.
     """
     source = deepcopy(project)
+    if (source.get("design", {}).get("foundation") and not source.get("labware_rack")
+            and not source.get("labware_plate")
+            and not any(source.get("summary", {}).get(k) for k in (
+                "stock_concentration", "target_concentrations", "final_volume"))):
+        source.setdefault("generic_sample_capacity", 6)
     source_revision = source.get("revision")
     try:
         requested_model = ModelSettings.load().model

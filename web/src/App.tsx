@@ -1,3 +1,5 @@
+import SoftwareWorkspace from './SoftwareWorkspace';
+import PoweredByMeta from './PoweredByMeta';
 import ProjectLibrary from './ProjectLibrary';
 import type { LibraryOpen, SavedEntry } from './ProjectLibrary';
 import BenchStationPanel from './BenchStationPanel';
@@ -132,6 +134,7 @@ function sameDesign(a: Project | null, b: Project): boolean {
 }
 
 export default function App({ hosted = false, account = '', onSignOut = async () => {} }: { hosted?: boolean; account?: string; onSignOut?: () => Promise<void> }) {
+  const [softwareOpen, setSoftwareOpen] = useState(true);
   const [savedTitle, setSavedTitle] = useState('');
   const runtimeKey = `museautolab.hosted.${account}`;
   const [project, setProject] = useState<Project | null>(null);
@@ -168,7 +171,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const [operationSpeed, setOperationSpeed] = useState(1);
   const operationClock = useRef(0);
   const motionPlan = useMemo(() => project ? compileMotionPlan(project, operationMode) : null, [project, operationMode]);
-  const motionBinding = motionPlan ? `${motionPlan.project_id}:${motionPlan.revision}:${motionPlan.mode}` : '';
+  const motionBinding = motionPlan ? `${motionPlan.project_id}:${motionPlan.revision}:${motionPlan.mode}:${motionPlan.scope}` : '';
   const [playbackBinding, setPlaybackBinding] = useState('');
   const currentMotion = motionPlan?.status === 'ready' && playbackBinding === motionBinding;
   useEffect(() => {
@@ -535,6 +538,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
     } else if (projectRef.current?.cold_transfer_extension && !next.cold_transfer_extension) {
       setOperationMode('preparation');
     }
+    if (next.design_workflow?.machine_approved && !projectRef.current?.design_workflow?.machine_approved) setSoftwareOpen(true);
     setProject(next);
     if (changed) {
       await nextDesignPaint(signal);
@@ -593,8 +597,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
     setBusy(true);
     setError(null);
     try {
-      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/confirm`);
-      setProject(result.project);
+      const result = await request(`/api/projects/${encodeURIComponent(project.id)}/approve-machine`, { project_revision: project.revision });
+      setProject(result.project); setSoftwareOpen(true);
       if (result.assistant_message) setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: result.assistant_message! }]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The design could not be confirmed.');
@@ -683,14 +687,14 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const requestedPhoto = actionRuns.some((run) => run.kind === 'show_photo_check' && run.status === 'ready');
   const requestedBuildPlan = actionRuns.some((run) => run.kind === 'show_build_plan' && run.status === 'ready');
 
-  const preparationPanel = showLiquidParams && (
+  const preparationPanel = showLiquidParams && project?.design_workflow?.machine_approved && plan?.status === 'ready' && (
               <details className="prep-plan" ref={preparationDetails} tabIndex={-1} aria-label="Preparation plan">
-                <summary><span>Preparation plan <small className="prep-plan-preview">{plan?.steps.length ? `${plan.steps.length} targets · ${plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Volume pending'} per ${project?.labware_plate ? 'well' : 'tube'}` : 'Add preparation details in chat'}</small></span><span className="prep-plan-status">{plan ? planStatusLabel(plan.status) : 'Awaiting details'}</span></summary>
+                <summary><span>Preparation plan <small className="prep-plan-preview">{plan?.steps.length ? `${plan.steps.length} targets · ${plan.final_volume_ul != null ? formatVolumeUl(plan.final_volume_ul) : 'Volume pending'} per ${project?.labware_plate ? 'well' : 'tube'}` : 'Create the recipe in Software & protocols'}</small></span><span className="prep-plan-status">{plan ? planStatusLabel(plan.status) : 'Awaiting details'}</span></summary>
                 <div className="summary-card">
-                  <div className="summary-heading"><div><h3>Preparation details</h3><p>Review these before confirming.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
+                  <div className="summary-heading"><div><h3>Preparation details</h3><p>Current saved recipe for this workstation.</p></div><span>{fields.filter((entry) => entry.label !== 'Available width' && entry.value).length}/4 required</span></div>
                   <dl>{fields.map((entry) => <div key={entry.label}><dt>{entry.label}</dt><dd className={entry.value ? '' : 'missing'}>{entry.value || (entry.label === 'Available width' ? 'Optional' : 'Not specified')}</dd></div>)}</dl>
-                  {project?.status === 'confirmed' ? <div className="confirmed"><Icon name="check" size={16} /> Design parameters confirmed</div> : <button className="confirm-button" type="button" onClick={() => void confirm()} disabled={!project || uiBusy || !hasEngineeringDesign || plan?.status !== 'ready'}>Confirm design <span>↗</span></button>}
-                  <p className="summary-note">{project?.status !== 'confirmed' && (!hasEngineeringDesign ? 'Choose a platform and request a design in chat before confirming. ' : plan?.status !== 'ready' ? 'Complete the missing preparation details in chat before confirming. ' : 'Ready to confirm these parameters. ')}The model is a schematic concept; component fit and laboratory performance remain to be verified.</p>
+                  <button className="confirm-button" type="button" onClick={() => setSoftwareOpen(true)}>Open software & protocols</button>
+                  <p className="summary-note">Edit the recipe and review its program in Software &amp; protocols. Component fit and laboratory performance remain to be verified.</p>
                 </div>
                 {project && plan == null && (
                   <div className="plan-card" aria-live="polite">
@@ -778,6 +782,9 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
         </div>
       </header>
+      {(project?.engineering_design || project?.concept_design || project?.bench_station) && !project?.design_workflow?.machine_approved && <div className="machine-approval-bar"><div><strong>Ready to program this workstation?</strong><span>Approve the equipment layout, then create its operating recipe.</span></div><button className="confirm-button" type="button" disabled={uiBusy} onClick={() => void confirm()}>{uiBusy ? 'Approving…' : 'Approve design & open software'}</button></div>}
+      {project?.design_workflow?.machine_approved && <nav className="software-route-nav" aria-label="Project workspace"><button type="button" aria-current={!softwareOpen ? 'page' : undefined} onClick={() => { setSoftwareOpen(false); setPlaying(false); }}>Hardware design</button><button type="button" aria-current={softwareOpen ? 'page' : undefined} onClick={() => { setSoftwareOpen(true); setPlaying(false); }}>Software & protocols</button></nav>}
+      {project?.design_workflow?.machine_approved && softwareOpen ? <SoftwareWorkspace project={project} onProject={setProject} onConversation={(message, reply) => setMessages(current => [...current, { id: Date.now(), role: 'user', text: message }, { id: Date.now() + 1, role: 'assistant', text: reply }])} /> : <>
       <nav className="workspace-switch" aria-label="Workspace view">
         <button type="button" aria-pressed={mobileView === 'design' && hasWorkspaceContent} aria-controls="design-workspace" disabled={!hasWorkspaceContent} onClick={() => setMobileView('design')}>Design</button>
         <button type="button" aria-pressed={mobileView === 'chat' || !hasWorkspaceContent} aria-controls="chat-workspace" onClick={() => setMobileView('chat')}>Chat</button>
@@ -790,7 +797,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               <h1 id="design-title">{headerLabel}</h1>
               {storageNotice && <p className="storage-notice" role="status">{storageNotice}</p>}
             </div>
-            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign || hasGeneralDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{!isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
+            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign || hasGeneralDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{project?.design_workflow?.machine_approved && !isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
           </div>
 
           {!hasGeneralDesign && hasSelectedFoundation && <SelectedPlatformPreview />}
@@ -848,7 +855,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
                   <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
                   <div className="viewer-status"><span className={`status-indicator ${status === 'infeasible' ? 'warning' : ''}`} />{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</div>
                 </div>
-              {motionPlan && <OperatingPreview plan={motionPlan} playing={playing && Boolean(currentMotion)} time={currentMotion ? operationTime : 0} speed={operationSpeed} disabled={uiBusy} hasInspection={Boolean(project?.inspection_extension)} hasColdTransfer={Boolean(project?.cold_transfer_extension)} onMode={(mode) => { handleReset(); setOperationMode(mode); }} onPlay={handlePlay} onPause={handlePause} onReset={handleReset} onSpeed={(speed) => { if ([0.5, 1, 2, 4].includes(speed)) setOperationSpeed(speed); }} onSeek={(time) => { if (!Number.isFinite(time) || !motionPlan) return; time = Math.max(0, Math.min(motionPlan.duration_s, time)); setPlaying(false); operationClock.current = time; setOperationTime(time); setPhysicsView(null); setPhysicsActive(false); if (operationMode === 'inspection') setInspectionTime(time); }} />}
+              {motionPlan && <OperatingPreview machineApproved={Boolean(project?.design_workflow?.machine_approved)} plan={motionPlan} playing={playing && Boolean(currentMotion)} time={currentMotion ? operationTime : 0} speed={operationSpeed} disabled={uiBusy} hasInspection={Boolean(project?.inspection_extension)} hasColdTransfer={Boolean(project?.cold_transfer_extension)} onMode={(mode) => { handleReset(); setOperationMode(mode); }} onPlay={handlePlay} onPause={handlePause} onReset={handleReset} onSpeed={(speed) => { if ([0.5, 1, 2, 4].includes(speed)) setOperationSpeed(speed); }} onSeek={(time) => { if (!Number.isFinite(time) || !motionPlan) return; time = Math.max(0, Math.min(motionPlan.duration_s, time)); setPlaying(false); operationClock.current = time; setOperationTime(time); setPhysicsView(null); setPhysicsActive(false); if (operationMode === 'inspection') setInspectionTime(time); }} />}
               </PresentationStage>
 
               <div className="below-viewer">
@@ -944,10 +951,11 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             </form>
             {input.length > 3600 && <p className="draft-length" role="status">{input.length.toLocaleString()} / 4,000 characters{input.length > 4000 ? ' — shorten before sending.' : ''}</p>}
             {project && <VoiceDictation key={`${project.id}:${voiceEpoch}`} capability={voiceCapability} disabled={uiBusy} onBusyChange={setVoiceBusy} onTranscript={appendTranscript} />}
-            <p className="composer-caption">Designed with Meta AI <span>·</span> Review all suggested parameters</p>
+            <PoweredByMeta />
           </div>
         </aside>
       </main>
+      </>}
     </div>
   );
 }

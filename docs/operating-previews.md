@@ -20,8 +20,9 @@ of borrowing another machine's animation.
 The [saved plate and tip-rack example](examples/tip-rack-plate-project.json) can
 be opened with **Open project** to inspect the preview without a model request.
 
-1. Develop or open a supported design with a complete preparation plan. You can
-   inspect a draft before confirming it; generating CAD files is not required.
+1. Develop or open a supported design. A Jubilee preparation preview can run
+   before a recipe is supplied, using the clearly labelled example described
+   below. Generating CAD files is not required.
 2. Select **Play** in **Operating preview**. The status identifies the current
    action, destination and intended transfer volume.
 3. Use **Pause** or **Reset**. Expand **Playback details** to scrub the sequence
@@ -29,12 +30,22 @@ be opened with **Open project** to inspect the preview without a model request.
    includes a camera inspection or cold-transfer module.
 4. Change the recipe, labware or tip-rack product. The preview stops and rebuilds
    against the accepted revision, including the selected holes and well addresses.
-5. Download the motion plan from **Playback details** to inspect its revision,
-   component/profile bindings, positions and illustrative timing.
+5. For an actual ready recipe, download the motion plan from **Playback details**
+   to inspect its revision, component/profile bindings, positions and illustrative
+   timing. The example sequence has no motion-plan download.
 
 Playback does not edit the project, update costs, request a model response or send
 commands to hardware. It starts only on an explicit action. Hiding the browser
 or switching away from the model on mobile pauses it without losing the position.
+
+Before any recipe quantity is entered, the example uses a 1 mg/mL stock, a
+0.5 mg/mL target and 100 µL final volume in one destination, with 50 µL each of
+stock and diluent. These values exist only in the local illustrative preview;
+they are not saved as project inputs or included in project exports. Once a
+recipe has been started, an incomplete or invalid recipe must be completed or
+corrected before a preparation preview is available. A ready recipe uses its
+own targets and calculated volumes. Approve the equipment and open **Software &
+protocols** to enter or revise those quantities.
 
 ## What moves
 

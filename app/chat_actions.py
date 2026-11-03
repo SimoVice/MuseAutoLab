@@ -3,7 +3,6 @@
 from copy import deepcopy
 
 from app.design_agent import develop_design
-from app.domain import confirm_project
 from app.engineering import state_for
 from app.foundation_design import adopt_foundation, is_source_based
 from app.inspection import clear_extension, develop_inspection
@@ -152,14 +151,23 @@ async def execute_chat_actions(
                     "Removed the custom tube rack; the original generic rack envelope is restored. "
                     "Your recorded tube dimensions remain available for a later design."})
             elif kind == "confirm":
-                if not result.get("engineering_design"):
+                from app.design_workflow import has_machine, require_approval_request
+
+                require_approval_request(instruction)
+                if not has_machine(result):
                     raise ValueError("Develop a machine in chat before confirming it.")
-                result = confirm_project(result)
+                if any(run.get("kind") == "develop_layout" for run in runs):
+                    raise ValueError("Review the newly proposed machine before approving it.")
+                from app.design_workflow import approve_machine, machine_signature
+
+                if machine_signature(result) != machine_signature(project):
+                    raise ValueError("Review the revised machine before approving it.")
+                result = approve_machine(result)
                 runs.append(
                     {
                         "kind": kind,
                         "status": "accepted",
-                        "message": "Current design and preparation requirements confirmed.",
+                        "message": "Machine approved. Software planning is now available.",
                     }
                 )
             else:

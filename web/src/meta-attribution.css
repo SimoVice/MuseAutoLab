@@ -1,0 +1,19 @@
+.meta-attribution {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #455e69;
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.meta-attribution img {
+  display: block;
+  width: 72px;
+  height: 18px;
+  object-fit: cover;
+  object-position: 50% 51%;
+}

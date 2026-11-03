@@ -252,7 +252,9 @@ def new_project() -> dict:
         "workflow": {"kind": "unclassified"},
     }
     project["workflow"] = describe_workflow(project)
-    return add_geometry(project)
+    from app.design_workflow import refresh_workflow
+
+    return refresh_workflow(add_geometry(project))
 
 
 def _plan_for(summary: dict) -> dict:
@@ -373,7 +375,7 @@ def _resolve_workflow_kind(project: dict, updates: dict) -> str:
     return old_kind
 
 
-def apply_update(project: dict, patch: dict) -> dict:
+def _apply_update(project: dict, patch: dict) -> dict:
     """Apply a validated patch without mutating the original project.
 
     An impossible width is retained as a requirement and marked infeasible; the
@@ -593,6 +595,20 @@ def apply_update(project: dict, patch: dict) -> dict:
     result["status"] = "draft"
     result["workflow"] = describe_workflow(result)
     return add_geometry(result)
+
+
+def apply_update(project: dict, patch: dict) -> dict:
+    from app.design_workflow import refresh_workflow
+
+    result = refresh_workflow(_apply_update(project, patch))
+    capacity = result.get("generic_sample_capacity")
+    if (capacity and not result.get("labware_plate") and not result.get("labware_rack")
+            and len(result.get("plan", {}).get("steps", [])) > capacity):
+        result["plan"]["status"] = "invalid"
+        result["plan"]["message"] = (
+            f"This machine's generic sample rack has {capacity} proposed positions. "
+            "Reduce the recipe targets or revise the hardware rack first.")
+    return result
 
 
 def confirm_project(project: dict) -> dict:

@@ -198,6 +198,14 @@ def session_for(project_id: str) -> ProjectSession:
             _sessions[project_id] = session
     if session is None:
         raise HTTPException(status_code=404, detail="Project not found. Start a new project.")
+    from app.design_workflow import approve_machine
+
+    if ("machine_approval" not in session.project and session.project.get("status") == "confirmed"
+            and session.project.get("engineering_design")):
+        previous_revision = session.project["revision"]
+        session.project = approve_machine(session.project)
+        session.project["revision"] = previous_revision
+        session.project["machine_approval"]["revision"] = previous_revision
     return session
 
 
@@ -224,6 +232,9 @@ def _accept_project(session: ProjectSession, updated: dict, *, preserve_cold: bo
     estimate = rebind_estimate(
         before, updated, session.cost_estimate, session.procurement_report, report
     )
+    from app.design_workflow import refresh_workflow
+
+    refresh_workflow(updated)
     session.project = updated
     session.procurement_report = report
     session.cost_estimate = estimate
@@ -646,6 +657,16 @@ async def download_instructions(
             )
     names = {"html": "assembly-guide.html", "md": "assembly-guide.md", "json": "assembly.json",
              "protocol": "protocol-template.json", "preview": "protocol-preview.py"}
+    if format == "program":
+        from app.program_source import build_program
+
+        try:
+            program = build_program(current)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        return Response(program, media_type="text/x-python",
+                        headers={"Content-Disposition": 'attachment; filename="program.py"',
+                                 "Cache-Control": "no-store"})
     if format not in names:
         raise HTTPException(
             status_code=422,
@@ -837,7 +858,17 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     kind="select_labware", source=turn.labware_selection.source
                 ))
             patch = extension_only_patch(turn.patch(), actions)
+            from app.design_workflow import RECIPE_FIELDS, workflow_state
+
+            recipe_changed = any(key in patch and patch[key] != current["summary"].get(key)
+                                 for key in RECIPE_FIELDS)
+            recipe_only = bool(patch) and set(patch).issubset(RECIPE_FIELDS)
+            if recipe_only and current.get("engineering_design"):
+                actions = [action for action in actions if action.kind != "develop_layout"]
             updated = apply_update(current, patch)
+            if (recipe_changed and workflow_state(current)["machine_approved"]
+                    and updated.get("plan", {}).get("status") != "ready"):
+                raise ValueError(updated["plan"]["message"])
             engineering = getattr(turn, "engineering", EngineeringUpdate())
             updated = apply_engineering_update(
                 updated, engineering, request.message,
@@ -920,6 +951,9 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 updated = reapply_plate(updated, require_accepted=False)
             if updated.get("tip_rack"):
                 updated = reapply_tip_rack(updated, require_accepted=False)
+            if (recipe_changed and workflow_state(current)["machine_approved"]
+                    and updated.get("plan", {}).get("status") != "ready"):
+                raise ValueError(updated["plan"]["message"])
         except ModelClientError as exc:
             return JSONResponse(status_code=502, content={
                 "detail": str(exc),
@@ -1126,6 +1160,18 @@ async def _custom_assembly_turn(session, turn, message, usage):
         updated = attach_concept(previous, candidate, compiled)
         status = "accepted"
         reply = "The assembly layout and downloads now use the updated bench width."
+    elif design and "confirm" in actions:
+        from app.design_workflow import approve_machine, require_approval_request
+
+        try:
+            require_approval_request(message)
+            if any(value is not None for value in turn.patch().values()):
+                raise ValueError("Review hardware changes separately before approving the machine.")
+            updated = approve_machine(previous)
+            status = "accepted"
+            reply = "Machine approved. Review the assembly software and commissioning guide."
+        except ValueError as exc:
+            status, reply = "rejected", str(exc)
     elif design and "show_files" in actions:
         reply += " Download the complete package in the design workspace to use it offline."
     if updated is not previous:
@@ -1233,6 +1279,62 @@ async def get_brief(project_id: str, revision: int) -> Response:
     )
 
 
+class ProgramRecipeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    project_revision: Annotated[int, Field(ge=0)]
+    stock_concentration: Annotated[str, Field(min_length=1, max_length=1000)]
+    target_concentrations: Annotated[str, Field(min_length=1, max_length=1000)]
+    final_volume: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
+class MachineApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    project_revision: Annotated[int, Field(ge=0)]
+
+
+@app.post("/api/projects/{project_id}/approve-machine")
+async def approve_machine_design(project_id: str, request: MachineApprovalRequest) -> dict:
+    from app.design_workflow import approve_machine
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, request.project_revision)
+        try:
+            updated = approve_machine(session.project)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        _accept_project(session, updated)
+        return {"project": deepcopy(updated), "assistant_message":
+                "Machine approved. You can now define a preparation recipe and review software. "
+                "This does not commission or run hardware."}
+
+
+@app.post("/api/projects/{project_id}/program-recipe")
+async def program_recipe(project_id: str, request: ProgramRecipeRequest) -> dict:
+    from app.design_workflow import workflow_state
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, request.project_revision)
+        if not workflow_state(session.project)["machine_approved"]:
+            raise HTTPException(409, "Approve the current machine before programming a recipe.")
+        if session.project.get("workflow", {}).get("kind") != "liquid_preparation":
+            raise HTTPException(409, "This recipe editor supports liquid preparation. "
+                                "Use this machine's own software guide for other workflows.")
+        try:
+            updated = apply_update(
+                session.project, request.model_dump(exclude={"project_revision"})
+            )
+            if updated["plan"]["status"] != "ready":
+                raise ValueError(updated["plan"]["message"])
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        updated["status"] = "confirmed"
+        _accept_project(session, updated)
+        return {"project": deepcopy(updated), "assistant_message":
+                "Preparation recipe updated. Review the logical software preview before use."}
+
+
 @app.post("/api/projects/{project_id}/confirm")
 async def confirm(project_id: str) -> dict:
     session = session_for(project_id)
@@ -1245,7 +1347,7 @@ async def confirm(project_id: str) -> dict:
         return {
             "project": deepcopy(updated),
             "assistant_message": (
-                "Parameters confirmed for this concept. This does not run a laboratory protocol."
+                "Preparation parameters confirmed. This does not run hardware."
             ),
         }
 

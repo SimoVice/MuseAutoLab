@@ -151,6 +151,87 @@ def test_zero_volume_skips_transfer_and_stations():
     assert all(f["target"] == "Diluent" for f in aspirates)
 
 
+@pytest.mark.parametrize("plate", [False, True])
+def test_hardware_only_preview_keeps_illustrative_recipe_local(plate):
+    project = select(before()) if plate else before()
+    project["summary"].update(
+        stock_concentration=None, target_concentrations=None, final_volume=None
+    )
+    project["plan"].update(status="incomplete", steps=[])
+    original = deepcopy(project)
+    plan = compile_plan(project)["plan"]
+    assert project == original
+    assert plan["status"] == "ready", plan["message"]
+    assert plan["scope"] == "illustrative"
+    assert "illustrative" in plan["message"].lower()
+    assert plan["illustrative_recipe"] == {
+        "stock": "1 mg/mL", "target": "0.5 mg/mL", "final_volume_ul": 100,
+        "stock_volume_ul": 50, "diluent_volume_ul": 50,
+    }
+    assert [f["volume_ul"] for f in plan["keyframes"] if f["stage"] == "Dispense"] == [50, 50]
+    assert [frame["stage"] for frame in plan["keyframes"]].count("Aspirate") == 2
+    assert [frame["stage"] for frame in plan["keyframes"]].count("Dispense") == 2
+    assert plan["binding"]["plate_profile_id"] == (
+        project["labware_plate"]["profile_id"] if plate else None
+    )
+
+
+@pytest.mark.parametrize("field", ["stock_concentration", "target_concentrations", "final_volume"])
+@pytest.mark.parametrize("status", ["incomplete", "invalid"])
+def test_started_incomplete_or_invalid_recipe_never_uses_illustrative_fallback(field, status):
+    project = before()
+    project["summary"].update(
+        stock_concentration=None, target_concentrations=None, final_volume=None
+    )
+    project["summary"][field] = "1 mM"
+    project["plan"].update(status=status, steps=[])
+    plan = compile_plan(project)["plan"]
+    assert plan["scope"] == "recipe"
+    assert plan["status"] == "unavailable"
+    assert not plan["keyframes"]
+
+
+def test_ready_recipe_supersedes_illustration_at_next_revision():
+    project = before()
+    recipe = deepcopy(project)
+    project["summary"].update(
+        stock_concentration=None, target_concentrations=None, final_volume=None
+    )
+    project["plan"].update(status="incomplete", steps=[])
+    illustrative = compile_plan(project)["plan"]
+    recipe["revision"] = project["revision"] + 1
+    actual = compile_plan(recipe)["plan"]
+    assert illustrative["scope"] == "illustrative"
+    assert actual["scope"] == "recipe" and actual["status"] == "ready"
+    assert "illustrative_recipe" not in actual
+    assert all("example" not in frame["target"] for frame in actual["keyframes"])
+    assert actual["revision"] != illustrative["revision"]
+    assert [f["volume_ul"] for f in actual["keyframes"] if f["stage"] == "Dispense"] == [
+        volume for step in recipe["plan"]["steps"]
+        for volume in (step["stock_volume_ul"], step["diluent_volume_ul"]) if volume > 0
+    ]
+
+
+@pytest.mark.parametrize("state", ["ready", "incomplete", "invalid", "missing"])
+def test_legacy_project_motion_requires_valid_recipe_or_unstarted_example(state):
+    project = before()
+    project.pop("design_workflow", None)
+    project.pop("machine_approval", None)
+    if state != "ready":
+        project["summary"].update(
+            stock_concentration=None, target_concentrations=None, final_volume=None
+        )
+        project["plan"] = None if state == "missing" else {"status": state, "steps": []}
+    plan = compile_plan(project)["plan"]
+    if state == "ready":
+        assert plan["status"] == "ready" and plan["scope"] == "recipe"
+        assert "illustrative_recipe" not in plan
+    elif state == "incomplete":
+        assert plan["status"] == "ready" and plan["scope"] == "illustrative"
+    else:
+        assert plan["status"] == "unavailable" and not plan["keyframes"]
+
+
 @pytest.mark.parametrize(
     "mutation",
     [

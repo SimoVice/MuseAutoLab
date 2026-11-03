@@ -363,10 +363,17 @@ def canonical_labware_reply(project: dict, action_runs: list[dict], patch: dict)
                 "Confirmation and project-file generation are blocked "
                 "until this conflict is resolved."
             )
+        elif not any(project.get("summary", {}).get(k) for k in (
+            "stock_concentration", "target_concentrations", "final_volume"
+        )):
+            paragraphs.append(
+                "Continue designing and approve the machine when ready. "
+                "Preparation quantities belong to the later software stage."
+            )
         elif project["plan"]["status"] != "ready":
             paragraphs.append(
                 "The preparation needs attention: " + project["plan"]["message"] + " "
-                "Confirmation and project-file generation are blocked until the recipe is ready."
+                "Software recipe generation waits until the preparation is ready."
             )
         else:
             maximum = compatibility["well_capacity_ul"]
@@ -399,7 +406,12 @@ def canonical_labware_reply(project: dict, action_runs: list[dict], patch: dict)
                 f"Current preparation: {volume:g} µL per tube; "
                 f"{len(plan.get('steps', []))} existing target(s)."
             )
-        if plan.get("status") != "ready":
+        if not any(project.get("summary", {}).get(k) for k in (
+            "stock_concentration", "target_concentrations", "final_volume"
+        )):
+            paragraphs.append("Continue designing the machine; recipe quantities can wait "
+                              "until the software stage after machine approval.")
+        elif plan.get("status") != "ready":
             paragraphs.append(
                 "The preparation needs attention: " + plan.get("message", "") + " "
                 "Confirmation and project-file generation remain blocked."

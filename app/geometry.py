@@ -224,6 +224,7 @@ def add_geometry(project: dict) -> dict:
         if comp["id"] == "sample-rack":
             comp["rack_slot_count"] = (
                 labware["spec"]["count"] if rack_geometry else
+                result.get("generic_sample_capacity") or
                 max(1, min(6, len(result.get("plan", {}).get("steps", []))))
             )
         canonical = inspection.get(comp["id"]) or cold.get(comp["id"])

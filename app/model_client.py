@@ -164,6 +164,8 @@ equipment), return develop_layout so the selected source architecture is develop
 concept. A recorded liquid workflow, process and container/material context suffice for a
 source-backed conceptual layout; do not require, infer or invent owned pipettes/equipment.
 Missing preparation quantities and tool compatibility remain unresolved, not design blockers.
+During hardware design never ask how much liquid they pipette, a concentration range, or a
+per-tube volume. Offer the reviewed routes using hardware needs, footprint and build preference.
 If process or materials are still missing, retain the platform choice and ask one focused
 question instead of claiming that design has started. A recipe is optional
 at this stage. Explain what needs buying/fabricating and link only reviewed references.
@@ -203,15 +205,22 @@ materials, equipment and constraints rather than mentioning them only in your re
 spans into the brief fields and their paired sources; leave only genuinely unknown fields null.
 Start with broad problem discovery before task-specific quantities. First find out what process,
 materials, equipment and constraints matter, asking one focused question at a time.
-Do not ask for stock concentration, target concentrations or final volume until liquid
-preparation is actually the task and the process context is understood. If the user already
+Ask for stock concentration, target concentrations or final volume only in the software
+stage after explicit machine approval, and only for a liquid-preparation task. If the user already
 gives quantities, use them immediately without forcing an interview.
 Other workflows such as inspection, transport, mixing or labeling get relevant planning
 questions, not liquid parameters.
+Machine design precedes software programming. During hardware_design do not ask for
+stock concentration, target concentration or final volume. Discuss mechanical needs and
+containers instead. Never invent recipe values. Once an engineering_design, custom_assembly
+or bench_station exists, a clear
+approval such as 'OK this is the machine I want' returns confirm. Only after current machine
+approval (design_workflow.machine_approved) ask for recipe quantities for software work.
+Recipe-only edits preserve the machine; do not return develop_layout for those edits.
 Users do not need a complete preparation recipe to begin. If they have not chosen target
-concentrations or final volumes, help define them rather than repeatedly demanding finished
-values. Explain the difference between stock, target and final volume briefly when useful;
-ask about the desired concentration range or comparison goal, then available volume per tube.
+concentrations or final volumes, defer them until machine approval rather than demanding finished
+values. In the software stage after machine approval, explain stock, target and final volume
+when useful; ask about the desired concentration range, then available volume per tube.
 Keep one focused next question. The user chooses their concentrations in later turns; there
 is no preset target, number of dilutions or final volume. Do not record a suggestion as a
 user requirement or calculate a completed recipe before the needed choices are supplied.
@@ -228,8 +237,9 @@ do not require the user to name parts or know the design ahead of time. For ques
 clarify. State that a project exists only when the supplied state includes an accepted design.
 For a liquid preparation task with an accepted selected-platform design, once stock, targets,
 final volume and equipment are supplied, invite review and confirmation. If no platform is
-selected, discuss the needs and platform options first. If stock is missing after targets and
-volume, ask specifically for the stock concentration; never invent it from your suggestions.
+selected, discuss the needs and platform options first. Only in the software stage after
+machine approval, if stock is missing after targets and volume, ask for stock concentration;
+never invent it from your suggestions.
 English spoken quantities such as 'five milligrams per milliliter' and 'two milliliters per
 tube' are accepted by deterministic normalization. Keep their exact literal source spans;
 do not require the user to retype supported speech as digits or invent unsupported quantities.
@@ -1101,6 +1111,7 @@ async def generate_turn(
     *,
     client: httpx.AsyncClient | None = None,
     settings: ModelSettings | None = None,
+    _source_repair: bool = False,
 ) -> tuple[ExtractedTurn, dict[str, int | str]]:
     """Extract a turn, optionally verifying a novel choice with one bounded semantic call.
 
@@ -1114,7 +1125,10 @@ async def generate_turn(
     design_available = (
         bool(workflow.get("design_available")) if isinstance(workflow, dict) else False
     )
+    from app.design_workflow import workflow_state
+
     state: dict = {
+        "design_workflow": workflow_state(project),
         "brief": project.get("brief", {}) if isinstance(project, dict) else {},
         "workflow": workflow,
         "reviewed_reference_library": reference_context(project),
@@ -1192,7 +1206,8 @@ async def generate_turn(
                     project["id"], project["revision"]):
                 pricing[key] = {field: record.get(field) for field in (
                     "status", "summary", "expires_at", "coverage", "known_partial_subtotal")}
-        state = {"brief": state["brief"], "workflow": workflow, "custom_assembly": concept,
+        state = {"design_workflow": state["design_workflow"],
+                 "brief": state["brief"], "workflow": workflow, "custom_assembly": concept,
                  "pricing": pricing, "market": "US", "currency": "USD"}
     focused_tip_turn = is_tip_only_turn(project, user_message)
     response_model = TipRackTurn if focused_tip_turn else ExtractedTurn
@@ -1213,6 +1228,15 @@ async def generate_turn(
          TURN_DELTA_INSTRUCTIONS + TIP_RACK_TURN_DELTA_INSTRUCTIONS + focused_instructions},
         {"role": "user", "content": user_message},
     ]
+    if _source_repair:
+        messages.insert(-1, {"role": "developer", "content":
+            "A previous extraction for this discovery/comparison turn failed source validation. "
+            "Return a fresh conservative comparison/clarification: no platform_choice, no actions, "
+            "no requirements unless literally supplied. The user may compare both procurement "
+            "routes without choosing either. Copy brief values and their source fields from the "
+            "same exact substring of the latest message, or leave both null. Never infer recipe "
+            "quantities from container capacities. Discuss the reviewed alternatives and ask only "
+            "a relevant hardware clarification; do not ask recipe quantities before approval."})
     payload = {
         "model": settings.model,
         "messages": messages,
@@ -1354,6 +1378,22 @@ async def generate_turn(
         ):
             raise ValueError("Liquid parameters do not belong to this workflow")
     except (ValueError, TypeError, KeyError, IndexError, ValidationError):
+        # A comparison can contain valid options but over-extract facts or a choice.
+        # Retry once from unchanged state; never relax provenance or repair machine edits.
+        if (failure_kind == "source_validation" and not _source_repair
+                and "result" in locals() and result.engineering.options and not result.actions
+                and not accepted_layout and not project.get("concept_design")
+                and not state.get("bench_station")
+                and not any(getattr(result, key) is not None for key in (
+                    "stock_concentration", "target_concentrations", "final_volume"))):
+            repaired, retry_usage = await generate_turn(
+                project, user_message, history, client=client, settings=settings,
+                _source_repair=True)
+            first_usage = _safe_usage(body) if isinstance(body, dict) else {}
+            for key, value in first_usage.items():
+                retry_usage[key] = retry_usage.get(key, 0) + value
+            retry_usage["source_repair_requests"] = 1
+            return repaired, retry_usage
         error = ModelClientError(
             "Meta returned changes that could not be verified against your message and "
             "the recorded project. The project was not changed. Please retry this request."

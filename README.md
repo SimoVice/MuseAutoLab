@@ -29,10 +29,12 @@ Start with the work you want to improve.
 2. **Explore a suitable approach.** Compare available foundations and tradeoffs,
    including building around an open design or using existing equipment. Review
    the proposal and choose an approach before detailed design begins.
-3. **Develop the connected project.** Refine the design in chat and inspect its
-   supported 3D layout, component choices, cost information, assembly instructions
-   and software guidance. Review and confirm changes before generating a package.
-4. **Evolve the setup.** Save the project, revisit a design choice or adapt the
+3. **Develop and approve the equipment.** Refine the design in chat and inspect its
+   supported 3D layout, component choices, costs and assembly guidance. Approve
+   the machine design before moving to its software workspace.
+4. **Program and evolve the setup.** Define a supported operating recipe or
+   program, review the revision-bound preview and save the project. Return to the
+   hardware design to revisit a choice or adapt the
    setup to another task. Supported changes carry their sources and revision
    history into the related outputs.
 
@@ -63,6 +65,11 @@ Two specialized workflows add detail for particular tasks. **Liquid handling**
 connects the workstation, labware, sourcing and pipetting protocol. The **modular
 bench station** supports weighing, label printing, barcode reading and visual
 inspection. Its local runner guides an operator through the selected sequence.
+Before a liquid-handling recipe exists, the supported Jubilee motion preview can
+show a labelled example that is not saved as the user's recipe. After a recipe is
+provided, its own transfers drive the preview and a downloadable `program.py`
+prints the logical schedule locally; it does not control hardware. See the
+[software and protocol guide](docs/software-and-protocols.md).
 
 For a different process, describe what happens in your lab and select **Develop
 functional plan** in the project brief. The resulting specification lists the

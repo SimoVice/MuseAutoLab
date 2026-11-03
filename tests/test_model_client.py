@@ -524,3 +524,48 @@ def test_malformed_provider_shape_and_unicode_are_sanitized(response):
         run_turn(lambda request: response)
     assert caught.value.failure_kind == "response_format"
     assert "invalid response" in str(caught.value)
+
+
+def test_comparison_source_error_gets_one_fresh_validated_attempt():
+    calls = []
+    option = {"platform_id": "jubilee", "reason": "Buildable option",
+              "tradeoffs": ["Assembly required"]}
+
+    def handler(request):
+        payload = json.loads(request.content)
+        calls.append(payload)
+        if len(calls) == 1:
+            return httpx.Response(200, json=valid_response(
+                brief_objective="invented need", source_brief_objective="absent words",
+                engineering={"requirements": [], "options": [option],
+                             "platform_choice": None, "choice_source": None}))
+        return httpx.Response(200, json=valid_response(
+            assistant_message="Compare the reviewed routes before selecting a platform.",
+            engineering={"requirements": [], "options": [option],
+                         "platform_choice": None, "choice_source": None}))
+
+    turn, usage = run_turn(handler, message="Compare an open platform and assembled alternative")
+    assert len(calls) == 2
+    assert turn.brief_objective is None and turn.engineering.platform_choice is None
+    assert not turn.actions
+    assert usage["total_tokens"] == 124
+    assert usage["source_repair_requests"] == 1
+    state_message = calls[0]["messages"][1]["content"]
+    state = json.loads(state_message.split(": ", 1)[1])
+    assert state["design_workflow"]["phase"] == "hardware_design"
+
+
+def test_comparison_repair_never_accepts_second_unverified_delta():
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200, json=valid_response(
+            brief_objective="invented need", source_brief_objective="absent words",
+            engineering={"requirements": [], "options": [{"platform_id": "jubilee",
+                         "reason": "Buildable option", "tradeoffs": []}],
+                         "platform_choice": None, "choice_source": None}))
+
+    with pytest.raises(ModelClientError):
+        run_turn(handler, message="Compare the reviewed platforms")
+    assert len(calls) == 2

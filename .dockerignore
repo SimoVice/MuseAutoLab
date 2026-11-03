@@ -26,6 +26,7 @@
 !web/src/**/*.tsx
 !web/src/**/*.ts
 !web/src/**/*.css
+!web/src/meta-logo.png
 !web/public/
 !web/public/assets/
 !web/public/assets/*.glb

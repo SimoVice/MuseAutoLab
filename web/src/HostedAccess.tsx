@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import App from './App';
+import PoweredByMeta from './PoweredByMeta';
 import './hosted-workspace.css';
 
 type Access = { enabled: boolean; authenticated: boolean; account?: string | null };
@@ -75,7 +76,7 @@ export default function HostedAccess() {
     <section className="access-story" aria-label="MuseAutoLab">
       <a className="brand" href="/"><span>Muse<span className="brand-accent">Auto</span>Lab</span></a>
       <div><h1>Your lab process.<br />A workspace to build it.</h1><p>Design custom laboratory automation, explore equipment and develop your next setup in one place.</p></div>
-      <p className="access-footnote">From the first brief to a project you can return to.</p>
+      <PoweredByMeta />
     </section>
     <section className="access-form-panel">
       {!access ? <div className="access-form"><h2>Opening your workspace</h2><p role="status">{error || 'Checking the connection…'}</p>{error && <button onClick={() => setAttempt(value => value + 1)}>Try again</button>}</div> :
