@@ -3,8 +3,13 @@
 import re
 from copy import deepcopy
 
-PREVIOUS_COST_NOTE = "Dedicated refrigerator and transfer hardware are custom, unselected and unpriced."
-COST_NOTE = "Parts & prices lists candidate hardware and a budget. Check physical fit and obtain a supplier quote."
+PREVIOUS_COST_NOTE = (
+    "Dedicated refrigerator and transfer hardware are custom, unselected and unpriced."
+)
+COST_NOTE = (
+    "Parts & prices lists candidate hardware and a budget. "
+    "Check physical fit and obtain a supplier quote."
+)
 
 LIMITATIONS = [
     "Digital concept only: no hardware control, collision simulation or physical validation.",
@@ -357,8 +362,10 @@ def apply_cold_transfer(project: dict, *, bump: bool = True) -> dict:
                 "options": [
                     {
                         "id": "unselected-concept",
-                        "label": ("Refrigerator candidate for the custom bay" if cid.endswith("fridge")
-                                  else "Custom plate-transfer gantry with parallel gripper"),
+                        "label": (
+                            "Refrigerator candidate for the custom bay" if cid.endswith("fridge")
+                            else "Custom plate-transfer gantry with parallel gripper"
+                        ),
                         "supplier": "Not selected",
                         "sku": None,
                         "unit_price": None,
