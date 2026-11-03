@@ -140,7 +140,10 @@ class TipRackUpdate(StrictModel):
             if self.profile_id in PROFILES:
                 profile = tip_profile(self.profile_id)
                 aliases = profile.get("selection_aliases", [self.profile_id])
-                if not any(alias.casefold() in self.source.casefold() for alias in aliases):
+                delegated = delegated_tip_reference(message) == self.profile_id
+                if not delegated and not any(
+                    alias.casefold() in self.source.casefold() for alias in aliases
+                ):
                     raise ValueError(
                         "Choose an exact reviewed tip-rack product before changing geometry."
                     )
@@ -208,6 +211,33 @@ class TipRackUpdate(StrictModel):
                 raise ValueError(
                     "The tip-rack dimension source does not identify its physical role."
                 )
+
+
+def delegated_tip_reference(message: str) -> str | None:
+    """Resolve only a narrow, explicit delegation to a replaceable commercial reference.
+
+    No stated volume keeps the existing BOM's Opentrons 300 µL reference. Product
+    names, alternatives, fabrication requests and other constraints need their own
+    grounded interpretation and cannot enter this bounded default route.
+    """
+    text = re.sub(
+        r"^\s*(?:I|we)\s+(?:don't|do not|don’t)\s+know\s+(?:the\s+)?"
+        r"(?:make|brand|model)\s*[.!]\s*", "", message, flags=re.I,
+    ).strip()
+    volumes = re.findall(r"\b(\d+(?:[.,]\d+)?)\s*[µμu]l\b", text, re.I)
+    if len(volumes) > 1 or (volumes and volumes[0] not in {"200", "300"}):
+        return None
+    text = re.sub(r"\b(?:for\s+)?(?:200|300)\s*[µμu]l(?:\s+tips)?\b", "", text,
+                  flags=re.I)
+    text = " ".join(text.split())
+    if not re.fullmatch(
+        r"(?:please )?(?:use|choose|select|pick) (?:a |the |your |any )?"
+        r"(?:(?:reviewed|replaceable|reference|default) )+tip[ -]rack"
+        r"(?: for now| for the moment)?[.!]?", text, re.I,
+    ):
+        return None
+    return ("tipone_96_tiprack_200ul" if volumes == ["200"]
+            else "opentrons_96_tiprack_300ul")
 
 
 def intent_clauses(message: str) -> list[str]:
@@ -732,6 +762,11 @@ def select_tip_rack(
     profile_id = update.profile_id or pending.get("profile_id")
     if profile_id is None:
         raise ValueError("Choose an exact reviewed tip-rack profile or the printed holder.")
+    reference_note = (
+        f"{tip_profile(profile_id)['display_name']} is the replaceable design reference. "
+        "Physical fit and pipette/tip compatibility are unverified. "
+        if profile_id in PROFILES and delegated_tip_reference(message) else ""
+    )
     result = deepcopy(project)
     original_drop = result["design"]["foundation"]["bed_drop_mm"]
     previous_checks = _preservation_checks(
@@ -844,7 +879,7 @@ def select_tip_rack(
                 return result, {
                     "kind": "select_tip_rack",
                     "status": "ready",
-                    "message": placement["message"]
+                    "message": reference_note + placement["message"]
                     + " Confirm this tip-rack movement to apply the product choice.",
                 }
         record["position_xz_mm"] = placement["position_xz_mm"]
@@ -871,7 +906,8 @@ def select_tip_rack(
     return result, {
         "kind": "select_tip_rack",
         "status": "accepted",
-        "message": "Updated tip-rack geometry, component choice and instructions in this draft. "
+        "message": reference_note
+        + "Updated tip-rack geometry, component choice and instructions in this draft. "
         "The preparation recipe and other components are preserved. Physical fit, deck "
         "attachment and pipette compatibility still require checking. " + movement + bed_note,
     }

@@ -12,7 +12,7 @@ from test_model_client import TEST_SETTINGS
 
 import app.api as api
 from app.domain import apply_update
-from app.microplates import PROFILE_ID, LabwareSelection
+from app.microplates import PROFILE_ID, LabwareSelection, canonical_labware_reply
 from app.model_client import ChatAction, ExtractedTurn, generate_turn
 
 RECORDS = json.loads(
@@ -74,6 +74,7 @@ def test_recorded_round1_prose_is_replaced_by_post_action_facts(client, monkeypa
     body = response.json()
     text = body["assistant_message"]
     current = body["project"]
+    report = canonical_labware_reply(current, body["action_runs"], {})
     assert body["usage"]["total_tokens"] == usage["total_tokens"]
     assert api._sessions[project["id"]].history[-1]["content"].startswith(text)
     if record["case_id"].startswith("N"):
@@ -92,7 +93,10 @@ def test_recorded_round1_prose_is_replaced_by_post_action_facts(client, monkeypa
             assert current["plan"]["status"] == "invalid"
         else:
             assert "200 µL per well" in text
-            assert "Assigned wells: A1, B1, C1 (3 of 96)" in text
+            # Chat summarizes the same committed facts; the complete technical
+            # report retains explicit occupancy and capacity detail.
+            assert "3 existing preparations in A1, B1, C1" in text
+            assert "Assigned wells: A1, B1, C1 (3 of 96)" in report
             assert "preparation plan is updated" in text
             assert len(current["plan"]["steps"]) == 3
             assert "per tube" not in text and "blocked" not in text
@@ -121,7 +125,11 @@ def test_confident_pre_action_success_claim_cannot_claim_confirmed_or_running(cl
     )
     body = client.post(url, json={"message": MESSAGE}).json()
     assert false_prose not in body["assistant_message"]
-    assert "Review and confirm this draft" in body["assistant_message"]
+    assert "already confirmed" not in body["assistant_message"]
+    assert "exported" not in body["assistant_message"]
+    assert "transferring liquids" not in body["assistant_message"]
+    report = canonical_labware_reply(body["project"], body["action_runs"], {})
+    assert "Review and confirm this draft" in report
     assert body["project"]["status"] == "draft" and body["usage"]["total_tokens"] == 37
 
 

@@ -104,7 +104,7 @@ def run(url):
         expect(bubble.get_by_role("link", name="Official source")).to_have_attribute(
             "rel", "noopener noreferrer"
         )
-        expect(bubble.get_by_role("link", name="https://example.com/plain-product")).to_have_attribute(
+        expect(bubble.get_by_role("link", name="example.com reference")).to_have_attribute(
             "href", "https://example.com/plain-product"
         )
         expect(bubble.get_by_role("link", name="Unsafe", exact=True)).to_have_count(0)
@@ -190,12 +190,16 @@ def run(url):
         expect(page.locator(".design-activity")).to_have_count(0)
         expect(composer).to_be_enabled()
 
+        # Keep this request held: synthetic revisions above intentionally differ from
+        # backend state. Removing the fixture would produce an immediate stale-revision
+        # response instead of exercising navigation during an outstanding request.
         # Navigating away cancels pending presentation work; the new page has no stale notice.
-        page.unroute("**/messages")
         composer.fill("Show project files.")
         page.get_by_role("button", name="Send message", exact=True).click()
         expect(page.locator(".design-activity[data-phase=pending]")).to_be_visible()
         page.reload(wait_until="networkidle")
+        pending.pop().abort()
+        page.unroute_all(behavior="ignoreErrors")
         expect(page.get_by_text("Workspace ready")).to_be_visible()
         expect(page.locator(".design-activity")).to_have_count(0)
         expect(composer).to_be_enabled()

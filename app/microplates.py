@@ -45,7 +45,8 @@ def verify_selection(
 ) -> None:
     lowered = source.casefold()
     if re.search(
-        r"\b(?:don't|don’t|do not|never|not)\b.{0,35}\b(?:use|select|choose|switch)\b|"
+        r"\b(?:don't|don’t|do not|never|not)\b.{0,35}"
+        r"\b(?:use|select|choose|switch)\b.{0,30}\bcorning\b|"
         r"\b(?:use|select|choose)\b.{0,25}\bnot\b.{0,25}\bcorning\b|"
         r"\b(?:later|someday|future|eventually)\b.{0,40}\bcorning\b",
         message, re.I,
@@ -363,7 +364,8 @@ def labware_chat_reply(
     )
     issues = compatibility.get("blocking_issues")
     if issues:
-        return reply + "\n\n" + " ".join(issues) + " Resolve this before approval."
+        return (reply + "\n\n" + " ".join(issues)
+                + " Confirmation and project-file generation are blocked until this is resolved.")
     if any(project.get("summary", {}).get(key) for key in recipe_fields):
         volume = compatibility.get("requested_volume_ul")
         count = compatibility["current_target_count"]

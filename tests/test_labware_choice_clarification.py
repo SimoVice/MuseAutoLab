@@ -10,7 +10,7 @@ from test_model_client import TEST_SETTINGS, valid_response
 
 from app.labware_choice import choice_clarification
 from app.microplates import PROFILE_ID, LabwareSelection
-from app.model_client import ExtractedTurn, generate_turn
+from app.model_client import ChatAction, ExtractedTurn, generate_turn
 
 
 def plate_turn(message):
@@ -324,3 +324,159 @@ def test_ambiguous_pronoun_does_not_change_machine(offer):
     message = "use that one"
     history = [{"role": "assistant", "content": offer}] if offer else []
     assert choice_clarification(plate_turn(message), message, before(), history)
+
+
+@pytest.mark.parametrize("record_preference", [False, True])
+@pytest.mark.parametrize("invalid_echo", [False, True])
+def test_http_recovers_omitted_plate_action_on_accepted_legacy_geometry(
+    monkeypatch, record_preference, invalid_echo,
+):
+    from fastapi.testclient import TestClient
+    from test_design_workflow import hardware
+
+    import app.api as api
+    from app.engineering import state_for
+
+    project = hardware()
+    if record_preference:
+        project["engineering"] = {"requirements": [], "options": [],
+            "selected_platform_id": "jubilee", "selection_source": "Use Jubilee"}
+    original_preference = state_for(project)
+    project_id = project["id"]
+    api._sessions[project_id] = api.ProjectSession(project=project)
+    message = "Maybe i want to use 96 microwells plate instead of eppendorfs"
+
+    async def omitted_action(project, message, history):
+        body = valid_response()
+        proposed = ExtractedTurn(
+            assistant_message="We can use a Corning 96-well reference. "
+                              "Should we build or buy the platform first?",
+        )
+        if invalid_echo:
+            proposed.equipment = "Historical manual pipette"
+            proposed.source_equipment = "copied from the previous interview"
+            proposed.engineering.platform_choice = "jubilee"
+            proposed.engineering.choice_source = "Let's go with Jubilee"
+            proposed.labware_selection = LabwareSelection(
+                profile_id=PROFILE_ID, source="a paraphrased plate request")
+            proposed.actions = [ChatAction(kind="select_labware", source="bad source")]
+            proposed = ExtractedTurn.model_validate(proposed.model_dump())
+        body["choices"][0]["message"]["content"] = proposed.model_dump_json()
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json=body))) as model_client:
+            return await generate_turn(project, message, history, client=model_client,
+                                       settings=TEST_SETTINGS)
+
+    monkeypatch.setattr(api, "generate_turn", omitted_action)
+    try:
+        with TestClient(api.app) as client:
+            response = client.post(f"/api/projects/{project_id}/messages",
+                                   json={"message": message})
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["project"]["labware_plate"]["profile_id"] == PROFILE_ID
+        assert state_for(result["project"]) == original_preference
+        assert "Replaced the tubes" in result["assistant_message"]
+        assert "build or buy" not in result["assistant_message"]
+    finally:
+        api._sessions.pop(project_id, None)
+
+
+@pytest.mark.parametrize("message", [
+    "Could we use a 96-well plate?", "Don't use a 96-well plate",
+    "Use a Thermo 96-well plate", "Use a 96-well plate and add a barcode reader",
+    "Use a 96-well plate then return to tubes", "Use a 96-well plate on an OT-2",
+    "How does a 96-well plate work?", "I don't understand the 96-well plate question",
+    "I might use a 96-well plate", "Use a 96-well plate but keep the tubes",
+    "Explain how to use a 96-well plate", "Help me use a 96-well plate",
+    "Use a 96-well plate with magnetic stirring",
+])
+def test_omitted_action_recovery_preserves_ambiguous_and_unsupported_requests(message):
+    from test_design_workflow import hardware
+
+    from app.labware_choice import supported_plate_request
+
+    turn = ExtractedTurn(assistant_message="Let's discuss this.")
+    original = turn.model_dump()
+    assert supported_plate_request(turn, message, hardware()).model_dump() == original
+
+
+def test_plate_recovery_keeps_independent_explicit_recipe_and_constraint_deltas():
+    from test_design_workflow import hardware
+
+    from app.labware_choice import supported_plate_request
+
+    message = "Use a 96-well plate; 200 uL per well; maximum width 600 mm"
+    turn = ExtractedTurn(assistant_message="Recorded.", final_volume="200 uL",
+                         source_final_volume="200 uL", workspace_width_mm=600,
+                         source_workspace_width_mm="maximum width 600 mm")
+    recovered = supported_plate_request(turn, message, hardware())
+    assert recovered.final_volume == "200 uL"
+    assert recovered.workspace_width_mm == 600
+    assert recovered.labware_selection.profile_id == PROFILE_ID
+    assert recovered.actions[0].kind == "select_labware"
+
+
+
+def test_http_help_discards_stale_model_plate_and_unrelated_edits(monkeypatch):
+    from fastapi.testclient import TestClient
+    from test_design_workflow import hardware
+
+    import app.api as api
+
+    project = hardware()
+    project_id = project["id"]
+    api._sessions[project_id] = api.ProjectSession(project=project)
+    explanation = "I meant the plate type: the Corning reference is one possible starting point."
+
+    async def stale_model(current, message, history):
+        proposed = ExtractedTurn(
+            assistant_message=explanation,
+            labware_selection={"profile_id": PROFILE_ID, "source": "old plate request"},
+            actions=[{"kind": "select_labware", "source": "old plate request"}],
+            equipment="Old pipette", source_equipment="old source",
+        )
+        body = valid_response()
+        body["choices"][0]["message"]["content"] = proposed.model_dump_json()
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json=body))) as model_client:
+            return await generate_turn(current, message, history, client=model_client,
+                                       settings=TEST_SETTINGS)
+
+    monkeypatch.setattr(api, "generate_turn", stale_model)
+    try:
+        with TestClient(api.app) as client:
+            response = client.post(f"/api/projects/{project_id}/messages", json={
+                "message": "I don't understand what you are asking for"})
+        assert response.status_code == 200, response.text
+        assert response.json()["project"] == project
+        assert response.json()["assistant_message"] == explanation
+        assert not response.json()["action_runs"]
+    finally:
+        api._sessions.pop(project_id, None)
+
+
+def test_unrecognized_request_does_not_discard_invalid_model_sources():
+    from test_design_workflow import hardware
+
+    from app.labware_choice import explanation_only_turn, supported_plate_request
+
+    message = "Consider a new proprietary workflow from my description"
+    turn = ExtractedTurn(assistant_message="Recorded.", equipment="a guessed device",
+                         source_equipment="not present in message")
+    result = supported_plate_request(explanation_only_turn(turn, message), message, hardware())
+    with pytest.raises(ValueError):
+        result.verify_sources(message, hardware())
+
+
+@pytest.mark.parametrize("message", [
+    "Use a 96-well plate and explain this choice",
+    "I don't understand. Switch to a 96-well plate",
+    "Explain this, then change the plate",
+])
+def test_combined_change_and_explanation_does_not_erase_model_edits(message):
+    from app.labware_choice import explanation_only_turn
+
+    turn = plate_turn(message)
+    assert explanation_only_turn(turn, message) is turn
+    assert turn.actions

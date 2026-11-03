@@ -98,6 +98,14 @@ Apply this fresh-turn rule to the tip-rack namespace before returning JSON:
   It selects no profile and supplies no dimensions. Set tip_rack.profile_id and
   source to null, and every tip_rack.spec/spec_sources field to null. Never copy
   an example, existing rack, catalogue dimension or planned default into this delta.
+- An explicit delegation such as "Use a reference tip rack for now" may use the
+  replaceable Opentrons 96 Tip Rack 300 µL reference when no volume is specified,
+  matching the existing BOM reference. Explicit 200 µL uses TipOne 96 Tip Rack
+  200 µL; explicit 300 µL uses Opentrons. Preserve an already selected rack unless
+  the user explicitly requests a different supported nominal tip volume.
+  Identify the product and nominal volume, and state that fit and pipette/tip
+  compatibility remain unverified. No brand/size conflict, comparison, negative
+  choice, printed/custom request or ambiguous alternatives authorize this default.
 - An explicit request to design a printed tip holder uses select_tip_rack with
   profile_id="custom_printed_tip_rack" and the literal request as source, even
   when dimensions are incomplete. It is not a comparison-only action: the domain
@@ -446,6 +454,11 @@ choice in everyday language using the actual conversation. When the unresolved d
 has a reviewed default, describe that default and how they can replace it. A request
 for explanation alone emits no machine, recipe or selection changes. Avoid repeating
 the same technical question, SKU demands or a fixed clarification unrelated to context.
+An effective_supported_layout is an already accepted machine capability, distinct
+from the user's expressed platform preference. If it supports the requested plate
+switch, emit select_labware against that machine even when expressed preference is
+null in an older project. Do not reopen build/buy discovery for that bounded edit,
+and never invent a platform_choice from the existing geometry.
 Before hardware exists, keep the requested plate as discussion in the brief and
 continue choosing the platform; do not claim the plate holder has been generated.
 For a generic 96-well request explicitly name the Corning 96 Well Plate 360 µL Flat
@@ -1190,6 +1203,17 @@ async def generate_turn(
         "engineering": state_for(project),
         "bench_station": _bench_station_facts(project),
     }
+    from app.labware import _platform_guard
+
+    try:
+        _platform_guard(project, True)
+        state["effective_supported_layout"] = {
+            "platform_id": "jubilee", "accepted_geometry": True,
+            "supports_reviewed_plate_switch": True,
+            "expressed_platform_preference": state["engineering"]["selected_platform_id"],
+        }
+    except (ValueError, KeyError):
+        state["effective_supported_layout"] = None
     if concept := project.get("concept_design"):
         state["custom_assembly"] = {
             "title": concept["title"], "overview": concept["overview"],
@@ -1394,8 +1418,16 @@ async def generate_turn(
                 # Correct only an undersized citation of text already copied verbatim.
                 # No new brief value or semantic inference is introduced.
                 setattr(result, f"source_{key}", value)
-        from app.labware_choice import choice_clarification
+        from app.labware_choice import (
+            choice_clarification,
+            explanation_only_turn,
+            supported_plate_request,
+            supported_tip_reference_request,
+        )
 
+        result = explanation_only_turn(result, user_message)
+        result = supported_plate_request(result, user_message, project)
+        result = supported_tip_reference_request(result, user_message, project)
         clarification = choice_clarification(result, user_message, project, history)
         if clarification:
             result = ExtractedTurn(assistant_message=clarification)
