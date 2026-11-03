@@ -47,6 +47,20 @@ JSON geometry references remain secondary links, separate from physical purchase
 Unit values are explicitly labelled allocations of the whole group budget; they
 are not invented supplier per-piece quotations.
 
+Unsourced generic purchase lines use their function to choose a sourcing route,
+while a selected direct product URL takes precedence. Reviewed on 2026-11-03:
+[McMaster-Carr fasteners](https://www.mcmaster.com/products/fasteners/) for screws,
+bolts and fixing hardware; [Pololu mechanical components](https://www.pololu.com/category/21/mechanical-components)
+for bearings/transmissions and drive interfaces; [Fisher Scientific consumables](https://www.fishersci.com/us/en/scientific-products/categories/consumables.html)
+for tubes and labware; Adafruit's explicitly labelled search for electronics.
+Custom geometry uses the fabrication quotation route. These official catalogue
+pages establish a real supplier route, not a selected SKU, material, fit or price.
+
+`price_source_url` is populated only for a current verified supplier observation.
+It is distinct from `source_url`, which can identify CAD, an open project or a
+sourcing catalogue. Planning ranges and expired observations never expose a
+current supplier-price link through this field; original dates remain in evidence.
+
 The current tube rack, printed tip rack and plate holder also have direct revision-bound
 downloads at `/api/projects/{id}/parts/{component_id}/model.step?revision=N` and
 `model.stl`. These export only that canonical custom part using the same CAD builder

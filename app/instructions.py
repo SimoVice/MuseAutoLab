@@ -745,7 +745,8 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
                 [
                     "The slicer uses the correct revision, millimetres and "
                     "top-plate-down orientation.",
-                    "One rack is required; material, printing and rework costs remain unpriced.",
+                    "Use the rack fabrication budget in Parts & prices. Confirm material and "
+                    "print cost with your shop after the fit check.",
                 ],
                 status="ready",
                 prerequisites=["rack-inputs"],

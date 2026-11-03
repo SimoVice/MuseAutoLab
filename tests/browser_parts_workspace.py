@@ -54,6 +54,10 @@ def run(url):
                 status=503, json={"detail": "Offline acceptance fixture. Retry refresh."}
             ),
         )
+        page.route(
+            "**/cost-estimate*",
+            lambda route: route.fulfill(json={"state": "not_estimated", "estimate": None}),
+        )
         page.goto(url, wait_until="networkidle")
         nav = page.get_by_role("navigation", name="Project workspace", exact=True)
         expect(nav).to_be_visible()

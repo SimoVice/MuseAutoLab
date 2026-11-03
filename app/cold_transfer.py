@@ -3,12 +3,15 @@
 import re
 from copy import deepcopy
 
+PREVIOUS_COST_NOTE = "Dedicated refrigerator and transfer hardware are custom, unselected and unpriced."
+COST_NOTE = "Parts & prices lists candidate hardware and a budget. Check physical fit and obtain a supplier quote."
+
 LIMITATIONS = [
     "Digital concept only: no hardware control, collision simulation or physical validation.",
     "Only the selected rigid 96-well plate moves; its custom holder stays on the deck.",
     "Gripping, liquid retention, lid handling, condensation and "
     "thermal performance are unverified.",
-    "Dedicated refrigerator and transfer hardware are custom, unselected and unpriced.",
+    COST_NOTE,
     "Static envelopes exclude open-lid and jaw swept volumes; bench clearance remains unverified.",
 ]
 
@@ -354,7 +357,8 @@ def apply_cold_transfer(project: dict, *, bump: bool = True) -> dict:
                 "options": [
                     {
                         "id": "unselected-concept",
-                        "label": "Custom integration pending",
+                        "label": ("Refrigerator candidate for the custom bay" if cid.endswith("fridge")
+                                  else "Custom plate-transfer gantry with parallel gripper"),
                         "supplier": "Not selected",
                         "sku": None,
                         "unit_price": None,
@@ -364,8 +368,8 @@ def apply_cold_transfer(project: dict, *, bump: bool = True) -> dict:
                         "availability": "Unverified",
                         "pros": [],
                         "cons": list(LIMITATIONS),
-                        "compatibility_note": "Concept envelopes; no sourced product or "
-                        "physical fit established.",
+                        "compatibility_note": "Compare sourcing candidates in Parts & prices. "
+                        "Measure door access, grip and travel before selecting hardware.",
                     }
                 ],
             }

@@ -35,6 +35,19 @@ def test_plate_and_gripper_before_recipe_then_approval_roundtrip():
     assert not workflow_state(revised)["machine_approved"]
 
 
+def test_sourcing_copy_preserves_a_saved_cold_machine_approval():
+    from app.cold_transfer import COST_NOTE, PREVIOUS_COST_NOTE
+
+    machine = apply_cold_transfer(select(hardware()))
+    old = deepcopy(machine)
+    notes = old["cold_transfer_extension"]["limitations"]
+    notes[notes.index(COST_NOTE)] = PREVIOUS_COST_NOTE
+    snapshot = make_snapshot(approve_machine(old), [])
+    restored, _ = restore_snapshot(snapshot)
+    assert COST_NOTE in restored["cold_transfer_extension"]["limitations"]
+    assert workflow_state(restored)["machine_approved"]
+
+
 def test_typed_recipe_is_atomic_and_preserves_approved_hardware():
     original = approve_machine(select(hardware()))
     api._sessions[original["id"]] = api.ProjectSession(project=original)

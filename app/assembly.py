@@ -716,7 +716,8 @@ def build_readme(project: dict) -> bytes:
             "gantry, mast, carriage, shaft and gripper. Read extension-plan.json and the "
             "cold-transfer build-instruction step for component IDs and unresolved engineering. "
             "The rigid plate moves separately from its holder. No control, gripping, collision "
-            "or thermal validation is claimed; hardware is unselected and unpriced. "
+            "or thermal validation is claimed. See Parts & prices for hardware candidates "
+            "and their individual budgets. "
             "Any original on-deck cooling bay retains its manual-access workflow.\n"
         )
     if project.get("inspection_extension"):

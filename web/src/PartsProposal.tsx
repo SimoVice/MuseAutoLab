@@ -105,7 +105,7 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
           .slice(0, 1);
         const priceLabel = row.price_kind === 'verified_supplier'
           ? 'Supplier price'
-          : row.price_kind === 'included_in_base' ? 'Included in base' : 'Estimate';
+          : row.price_kind === 'model_estimate' ? 'Model estimate' : row.price_kind === 'included_in_base' ? 'Included in base' : 'Estimate';
 
         return (
           <tr key={row.group_id}>
@@ -135,9 +135,18 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
                 <summary>Price basis &amp; alternatives</summary>
                 <p>{row.price_kind.replaceAll('_', ' ')}: {row.price_note}</p>
                 <p>{row.unit_price_basis}</p>
+                {row.evidence.observed_at && <p>
+                  {row.price_kind === 'verified_supplier' ? 'Supplier price checked' : row.price_kind === 'model_estimate' ? 'Estimate generated' : 'Budget reference dated'}
+                  {' '}{new Date(row.evidence.observed_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                </p>}
+                {safeUrl(row.evidence.url) && row.evidence.url !== row.source_url && (
+                  <a href={safeUrl(row.evidence.url)} target="_blank" rel="noopener noreferrer">Price observation source</a>
+                )}
                 {row.reference_observation && (
                   <small>
-                    Reference item only: {money(row.reference_observation.unit_price_usd)}
+                    Reference item only: {safeUrl(row.reference_observation.url) ? (
+                      <a href={safeUrl(row.reference_observation.url)} target="_blank" rel="noopener noreferrer">{money(row.reference_observation.unit_price_usd)}</a>
+                    ) : money(row.reference_observation.unit_price_usd)}
                     {' '}({row.reference_observation.observed_on}); {row.reference_observation.scope}.
                     {' '}Included within the allowance above, never added again.
                   </small>

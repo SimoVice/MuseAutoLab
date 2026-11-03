@@ -10,7 +10,12 @@ type Estimate = {
 const money = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 const range = (low: number | null, high: number | null) => low == null || high == null ? 'Not estimated' : low === high ? money(low) : `${money(low)}–${money(high)}`;
 
-export default function CostSummary({ project, report }: { project: Project; report: ProcurementReport | null }) {
+export type CostEstimateState = { loading: boolean; issue: string | null; updated: boolean };
+
+export default function CostSummary({ project, report, headless = false, refreshToken = 0, onState }: {
+  project: Project; report: ProcurementReport | null; headless?: boolean; refreshToken?: number;
+  onState?: (state: CostEstimateState) => void;
+}) {
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [loading, setLoading] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
@@ -18,6 +23,7 @@ export default function CostSummary({ project, report }: { project: Project; rep
   const [expiryEpoch, setExpiryEpoch] = useState(0);
   const [estimateContext, setEstimateContext] = useState('');
   const manualRefresh = useRef(false);
+  const lastRefreshToken = useRef(refreshToken);
   const listedParts = Boolean(project.bench_station || project.concept_design);
   const hasDesign = Boolean(project.engineering_design || listedParts);
   // A new supplier report invalidates the previous estimate once; failed calls never loop.
@@ -31,10 +37,12 @@ export default function CostSummary({ project, report }: { project: Project; rep
   }, [estimate]);
   useEffect(() => {
     setEstimate(null); setIssue(null);
-    const force = manualRefresh.current; manualRefresh.current = false;
+    const force = manualRefresh.current || refreshToken !== lastRefreshToken.current;
+    manualRefresh.current = false; lastRefreshToken.current = refreshToken;
     if (!hasDesign) { setLoading(false); return; }
     const controller = new AbortController();
     setLoading(true);
+    onState?.({ loading: true, issue: null, updated: false });
     async function load() {
       const endpoint = `/api/projects/${encodeURIComponent(project.id)}/cost-estimate`;
       try {
@@ -46,16 +54,23 @@ export default function CostSummary({ project, report }: { project: Project; rep
           data = await response.json();
           if (!response.ok) throw new Error(data.detail ?? 'Cost estimate could not be prepared.');
         }
-        if (!controller.signal.aborted) { setEstimate(data.estimate ?? null); setEstimateContext(contextKey); setIssue(data.estimate?.issue ?? null); }
-      } catch (error) { if (!controller.signal.aborted) setIssue(error instanceof Error ? error.message : 'Cost estimate is unavailable.'); }
+        if (!controller.signal.aborted) { setEstimate(data.estimate ?? null); setEstimateContext(contextKey); setIssue(data.estimate?.issue ?? null); onState?.({ loading: false, issue: data.estimate?.issue ?? null, updated: true }); }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const message = error instanceof Error ? error.message : 'Cost estimate is unavailable.';
+          setIssue(message);
+          onState?.({ loading: false, issue: message, updated: false });
+        }
+      }
       finally { if (!controller.signal.aborted) setLoading(false); }
     }
     void load();
     return () => controller.abort();
-  }, [project.id, project.revision, hasDesign, contextKey, attempt, expiryEpoch]);
+  }, [project.id, project.revision, hasDesign, contextKey, attempt, expiryEpoch, refreshToken, onState]);
   const current = estimateContext === contextKey && (!estimate?.expires_at || Date.parse(estimate.expires_at) > Date.now()) && estimate?.project_id === project.id && estimate.project_revision === project.revision && !['failed', 'stale'].includes(estimate.status) ? estimate : null;
   const summary = current?.summary;
   const verified = report ? (report.coverage.fresh_priced_count && Date.parse(report.expires_at) > Date.now() ? report.known_partial_subtotal : null) : summary?.verified_count ? summary.verified_subtotal_usd : null;
+  if (headless) return null;
   return <section className="cost-block cost-summary" aria-label="Project cost estimate" aria-busy={loading}>
     <span>{listedParts ? 'Listed equipment & supplies' : 'Project cost'} · USD</span>
     <strong>{!hasDesign ? 'Estimate appears with your design' : loading ? 'Estimating project cost…' : !summary ? 'Estimate unavailable' : summary.coverage_complete ? range(summary.project_total_low_usd, summary.project_total_high_usd) : summary.known_plus_estimated_low_usd != null && summary.known_plus_estimated_high_usd != null ? `${range(summary.known_plus_estimated_low_usd, summary.known_plus_estimated_high_usd)} covered items` : 'Partial cost estimate'}</strong>

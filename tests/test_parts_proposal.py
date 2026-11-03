@@ -194,3 +194,70 @@ def test_tip_profiles_keep_supplier_price_scope_and_only_printed_model_download(
                 ).status_code
                 == 404
             )
+
+
+def test_unsourced_generic_supplies_route_by_function_and_preserve_exact_products():
+    from test_custom_project_routes import proposal
+
+    from app.concept_design import compile_concept
+
+    project = project_fixture()
+    raw = proposal()
+    for key, name in [
+        ("fixings", "M3 screws and washers"),
+        ("indicator", "LED electronics board"),
+        ("tubes", "2 mL sample tubes"),
+        ("drive", "Belt drive and bearings"),
+    ]:
+        raw["supplies"].append(
+            {
+                "key": key,
+                "name": name,
+                "quantity": 1,
+                "unit": "set",
+                "role": name,
+                "source_id": None,
+                "component_keys": ["rail_base"],
+            }
+        )
+    project["concept_design"] = compile_concept(raw, 600)
+    rows = {r["group_id"]: r for r in build_parts_proposal(project)["rows"]}
+    for key, domain in [
+        ("fixings", "mcmaster.com"),
+        ("indicator", "adafruit.com/search"),
+        ("tubes", "fishersci.com"),
+        ("drive", "pololu.com/category/21"),
+    ]:
+        row = rows["concept-" + key]
+        assert domain in row["source_url"]
+        assert row["source_kind"] in ("supplier_category", "supplier_search")
+        assert row["price_source_url"] is None
+    assert rows["concept-controller_board"]["source_url"] == "https://www.adafruit.com/product/5525"
+
+
+def test_current_price_observation_link_is_separate_from_project_reference(monkeypatch):
+    import asyncio
+
+    from test_custom_project_pricing import supplier_fixture
+
+    from app.procurement import refresh_procurement
+
+    project = project_fixture()
+    supplier_fixture(monkeypatch)
+    report = asyncio.run(refresh_procurement(project))
+    expected = "https://www.adafruit.com/product/5525"
+    proposal = build_parts_proposal(project, report)
+    row = next(r for r in proposal["rows"] if r["group_id"] == "concept-controller_board")
+    assert row["price_kind"] == "verified_supplier"
+    assert row["price_source_url"] == row["evidence"]["url"] == expected
+    assert row["evidence"]["observed_at"]
+    stale = deepcopy(report)
+    stale["expires_at"] = "2000-01-01T00:00:00Z"
+    for observation in stale["rows"]:
+        observation["fetched_at"] = "2000-01-01T00:00:00Z"
+    stale_row = next(
+        r
+        for r in build_parts_proposal(project, stale)["rows"]
+        if r["group_id"] == "concept-controller_board"
+    )
+    assert stale_row["price_source_url"] is None

@@ -11,12 +11,20 @@ RECIPE_FIELDS = ("stock_concentration", "target_concentrations", "final_volume")
 def machine_signature(project: dict) -> str:
     design = deepcopy(project.get("design", {}))
     design.pop("estimated_cost", None)
+    cold = project.get("cold_transfer_extension")
+    if cold and "limitations" in cold:
+        from app.cold_transfer import COST_NOTE, PREVIOUS_COST_NOTE
+
+        # A wording change in sourcing guidance preserves existing machine approvals.
+        cold = {**cold, "limitations": [
+            PREVIOUS_COST_NOTE if note == COST_NOTE else note for note in cold["limitations"]
+        ]}
     payload = {"design": design, "engineering_design": project.get("engineering_design"),
                "selections": project.get("selections"),
                "concept_design": (project.get("concept_design") or {}).get("proposal"),
                "bench_station": (project.get("bench_station") or {}).get("proposal"),
                "inspection_extension": project.get("inspection_extension"),
-               "cold_transfer_extension": project.get("cold_transfer_extension")}
+               "cold_transfer_extension": cold}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 

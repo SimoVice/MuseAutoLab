@@ -24,6 +24,7 @@ import type { AgentPhase } from './AgentActivity';
 import AssistantMessage from './AssistantMessage';
 import ProjectResources from './ProjectResources';
 import CostSummary from './CostSummary';
+import type { CostEstimateState } from './CostSummary';
 import LabwareRackPanel from './LabwareRackPanel';
 import MicroplatePanel from './MicroplatePanel';
 import TipRackOptions, { tipDimensions } from './TipRackOptions';
@@ -137,6 +138,13 @@ function sameDesign(a: Project | null, b: Project): boolean {
 export default function App({ hosted = false, account = '', onSignOut = async () => {} }: { hosted?: boolean; account?: string; onSignOut?: () => Promise<void> }) {
   const [softwareOpen, setSoftwareOpen] = useState(true);
   const [hardwareDestination, setHardwareDestination] = useState<'design' | 'parts' | 'instructions'>('design');
+  const [costVersion, setCostVersion] = useState(0);
+  const [costRefreshToken, setCostRefreshToken] = useState(0);
+  const [costState, setCostState] = useState<CostEstimateState>({ loading: false, issue: null, updated: false });
+  const handleCostState = useCallback((state: CostEstimateState) => {
+    setCostState(state);
+    if (state.updated) setCostVersion(value => value + 1);
+  }, []);
   const [resourceNavigation, setResourceNavigation] = useState(0);
   const [resourcePanel, setResourcePanel] = useState<'parts' | 'instructions'>('parts');
   const resourceAnchor = useRef<HTMLDivElement | null>(null);
@@ -793,6 +801,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
       </header>
       {(project?.engineering_design || project?.concept_design || project?.bench_station) && !project?.design_workflow?.machine_approved && <div className="machine-approval-bar"><div><strong>Ready to program this workstation?</strong><span>Approve the equipment layout, then create its operating recipe.</span></div><button className="confirm-button" type="button" disabled={uiBusy} onClick={() => void confirm()}>{uiBusy ? 'Approving…' : 'Approve design & open software'}</button></div>}
       {(hasEngineeringDesign || hasGeneralDesign) && <nav className="software-route-nav" aria-label="Project workspace"><button type="button" aria-current={!softwareOpen && hardwareDestination === 'design' ? 'page' : undefined} onClick={() => openHardware()}>3D design</button><button type="button" aria-current={!softwareOpen && hardwareDestination === 'parts' ? 'page' : undefined} onClick={() => openHardware('parts')}>Parts &amp; prices</button><button type="button" aria-current={!softwareOpen && hardwareDestination === 'instructions' ? 'page' : undefined} onClick={() => openHardware('instructions')}>Assembly</button><button type="button" aria-current={project?.design_workflow?.machine_approved && softwareOpen ? 'page' : undefined} disabled={!project?.design_workflow?.machine_approved} title={!project?.design_workflow?.machine_approved ? 'Approve the design to open software' : undefined} onClick={() => { setSoftwareOpen(true); setPlaying(false); }}>Software &amp; protocols</button></nav>}
+      {project && (hasEngineeringDesign || hasGeneralDesign) && <CostSummary project={project} report={currentProcurement} headless refreshToken={costRefreshToken} onState={handleCostState} />}
       {project?.design_workflow?.machine_approved && softwareOpen ? <SoftwareWorkspace project={project} onProject={setProject} onConversation={(message, reply) => setMessages(current => [...current, { id: Date.now(), role: 'user', text: message }, { id: Date.now() + 1, role: 'assistant', text: reply }])} /> : <>
       <nav className="workspace-switch" aria-label="Workspace view">
         <button type="button" aria-pressed={mobileView === 'design' && hasWorkspaceContent} aria-controls="design-workspace" disabled={!hasWorkspaceContent} onClick={() => setMobileView('design')}>Design</button>
@@ -868,7 +877,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               {motionPlan && <OperatingPreview machineApproved={Boolean(project?.design_workflow?.machine_approved)} plan={motionPlan} playing={playing && Boolean(currentMotion)} time={currentMotion ? operationTime : 0} speed={operationSpeed} disabled={uiBusy} hasInspection={Boolean(project?.inspection_extension)} hasColdTransfer={Boolean(project?.cold_transfer_extension)} onMode={(mode) => { handleReset(); setOperationMode(mode); }} onPlay={handlePlay} onPause={handlePause} onReset={handleReset} onSpeed={(speed) => { if ([0.5, 1, 2, 4].includes(speed)) setOperationSpeed(speed); }} onSeek={(time) => { if (!Number.isFinite(time) || !motionPlan) return; time = Math.max(0, Math.min(motionPlan.duration_s, time)); setPlaying(false); operationClock.current = time; setOperationTime(time); setPhysicsView(null); setPhysicsActive(false); if (operationMode === 'inspection') setInspectionTime(time); }} />}
               </PresentationStage>
 
-              {project && <PartsProposal project={project} refreshKey="" onSelect={handleVisionSelect} compact onOpen={() => openHardware('parts')} />}
+              {project && <PartsProposal project={project} refreshKey={String(costVersion)} onSelect={handleVisionSelect} compact onOpen={() => openHardware('parts')} />}
               <div className="below-viewer">
 
                 {preparationPanel}
@@ -939,7 +948,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             </details>
           )}
           </div>
-          {project && (hasEngineeringDesign || hasGeneralDesign) && hardwareDestination !== 'design' && <div className="project-resource-anchor" ref={resourceAnchor} tabIndex={-1}><ProjectResources key={`${project.id}:${project.revision}`} project={project} activePanel={resourcePanel} navigationKey={resourceNavigation} busy={uiBusy} onSelect={(id) => { handleVisionSelect(id); openHardware(); }} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find(run => run.kind === 'show_build_plan' && run.status === 'ready')} /></div>}
+          {project && (hasEngineeringDesign || hasGeneralDesign) && hardwareDestination !== 'design' && <div className="project-resource-anchor" ref={resourceAnchor} tabIndex={-1}><ProjectResources key={`${project.id}:${project.revision}`} project={project} activePanel={resourcePanel} navigationKey={resourceNavigation} costVersion={costVersion} costLoading={costState.loading} costIssue={costState.issue} onRefreshEstimate={() => setCostRefreshToken(value => value + 1)} busy={uiBusy} onSelect={(id) => { handleVisionSelect(id); openHardware(); }} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find(run => run.kind === 'show_build_plan' && run.status === 'ready')} /></div>}
         </section>
 
         <aside id="chat-workspace" className="conversation-panel" aria-labelledby="conversation-title">

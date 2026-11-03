@@ -84,10 +84,66 @@ def _source_candidate(row, project):
             "Custom parts — Protolabs fabrication quotation route",
             "fabrication_service",
         )
+    context = " ".join(
+        [
+            gid,
+            row["label"],
+            *[
+                str(p.get("role", ""))
+                for p in project.get("concept_design", {}).get("parts", [])
+                if "concept-" + p["key"] == gid
+            ],
+        ]
+    ).lower()
+    if any(word in context for word in ("screw", "bolt", "fastener", "washer", "nut", "bracket")):
+        return (
+            "https://www.mcmaster.com/products/fasteners/",
+            "McMaster-Carr fasteners catalogue — select size/material",
+            "supplier_category",
+        )
+    if any(
+        word in context
+        for word in ("tube", "vial", "labware", "beaker", "flask", "vessel", "plate", "tip")
+    ):
+        return (
+            "https://www.fishersci.com/us/en/scientific-products/categories/consumables.html",
+            "Fisher Scientific lab consumables catalogue — select format/material",
+            "supplier_category",
+        )
+    if any(
+        word in context
+        for word in ("motor", "gear", "bearing", "belt", "rail", "shaft", "motion", "linear")
+    ):
+        return (
+            "https://www.pololu.com/category/21/mechanical-components",
+            "Pololu mechanical components catalogue — size the drive/interface",
+            "supplier_category",
+        )
+    if any(
+        word in context
+        for word in (
+            "board",
+            "controller",
+            "sensor",
+            "wire",
+            "cable",
+            "driver",
+            "led",
+            "light",
+            "camera",
+            "electronic",
+            "power",
+        )
+    ):
+        return (
+            "https://www.adafruit.com/search?" + urlencode({"q": row["label"]}),
+            "Adafruit electronics search for " + row["label"],
+            "supplier_search",
+        )
     return (
-        "https://www.adafruit.com/search?" + urlencode({"q": row["label"]}),
-        "Supplier search for " + row["label"],
-        "supplier_search",
+        FABRICATION_URL,
+        "Custom-part fabrication quotation — confirm process/material",
+        "fabrication_service",
     )
 
 
@@ -369,6 +425,7 @@ def build_parts_proposal(
             "price_kind": kind,
             "price_note": note,
             "source_url": source,
+            "price_source_url": price_url if kind == "verified_supplier" else None,
             "unit_price_basis": (
                 "Derived allocation of the entire purchase-group budget, not a quoted unit price; "
                 "whole packs and scoped accessories are included in the line total."
