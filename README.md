@@ -76,8 +76,8 @@ instrument or software engineer.
 
 ## Try it yourself
 
-**Start with your own task.** The application runs locally; there is no hosted demo
-to sign into.
+**Start with your own task.** Run a local workspace using the steps below, or
+set up a [hosted workspace with sign-in and a project library](docs/hosting.md).
 
 1. Follow the [Windows setup](docs/getting-started.md#setup-on-windows-powershell)
    and [start the two local servers](docs/getting-started.md#run-locally).

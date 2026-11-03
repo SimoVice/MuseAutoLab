@@ -1,0 +1,40 @@
+.access-page { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .85fr); background: #fff; color: #18313e; }
+.access-story { padding: clamp(32px, 6vw, 96px); background: #eaf2f6; display: flex; flex-direction: column; justify-content: space-between; gap: 72px; border-right: 1px solid #cbdce5; }
+.access-story .brand { display: inline-flex; width: fit-content; }
+.access-story h1 { font-size: clamp(36px, 4vw, 64px); line-height: 1.08; letter-spacing: -.04em; font-weight: 550; margin: 0 0 28px; }
+.access-story p { max-width: 440px; font-size: 17px; line-height: 1.65; color: #456171; }
+.access-story .access-footnote { font-size: 13px; margin: 0; }
+.access-form-panel { display: grid; place-items: center; padding: 48px 28px; }
+.access-form { width: min(100%, 360px); }
+.access-form h2 { font-size: 30px; letter-spacing: -.03em; margin: 0 0 12px; }
+.access-form > p { color: #526875; line-height: 1.6; margin: 0 0 30px; }
+.access-form label, .project-library-dialog label { display: block; font-size: 14px; font-weight: 600; margin: 20px 0 8px; }
+.access-form input, .project-library-dialog input { display: block; box-sizing: border-box; width: 100%; background: white; border: 1px solid #a9bac5; border-radius: 7px; padding: 12px; font: inherit; color: #18313e; }
+.access-form button, .project-library-dialog button { border: 1px solid #b7c8d2; border-radius: 6px; background: white; padding: 10px 16px; font: inherit; cursor: pointer; color: #234250; }
+.access-form .hosted-primary, .project-library-dialog .hosted-primary { background: #21627a; border-color: #21627a; color: #fff; }
+.access-form > .hosted-primary { width: 100%; margin-top: 28px; }
+.access-form .access-help { font-size: 13px; margin-top: 22px; }
+.hosted-error { color: #9a2b30 !important; background: #fff1f0; border-radius: 6px; padding: 12px; line-height: 1.5; font-size: 14px; }
+.project-library-dialog { box-sizing: border-box; width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; background: #fff; border: 1px solid #c0cfd7; color: #18313e; border-radius: 14px; padding: 28px; box-shadow: 0 24px 80px #18313e33; }
+.project-library-dialog::backdrop { background: #17313e66;  }
+.library-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.library-dialog-heading h2 { font-size: 23px; letter-spacing: -.025em; margin: 0; }
+.library-dialog-heading button { font-size: 23px; line-height: 1; padding: 6px 10px; }
+.project-library-dialog p { color: #526875; font-size: 14px; line-height: 1.6; }
+.library-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
+.saved-project-list { list-style: none; padding: 0; margin: 24px 0 0; }
+.saved-project-list li { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid #dce5ea; padding: 18px 0; }
+.saved-project-list li > div { min-width: 0; }
+.saved-project-list h3 { font-size: 16px; margin: 0 0 6px; overflow-wrap: anywhere; }
+.saved-project-list p { font-size: 12px; margin: 0; }
+.library-empty { padding: 24px 0 10px; }
+.library-empty h3 { font-size: 19px; }
+.access-page :focus-visible, .project-library-dialog :focus-visible { outline: 3px solid #3e9cba; outline-offset: 3px; }
+.access-page button:disabled, .project-library-dialog button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 1050px) { .topbar { flex-wrap: wrap; height: auto; min-height: 64px; gap: 12px; } .topbar-end { flex-wrap: wrap; } }
+@media (max-width: 650px) { .access-page { grid-template-columns: 1fr; } .access-story { padding: 28px; gap: 28px; border-right: 0; border-bottom: 1px solid #cbdce5; } .access-story h1 { font-size: 34px; margin-bottom: 16px; } .access-story p { font-size: 15px; margin-bottom: 0; } .access-story .access-footnote { display: none; } .access-form-panel { padding: 32px 28px; } .topbar-end { width: 100%; justify-content: flex-start; gap: 8px; } .project-library-dialog { padding: 20px; } }
+
+.access-page ::selection, .project-library-dialog ::selection { background: #c5e6ec; color: #18313e; }
+.access-page input, .project-library-dialog input { caret-color: #21627a; }
+.access-page button:hover:enabled, .project-library-dialog button:hover:enabled { background: #eaf2f6; }
+.access-page .hosted-primary:hover:enabled, .project-library-dialog .hosted-primary:hover:enabled { background: #194f63; }

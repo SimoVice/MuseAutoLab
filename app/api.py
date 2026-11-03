@@ -3,6 +3,7 @@
 import asyncio
 import json
 import math
+import os
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -12,11 +13,13 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from app import project_library
 from app.chat_actions import execute_chat_actions, extension_only_patch
 from app.design_agent import develop_design
 from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
 from app.engineering import EngineeringUpdate, apply_engineering_update, state_for
+from app.host_auth import install_host_auth
 from app.illustration import (
     MAX_REFERENCE_DATA_URL,
     MAX_REQUEST_BYTES,
@@ -88,7 +91,9 @@ from app.workflows import (
     workstation_context_question,
 )
 
-app = FastAPI(title="MuseAutoLab", version="0.1.0")
+app = FastAPI(title="MuseAutoLab", version="0.1.0",
+              openapi_url=None if os.getenv("MUSEAUTOLAB_HOSTED") == "1" else "/openapi.json")
+install_host_auth(app)
 
 
 class MessageRequest(BaseModel):
@@ -166,15 +171,31 @@ class ProjectSession:
     async def model_lock(self):
         async with self.lock:
             with using_model(self.model):
-                yield
+                try:
+                    yield
+                finally:
+                    _persist_session(self)
 
 
-# Deliberately process-local for this first milestone; restart starts a fresh session.
+# Local mode remains process-local; configured hosted storage resumes trusted state.
 _sessions: dict[str, ProjectSession] = {}
+
+
+def _persist_session(session: ProjectSession, *, title: str | None = None) -> dict | None:
+    return project_library.persist({
+        "project": session.project, "history": session.history, "model": session.model,
+        "procurement_report": session.procurement_report, "cost_estimate": session.cost_estimate,
+        "functional_plan": session.functional_plan,
+    }, title=title)
 
 
 def session_for(project_id: str) -> ProjectSession:
     session = _sessions.get(project_id)
+    if session is None:
+        saved = project_library.load(project_id)
+        if saved is not None:
+            session = ProjectSession(**saved)
+            _sessions[project_id] = session
     if session is None:
         raise HTTPException(status_code=404, detail="Project not found. Start a new project.")
     return session
@@ -240,12 +261,72 @@ async def health() -> dict:
 async def create_project() -> dict:
     project = new_project()
     _sessions[project["id"]] = ProjectSession(project=project)
+    _persist_session(_sessions[project["id"]])
     return {"project": deepcopy(project)}
 
 
 @app.get("/api/models")
 async def get_models(project_id: str | None = None) -> dict:
     return await model_options(session_for(project_id).model if project_id else None)
+
+
+class LibrarySaveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=120, strict=True)
+    revision: int = Field(ge=0, strict=True)
+
+    @field_validator("title")
+    @classmethod
+    def trim_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(ord(character) < 32 for character in value):
+            raise ValueError("Enter a project name without control characters.")
+        return value
+
+
+def _require_library() -> None:
+    if not project_library.configured():
+        raise HTTPException(status_code=503, detail=(
+            "The project library is not configured. Download a portable project file instead."
+        ))
+
+
+@app.get("/api/library")
+async def list_saved_projects() -> dict:
+    return {"enabled": project_library.configured(), "projects": project_library.entries()}
+
+
+@app.post("/api/projects/{project_id}/save")
+async def save_named_project(project_id: str, request: LibrarySaveRequest) -> dict:
+    _require_library()
+    session = session_for(project_id)
+    async with session.model_lock():
+        if session.project["revision"] != request.revision:
+            raise HTTPException(status_code=409, detail="Save the current project revision.")
+        saved = _persist_session(session, title=request.title)
+    return {"saved_project": saved}
+
+
+async def _resume_project(project_id: str) -> dict:
+    session = session_for(project_id)
+    async with session.model_lock():
+        saved = project_library.entry(project_id)
+        return {"project": deepcopy(session.project), "conversation": deepcopy(session.history),
+                "title": saved["title"] if saved else None,
+                "assistant_message": "Project reopened at its saved revision."}
+
+
+@app.get("/api/projects/{project_id}")
+async def resume_project(project_id: str) -> dict:
+    return await _resume_project(project_id)
+
+
+@app.post("/api/library/{project_id}/open")
+async def open_saved_project(project_id: str) -> dict:
+    _require_library()
+    if project_library.entry(project_id) is None:
+        raise HTTPException(status_code=404, detail="Saved project not found.")
+    return await _resume_project(project_id)
 
 
 class ModelSelectionRequest(BaseModel):
@@ -642,6 +723,7 @@ async def open_project(request: Request) -> dict:
                 session.cost_estimate = candidate.cost_estimate
                 break
     _sessions[project["id"]] = session
+    _persist_session(session)
     return {"project": deepcopy(project), "conversation": deepcopy(history),
             "assistant_message": "Project reopened. Geometry was rebuilt from saved inputs."}
 

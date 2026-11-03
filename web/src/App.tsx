@@ -1,3 +1,5 @@
+import ProjectLibrary from './ProjectLibrary';
+import type { LibraryOpen, SavedEntry } from './ProjectLibrary';
 import BenchStationPanel from './BenchStationPanel';
 import ConceptWorkspace from './ConceptWorkspace';
 import ConceptPricing from './ConceptPricing';
@@ -36,7 +38,7 @@ const LOCAL_PROJECT = 'museautolab.workspace.v1';
 type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assistant'; content: string }[] };
 type ActionRun = { kind: string; status: 'accepted' | 'rejected' | 'failed' | 'ready'; message?: string; model?: string };
 type ChatResponse = ProjectResponse & { action_runs?: ActionRun[] };
-type WorkspaceRecovery = { project: Project; messages: ConversationEntry[]; input: string; notice: string | null; snapshot: string | null };
+type WorkspaceRecovery = { project: Project; messages: ConversationEntry[]; input: string; notice: string | null; snapshot: string | null; title: string };
 
 function restoredMessages(data: OpenedProject): ConversationEntry[] {
   return [{ id: 0, role: 'assistant', text: WELCOME }, ...(data.conversation ?? []).map((entry, index) => ({
@@ -129,12 +131,19 @@ function sameDesign(a: Project | null, b: Project): boolean {
   return JSON.stringify(renderedDesign(a)) === JSON.stringify(renderedDesign(b));
 }
 
-export default function App() {
+export default function App({ hosted = false, account = '', onSignOut = async () => {} }: { hosted?: boolean; account?: string; onSignOut?: () => Promise<void> }) {
+  const [savedTitle, setSavedTitle] = useState('');
+  const runtimeKey = `museautolab.hosted.${account}`;
   const [project, setProject] = useState<Project | null>(null);
   const [procurementReport, setProcurementReport] = useState<ProcurementReport | null>(null);
   const [messages, setMessages] = useState<ConversationEntry[]>([{ id: 0, role: 'assistant', text: WELCOME }]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(() => {
+    try { return hosted ? sessionStorage.getItem(`${runtimeKey}.draft`) ?? '' : ''; } catch { return ''; }
+  });
+  useEffect(() => {
+    if (hosted) { try { sessionStorage.setItem(`${runtimeKey}.draft`, input); } catch { /* The current draft stays available in memory. */ } }
+  }, [hosted, runtimeKey, input]);
   const [mobileView, setMobileView] = useState<'design' | 'chat'>('design');
   const inputRef = useRef(input);
   inputRef.current = input;
@@ -224,12 +233,18 @@ export default function App() {
     setError(null);
     (async () => {
       let stored: string | null = null;
-      try { if (!skipRestore.current) stored = localStorage.getItem(LOCAL_PROJECT); } catch { /* File save remains available. */ }
+      try { if (!skipRestore.current) stored = hosted ? sessionStorage.getItem(runtimeKey) : localStorage.getItem(LOCAL_PROJECT); } catch { /* File save remains available. */ }
       skipRestore.current = false;
       if (stored) {
-        const data = await request('/api/projects/open', JSON.parse(stored)) as OpenedProject;
+        let data: OpenedProject & { title?: string };
+        if (hosted) {
+          const response = await fetch(`/api/projects/${encodeURIComponent(stored)}`, { cache: 'no-store' });
+          if (response.status === 404) { sessionStorage.removeItem(runtimeKey); data = await request('/api/projects'); }
+          else { if (!response.ok) throw new Error('Your workspace could not be resumed. Try again.'); data = await response.json(); }
+        } else data = await request('/api/projects/open', JSON.parse(stored)) as OpenedProject;
         if (active) {
           setProject(data.project);
+          setSavedTitle(data.title ?? '');
           setMessages(restoredMessages(data));
           setStorageNotice(data.project.rebuild_notice ?? 'Resumed your last project. Previous runs can be generated again.');
         }
@@ -241,10 +256,14 @@ export default function App() {
       if (active) setError(reason instanceof Error ? reason.message : 'Cannot connect to the local server.');
     }).finally(() => { if (active) setInitializing(false); });
     return () => { active = false; };
-  }, [connectionAttempt]);
+  }, [connectionAttempt, hosted, runtimeKey]);
 
   useEffect(() => {
     if (!project || initializing) return;
+    if (hosted) {
+      try { sessionStorage.setItem(runtimeKey, project.id); } catch { /* The saved project library remains available. */ }
+      return;
+    }
     const controller = new AbortController();
     fetch(`/api/projects/${encodeURIComponent(project.id)}/snapshot?revision=${project.revision}`, { signal: controller.signal })
       .then(async (response) => {
@@ -253,7 +272,7 @@ export default function App() {
         if (!controller.signal.aborted) localStorage.setItem(LOCAL_PROJECT, JSON.stringify(snapshot));
       }).catch(() => { /* Explicit file saving still works when browser storage is unavailable. */ });
     return () => controller.abort();
-  }, [project, initializing]);
+  }, [project, initializing, hosted, runtimeKey]);
 
   useEffect(() => {
     if (messages.length < 2 || !conversation.current || !lastMessage.current) return;
@@ -364,6 +383,22 @@ export default function App() {
     return true;
   }, []);
 
+  function acceptLibraryProject(data: LibraryOpen) {
+    chatAbort.current?.abort(); sessionRef.current += 1;
+    setVoiceEpoch(value => value + 1); setAgentPhase(null); setActionRuns([]);
+    setProject(data.project); setMessages(restoredMessages(data));
+    setSavedTitle(data.title);
+    setRecovery(null); setSelectedId(null); setInput(''); setPlaying(false);
+    setPhysicsView(null); setPhysicsActive(false); setInspectionTime(0);
+    setProcurementReport(null); setResetKey(value => value + 1);
+    setStorageNotice(data.project.rebuild_notice ?? `Opened ${data.title}.`);
+    field.current?.focus({ preventScroll: true });
+  }
+  function acceptSavedProject(entry: SavedEntry) {
+    setSavedTitle(entry.title);
+    setStorageNotice(`Saved ${entry.title}. Project changes now save automatically.`);
+  }
+
   async function saveProject() {
     if (!project || uiBusy) return;
     setStorageBusy(true);
@@ -401,6 +436,7 @@ export default function App() {
       setAgentPhase(null);
       setActionRuns([]);
       setProject(data.project);
+      setSavedTitle(''); setProcurementReport(null);
       setRecovery(null);
       setMessages(restoredMessages(data));
       setSelectedId(null);
@@ -421,10 +457,10 @@ export default function App() {
     try {
       const replacement = await request('/api/projects');
       let snapshot: string | null = null;
-      try { snapshot = localStorage.getItem(LOCAL_PROJECT); } catch { /* In-memory undo remains available. */ }
+      try { if (!hosted) snapshot = localStorage.getItem(LOCAL_PROJECT); } catch { /* In-memory undo remains available. */ }
       const canRecover = project && (messages.length > 1 || input.trim() || hasBrief || hasEngineeringDesign);
       if (canRecover) {
-        setRecovery({ project, messages, input, notice: storageNotice, snapshot });
+        setRecovery({ project, messages, input, notice: storageNotice, snapshot, title: savedTitle });
       }
       chatAbort.current?.abort();
       sessionRef.current += 1;
@@ -433,6 +469,7 @@ export default function App() {
       newProjectRequested.current = true;
       seenRevision.current = null;
       setProject(replacement.project);
+      setSavedTitle(''); setProcurementReport(null);
       setMessages([{ id: Date.now(), role: 'assistant', text: WELCOME }]);
       setSelectedId(null); setInput(''); setPlaying(false);
       setPhysicsView(null); setPhysicsActive(false); setInspectionTime(0);
@@ -446,10 +483,11 @@ export default function App() {
     if (!recovery || uiBusy) return;
     sessionRef.current += 1;
     setVoiceEpoch((value) => value + 1);
+    setSavedTitle(recovery.title); setProcurementReport(null);
     setProject(recovery.project); setMessages(recovery.messages); setInput(recovery.input);
     setStorageNotice(recovery.notice ?? 'Previous workspace restored.');
     setRecovery(null); setSelectedId(null); setPlaying(false); setActionRuns([]);
-    try { if (recovery.snapshot) localStorage.setItem(LOCAL_PROJECT, recovery.snapshot); } catch { /* Explicit project saving remains available. */ }
+    try { if (!hosted && recovery.snapshot) localStorage.setItem(LOCAL_PROJECT, recovery.snapshot); } catch { /* Explicit project saving remains available. */ }
     field.current?.focus({ preventScroll: true });
   }
 
@@ -729,11 +767,12 @@ export default function App() {
           <span className="brand-mark"><span /><span /><span /><span /></span>
           <span>Muse<span className="brand-accent">Auto</span>Lab</span>
         </a>
-        <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{headerLabel}</strong></div>
+        <div className="topbar-center"><span className="topbar-divider" /> Workspace <span className="topbar-slash">/</span> <strong>{savedTitle || headerLabel}</strong></div>
         <div className="topbar-end">
           <input ref={projectFile} tabIndex={-1} type="file" accept=".json,application/json" className="sr-only" aria-label="Open saved project" onChange={(event) => { const file = event.target.files?.[0]; if (file) void openProject(file); }} />
-          <button type="button" className="new-project-button" onClick={() => projectFile.current?.click()} disabled={uiBusy || initializing}>Open project</button>
-          <button type="button" className="new-project-button" onClick={() => void saveProject()} disabled={!project || uiBusy || initializing}>Save project</button>
+          {hosted && <ProjectLibrary projectId={project?.id} revision={project?.revision} title={savedTitle} disabled={uiBusy || initializing} onBusy={setStorageBusy} onOpen={acceptLibraryProject} onSaved={acceptSavedProject} onSignOut={onSignOut} hasUnsaved={Boolean(input.trim() || (!savedTitle && messages.length > 1))} />}
+          <button type="button" className="new-project-button" onClick={() => projectFile.current?.click()} disabled={uiBusy || initializing}>{hosted ? 'Import file' : 'Open project'}</button>
+          <button type="button" className="new-project-button" onClick={() => void saveProject()} disabled={!project || uiBusy || initializing}>{hosted ? 'Export file' : 'Save project'}</button>
           <button type="button" className="new-project-button" onClick={() => void handleNewProject()} disabled={uiBusy || initializing}>New project</button>
           {recovery && <button type="button" className="new-project-button" onClick={undoNewProject} disabled={uiBusy || initializing}>Undo new project</button>}
           <span className={`connection-dot ${project ? 'connected' : ''}`} />{project ? 'Workspace ready' : initializing ? 'Connecting' : 'Offline'}
