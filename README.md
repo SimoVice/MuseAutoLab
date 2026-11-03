@@ -95,30 +95,34 @@ For a look without configuring a Meta key, download the
 and choose **Open project**. It uses synthetic laboratory inputs. Inspect the
 layout and guides, expand the 3D view and select **Selected part only**.
 
-## Current engineering depth: liquid handling
+## Example · Automated dilutions
 
-![Actual MuseAutoLab 3D view: Jubilee source machine with custom deck modules and an inspection-arm concept](docs/images/presentation-workstation.png)
+A researcher needs three 200 µL dilutions from one stock solution. The first
+Jubilee layout holds microcentrifuge tubes. A single chat request switches the
+design to a 96-well plate and assigns the same three preparations to wells A1,
+B1 and C1.
 
-*An implemented example: Jubilee source CAD with custom deck modules and an
-inspection-arm concept. Physical fit and operation remain unverified.*
+| Start with microcentrifuge tubes | Switch to a 96-well plate |
+| --- | --- |
+| ![Tube rack in the 3D workspace, with the sample tubes visible](docs/images/presentation-rack.png) | ![Plate in its holder, with wells A1, B1 and C1 marked](docs/images/presentation-plate.png) |
 
-The current engineering path develops aliquoting and direct-dilution setups.
-It supports a sourced choice between Jubilee and an Opentrons OT-2 schematic,
-bounded layout revisions, dimension-driven holders, reviewed labware alternatives,
-US supplier listings in USD and separately labelled planning estimates. Supported
-exports include revision-specific design files, instructions and logical protocol
-previews. [Operating previews](docs/operating-previews.md) animate the supported
-Jubilee preparation sequence directly in the 3D workspace. The selected source
-frame can be inspected before a layout is accepted. Optional modules add a
-camera sweep or a plate gripper that transfers the prepared plate to a dedicated
-refrigerator on request.
+![The inspection arm swings its camera over the Jubilee deck in the 3D preview](docs/images/examples/dilution-motion.gif)
 
-Neither route has a physics or hardware-control adapter. Fit, mounting, tool
-access, calibration, liquid handling, thermal performance and complete build cost
-remain unverified. A logical protocol preview does not command a robot, and no
-measured laboratory time saving is claimed.
+*With the optional inspection camera fitted, the 3D preview shows its sweep over the deck.*
 
-[Explore the liquid-handling use case](docs/use-cases/liquid-handling.md) · [Recorded walkthrough](docs/presentation-flow.md) · [Verification record](docs/verification.md)
+<details>
+<summary>Compare two tip racks on the same deck</summary>
+
+The TipOne model uses 6.40 mm reference openings. Selecting the Opentrons rack
+updates them to 5.23 mm.
+
+| TipOne | Opentrons |
+| --- | --- |
+| ![TipOne rack with wide tip openings](docs/images/presentation-flow-tipone.png) | ![Opentrons rack with narrower tip openings](docs/images/presentation-flow-opentrons.png) |
+
+</details>
+
+[Follow the walkthrough](docs/presentation-flow.md) · [Open the saved project](docs/examples/presentation-flow-project.json)
 
 <a id="setup-on-windows-powershell"></a>
 
