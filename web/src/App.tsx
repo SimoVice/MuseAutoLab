@@ -19,6 +19,7 @@ import PresentationStage from './PresentationStage';
 import ModelSelector from './ModelSelector';
 import type { ImageCapability, VoiceCapability } from './ModelSelector';
 import IllustrationPanel from './IllustrationPanel';
+import { StepIllustrationProvider } from './StepIllustration';
 import VoiceDictation from './VoiceDictation';
 import AgentActivity, { activityCopy, nextDesignPaint } from './AgentActivity';
 import type { AgentPhase } from './AgentActivity';
@@ -243,6 +244,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const details = useRef<HTMLDetailsElement>(null);
   const sceneCapture = useRef<(() => Promise<string>) | null>(null);
   const preparationDetails = useRef<HTMLDetailsElement>(null);
+  const designInspector = useRef<HTMLDetailsElement>(null);
   const filesSection = useRef<HTMLDivElement>(null);
   const seenRevision = useRef<string | null>(null);
   const newProjectRequested = useRef(true);
@@ -374,6 +376,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   useEffect(() => {
     if (actionRuns.some((run) => run.status === 'ready' && !['show_build_plan', 'show_tip_rack_options'].includes(run.kind)) && details.current) {
       details.current.open = true;
+      if (designInspector.current) designInspector.current.open = true;
     }
   }, [actionRuns]);
   useEffect(() => {
@@ -541,6 +544,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
 
   function reviewPreparationPlan() {
     setMobileView('design');
+    if (designInspector.current) designInspector.current.open = true;
     requestAnimationFrame(() => {
       if (preparationDetails.current) preparationDetails.current.open = true;
       preparationDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -550,6 +554,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
 
   function showProjectFiles() {
     setMobileView('design');
+    if (designInspector.current) designInspector.current.open = true;
     if (details.current) details.current.open = true;
     requestAnimationFrame(() => {
       filesSection.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -814,6 +819,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   );
 
   return (
+    <StepIllustrationProvider scope={`${runtimeKey}:${project?.id ?? ''}:${project?.revision ?? ''}`}>
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="/" aria-label="MuseAutoLab home">
@@ -845,15 +851,15 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
           <div className="design-heading">
             <div>
               <h1 id="design-title">{headerLabel}</h1>
-              {storageNotice && <p className="storage-notice" role="status">{storageNotice}</p>}
+              {storageNotice && <details className="workspace-notice"><summary>Workspace update</summary><p className="storage-notice" role="status">{storageNotice}</p></details>}
             </div>
             <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign || hasGeneralDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{project?.design_workflow?.machine_approved && !isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
           </div>
 
-          <div hidden={hardwareDestination !== 'design'}>
+          <div className={`design-content${hasEngineeringDesign ? ' design-content-engineering' : ''}`} hidden={hardwareDestination !== 'design'} tabIndex={0} aria-label="Design and project details">
           {!hasGeneralDesign && hasSelectedFoundation && <SelectedPlatformPreview />}
           {project?.concept_design ? (
-            <ConceptWorkspace key={`${project.id}:${project.revision}`} projectId={project.id}
+            <ConceptWorkspace imageCapability={imageCapability} key={`${project.id}:${project.revision}`} projectId={project.id}
               revision={project.revision} design={project.concept_design} pricing={<ConceptPricing project={project} />} />
           ) : project?.bench_station ? <BenchStationPanel key={`${project.id}:${project.revision}`} project={project} station={project.bench_station} projectId={project.id} revision={project.revision} /> : !hasEngineeringDesign ? (
             hasBrief ? (
@@ -892,7 +898,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               </div>
             )
           ) : (
-            <>
+            <div className="engineering-design-layout">
               <PresentationStage viewerRef={viewer} compact={isConfirmed} title={hasFoundation ? 'Jubilee workstation' : hasPlatform ? 'OT-2 setup' : 'Interactive 3D concept'}
                 sourceNote={hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'}
                 actions={project?.cold_transfer_extension && <div className="stage-preview-controls" aria-label="Plate transfer playback">
@@ -921,6 +927,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               </PresentationStage>
 
               {project && <PartsProposal project={project} refreshKey={String(costVersion)} onSelect={handleVisionSelect} compact onOpen={() => openHardware('parts')} />}
+              <details className="engineering-inspector" ref={designInspector}><summary>Specifications &amp; project files</summary><div className="engineering-inspector-scroll">
               <div className="below-viewer">
 
                 {preparationPanel}
@@ -972,7 +979,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
                   <PhysicsPanel project={project} active={physicsActive} onView={handlePhysicsView} onActivate={handlePhysicsActivate} />
                 )}
               </details>
-            </>
+              </div></details>
+            </div>
           )}
           {!hasGeneralDesign && !hasEngineeringDesign && project && <CostSummary project={project} report={currentProcurement} />}
           {!hasGeneralDesign && !hasEngineeringDesign && preparationPanel}
@@ -991,7 +999,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             </details>
           )}
           </div>
-          {project && (hasEngineeringDesign || hasGeneralDesign) && hardwareDestination !== 'design' && <div className="project-resource-anchor" ref={resourceAnchor} tabIndex={-1}><ProjectResources key={`${project.id}:${project.revision}`} project={project} activePanel={resourcePanel} navigationKey={resourceNavigation} costVersion={costVersion} costLoading={costState.loading} costIssue={costState.issue} onRefreshEstimate={() => setCostRefreshToken(value => value + 1)} busy={uiBusy} onSelect={(id) => { handleVisionSelect(id); openHardware(); }} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find(run => run.kind === 'show_build_plan' && run.status === 'ready')} /></div>}
+          {project && (hasEngineeringDesign || hasGeneralDesign) && hardwareDestination !== 'design' && <div className="project-resource-anchor" ref={resourceAnchor} tabIndex={-1}><ProjectResources imageCapability={imageCapability} key={`${project.id}:${project.revision}`} project={project} activePanel={resourcePanel} navigationKey={resourceNavigation} costVersion={costVersion} costLoading={costState.loading} costIssue={costState.issue} onRefreshEstimate={() => setCostRefreshToken(value => value + 1)} busy={uiBusy} onSelect={(id) => { handleVisionSelect(id); openHardware(); }} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find(run => run.kind === 'show_build_plan' && run.status === 'ready')} /></div>}
         </section>
 
         <aside id="chat-workspace" className="conversation-panel" aria-labelledby="conversation-title">
@@ -1027,5 +1035,6 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
       </main>
       </>}
     </div>
+    </StepIllustrationProvider>
   );
 }

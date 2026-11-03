@@ -1,3 +1,5 @@
+import StepIllustration from './StepIllustration';
+import type { ImageCapability } from './ModelSelector';
 import PartsProposal from './PartsProposal';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ComponentCatalog from './ComponentCatalog';
@@ -5,6 +7,7 @@ import type { InstructionGuide, InstructionStep, ProcurementReport, ProcurementR
 import './project-resources.css';
 
 type Props = {
+  imageCapability?: ImageCapability | null;
   project: Project; busy: boolean; onSelect: (id: string) => void;
   onChoose: (groupId: string, optionId: string) => void;
   onReport: (report: ProcurementReport | null) => void;
@@ -94,7 +97,7 @@ function SoftwareGuide({ guide, base, downloadsAvailable }: {
   </div>;
 }
 
-export default function ProjectResources({ project, busy, onSelect, onChoose, onReport, instructionRequest, activePanel, navigationKey, costVersion = 0, costLoading = false, costIssue, onRefreshEstimate }: Props) {
+export default function ProjectResources({ imageCapability = null, project, busy, onSelect, onChoose, onReport, instructionRequest, activePanel, navigationKey, costVersion = 0, costLoading = false, costIssue, onRefreshEstimate }: Props) {
   const [panel, setPanel] = useState<'parts' | 'instructions' | 'software' | null>('parts');
   const [procurement, setProcurement] = useState<ProcurementResponse>({ state: 'not_refreshed', report: null });
   const [loading, setLoading] = useState(true);
@@ -104,6 +107,7 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
   const [guideLoading, setGuideLoading] = useState(false);
   const [guideError, setGuideError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
+  const [assemblyIndex, setAssemblyIndex] = useState(0);
   const [guideAttempt, setGuideAttempt] = useState(0);
   const [focusInstructions, setFocusInstructions] = useState(false);
   const refreshRequest = useRef<AbortController | null>(null);
@@ -162,7 +166,7 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
   }, [panel, focusInstructions]);
 
   useEffect(() => {
-    setGuide(null); setGuideError(null); setStepIndex(0);
+    setGuide(null); setGuideError(null); setStepIndex(0); setAssemblyIndex(0);
     if (panel !== 'instructions' && panel !== 'software') return;
     const controller = new AbortController();
     setGuideLoading(true);
@@ -240,7 +244,17 @@ export default function ProjectResources({ project, busy, onSelect, onChoose, on
       {guideLoading && <p role="status">Preparing instructions from the current project…</p>}
       {guideError && <div className="resource-error" role="alert">{guideError} <button type="button" onClick={() => setGuideAttempt((attempt) => attempt + 1)}>Try instructions again</button></div>}
       {guide && <>
-        <ol className="assembly-overview" aria-label="Assembly steps">{(guide.assembly_steps ?? guide.steps.filter(item => !item.title.toLowerCase().startsWith('review this revision'))).map((item, index) => <li key={index}><h3>{item.title}</h3>{item.instructions.map((instruction, index) => <p key={index}>{readable(instruction, guide)}</p>)}<div className="parts-links">{item.sources.map((source, index) => /pending|unverified|needs design/i.test(source.title) ? <span key={index}>{source.title}</span> : <a key={index} href={sourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a>)}</div></li>)}</ol>
+        {(() => {
+          const assemblySteps = guide.assembly_steps ?? guide.steps.filter(item => !item.title.toLowerCase().startsWith('review this revision'));
+          const index = Math.min(assemblyIndex, Math.max(0, assemblySteps.length - 1));
+          const item = assemblySteps[index];
+          return item ? <section aria-label="Assembly steps">
+            <div className="instruction-navigation"><label htmlFor="assembly-step">Assembly step</label><select id="assembly-step" value={index} onChange={event => setAssemblyIndex(Number(event.target.value))}>{assemblySteps.map((entry, position) => <option key={position} value={position}>{position + 1}. {entry.title}</option>)}</select></div>
+            <article className="assembly-overview"><h3>{item.title}</h3>{item.instructions.map((instruction, position) => <p key={position}>{readable(instruction, guide)}</p>)}<div className="parts-links">{item.sources.map((source, position) => /pending|unverified|needs design/i.test(source.title) ? <span key={position}>{source.title}</span> : <a key={position} href={sourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a>)}</div><StepIllustration key={`${project.id}:${revision}:assembly-${index + 1}`} projectId={project.id} revision={revision} stepId={`assembly-${index + 1}`} title={item.title} capability={imageCapability} disabled={busy} /></article>
+            <div className="instruction-pagination"><button type="button" disabled={index === 0} onClick={() => setAssemblyIndex(index - 1)}>Previous assembly step</button><span aria-live="polite">Step {index + 1} of {assemblySteps.length}</span><button type="button" disabled={index === assemblySteps.length - 1} onClick={() => setAssemblyIndex(index + 1)}>Next assembly step</button></div>
+          </section> : <p>No assembly steps are available for this revision.</p>;
+        })()}
+
         <details className="resource-detail"><summary>Technical review, checks &amp; additional downloads</summary>
         <div className="instruction-navigation"><label htmlFor="instruction-step">Go to step</label><select id="instruction-step" value={stepIndex} onChange={(event) => { const index = Number(event.target.value); setStepIndex(index); const id = guide.steps[index]?.component_ids[0]; if (id && project.design.components.some((part) => part.id === id)) onSelect(id); }}>{guide.steps.map((item, index) => <option key={item.id} value={index}>{index + 1}. {item.title}</option>)}</select></div>
         {step && <Step step={step} guide={guide} onSelect={onSelect} />}

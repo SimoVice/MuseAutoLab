@@ -199,6 +199,7 @@ async def generate_illustration(
     project: dict,
     reference: ReferenceImage,
     *,
+    prompt: str = PROMPT,
     settings: ModelSettings | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> dict:
@@ -221,7 +222,7 @@ async def generate_illustration(
             {
                 "role": "user",
                 "content": [
-                    {"type": "input_text", "text": PROMPT},
+                    {"type": "input_text", "text": prompt},
                     {"type": "input_image", "image_url": reference.data_url},
                 ],
             }

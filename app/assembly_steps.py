@@ -6,7 +6,7 @@ def assembly_steps(project: dict, technical_steps: list[dict], proposal: dict) -
     rows = {row["group_id"]: row for row in proposal["rows"]}
     technical = {step["id"]: step for step in technical_steps}
 
-    def add(title, *instructions, reference=None, group=None):
+    def add(title, *instructions, reference=None, group=None, component_ids=()):
         links = [{"title": src["title"], "url": src["url"]}
                  for src in technical.get(reference, {}).get("sources", [])[:2]]
         row = rows.get(group, {})
@@ -15,12 +15,20 @@ def assembly_steps(project: dict, technical_steps: list[dict], proposal: dict) -
             links.append({"title": row.get("selected_product_label") or row["label"], "url": url})
         if row.get("fabrication_url"):
             links.insert(0, {"title": "Download part model (STEP)", "url": row["fabrication_url"]})
-        steps.append({"title": title, "instructions": list(instructions), "sources": links})
+        ids = list(component_ids) or technical.get(reference, {}).get("component_ids", [])
+        if not ids and group:
+            ids = next((g.get("component_ids", []) for g in
+                        (project.get("sourcing") or {}).get("groups", [])
+                        if g.get("id") == group), [])
+        steps.append({"id": f"assembly-{len(steps) + 1}", "title": title,
+                      "instructions": list(instructions), "sources": links,
+                      "component_ids": list(ids)})
 
     if concept := project.get("concept_design"):
         for part in concept.get("components", []):
             if part.get("assembly"):
-                add(f"Fit the {part['name']}", part["assembly"], group="concept-" + part["key"])
+                add(f"Fit the {part['name']}", part["assembly"],
+                    group="concept-" + part["key"], component_ids=[part["key"]])
         return steps
     if station := project.get("bench_station"):
         for module in station.get("modules", []):
@@ -50,7 +58,9 @@ def assembly_steps(project: dict, technical_steps: list[dict], proposal: dict) -
     else:
         add("Check the frame and working surface",
             "Measure the available bench area and compare it with the proposed footprint. "
-            "Confirm the mounting pattern and keep cable and service access clear.")
+            "Confirm the mounting pattern and keep cable and service access clear.",
+            component_ids=[p["id"] for p in project.get("design", {}).get("components", [])
+                           if p.get("id") in ("base", "frame", "deck")])
 
     if plate := project.get("labware_plate"):
         name = plate.get("display_name") or plate.get("profile", {}).get("display_name") or "plate"
@@ -90,5 +100,6 @@ def assembly_steps(project: dict, technical_steps: list[dict], proposal: dict) -
     add("Dry-run the assembled workstation",
         "Check retention, cable routing and travel limits. Calibrate the tool and each working "
         "position on the physical controller, then run an empty cycle one move at a time. "
-        "Verify transfers with water before loading samples.")
+        "Verify transfers with water before loading samples.",
+        component_ids=[p["id"] for p in project.get("design", {}).get("components", [])])
     return steps

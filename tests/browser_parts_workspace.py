@@ -66,9 +66,6 @@ def run(url):
         nav.get_by_role("button", name="Parts & prices", exact=True).click()
         table = page.locator(".parts-table")
         expect(table).to_be_visible()
-        expect(table).to_contain_text("refrigerator")
-        expect(table).to_contain_text("gripper")
-        expect(table).to_contain_text("plate")
         expect(nav.get_by_role("button", name="Parts & prices", exact=True)).to_have_attribute(
             "aria-current", "page"
         )
@@ -76,8 +73,27 @@ def run(url):
         assert page.locator(".project-resource-anchor").evaluate(
             "(e) => document.activeElement === e"
         )
-        assert table.get_by_role("link", name="Purchase / product page").count() > 0
-        assert table.get_by_role("link", name="Source project & files").count() > 0
+        find = page.get_by_role("searchbox", name="Find a part")
+        total = page.locator(".parts-total strong").inner_text()
+        for term in ("refrigerator", "gripper", "plate"):
+            find.fill(term)
+            expect(table.locator("tbody")).to_contain_text(term, ignore_case=True)
+            expect(page.locator(".parts-total strong")).to_have_text(total)
+        find.fill("no such laboratory component")
+        expect(table).to_contain_text("No matching parts")
+        table.get_by_role("button", name="Clear search").click()
+        labels = []
+        links = set()
+        next_page = page.get_by_role("button", name="Next parts page")
+        while True:
+            labels.extend(table.locator("tbody th > strong").all_inner_texts())
+            links.update(table.get_by_role("link").all_inner_texts())
+            if next_page.is_disabled():
+                break
+            next_page.click()
+        assert labels == [row["label"] for row in proposals[-1]["rows"]]
+        assert {"Purchase / product page", "Source project & files"} <= links
+        find.fill("plate")
         page.screenshot(path=str(OUTPUT / "parts-desktop.png"), full_page=False)
         checks.append("direct-visible-parts-plate-fridge-gripper-source-links-focus")
         table.get_by_role("button", name="Show in 3D", exact=True).first.click()
@@ -93,11 +109,10 @@ def run(url):
         assert proposal["summary"]["total_high_usd"] == round(
             sum(row["line_total_high_usd"] for row in proposal["rows"]), 2
         )
-        lines = table.locator("tbody tr").count()
-        assert lines > 5
+        expect(table.locator("tbody tr")).to_have_count(3)
         nav.get_by_role("button", name="Assembly", exact=True).click()
         expect(page.get_by_role("heading", name="Assembly", exact=True)).to_be_visible()
-        expect(page.get_by_role("list", name="Assembly steps")).to_be_visible()
+        expect(page.get_by_label("Assembly step", exact=True)).to_be_visible()
         page.screenshot(path=str(OUTPUT / "assembly-desktop.png"), full_page=False)
         checks.append("assembly-direct-numbered-guide-and-downloads")
         nav.get_by_role("button", name="Parts & prices", exact=True).click()
@@ -112,7 +127,7 @@ def run(url):
         checks.append("approved-software-return-directly-to-parts")
         page.set_viewport_size({"width": 390, "height": 844})
         nav.get_by_role("button", name="Assembly", exact=True).click()
-        expect(page.get_by_role("list", name="Assembly steps")).to_be_visible()
+        expect(page.get_by_label("Assembly step", exact=True)).to_be_visible()
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         page.screenshot(path=str(OUTPUT / "assembly-mobile.png"), full_page=False)
         nav.get_by_role("button", name="Parts & prices", exact=True).click()

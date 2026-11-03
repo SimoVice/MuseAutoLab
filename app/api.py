@@ -444,8 +444,9 @@ def _check_illustration_project(project: dict, revision: int) -> None:
         )
 
 
-async def _illustrate_connected(request: Request, project: dict, reference) -> dict:
-    task = asyncio.create_task(generate_illustration(project, reference))
+async def _illustrate_connected(request: Request, project: dict, reference, *, prompt=None) -> dict:
+    options = {"prompt": prompt} if prompt is not None else {}
+    task = asyncio.create_task(generate_illustration(project, reference, **options))
     try:
         while not task.done():
             if await request.is_disconnected():
@@ -497,6 +498,78 @@ async def illustrate_project(project_id: str, request: Request) -> dict:
     async with session.model_lock():
         _check_illustration_project(session.project, data.project_revision)
     return result
+
+
+class StepIllustrationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    project_revision: int = Field(ge=1, strict=True)
+    step_id: str = Field(min_length=1, max_length=160, strict=True)
+
+
+@app.post("/api/projects/{project_id}/instructions/illustration")
+async def illustrate_instruction_step(project_id: str, request: Request) -> dict:
+    from app.step_illustration import (
+        STEP_SCOPE,
+        schematic_reference,
+        step_context,
+        step_prompt,
+    )
+
+    session = session_for(project_id)
+    media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if media_type != "application/json":
+        raise HTTPException(415, "Send the revision and assembly step as JSON.")
+    content = bytearray()
+    try:
+        async with asyncio.timeout(15):
+            async for chunk in request.stream():
+                if len(content) + len(chunk) > 2048:
+                    raise HTTPException(413, "The assembly image request is too large.")
+                content.extend(chunk)
+        data = StepIllustrationRequest.model_validate_json(content)
+    except TimeoutError:
+        raise HTTPException(408, "The assembly image request timed out.") from None
+    except ValidationError:
+        raise HTTPException(
+            422, "Send only the current revision and assembly step identity."
+        ) from None
+    try:
+        async with session.model_lock():
+            project = deepcopy(session.project)
+            if project["revision"] != data.project_revision:
+                raise HTTPException(409, "The project changed. Open its current assembly guide.")
+            context = step_context(project, data.step_id)
+        status = availability(await discover_catalog(), IMAGE_MODEL)
+        if not status["available"]:
+            raise HTTPException(503, status["unavailable_reason"])
+        reference = await asyncio.to_thread(schematic_reference, context)
+        async with session.model_lock():
+            if session.project["revision"] != data.project_revision:
+                raise HTTPException(409, "The project changed. Open its current assembly guide.")
+        result = await _illustrate_connected(
+            request, project, reference, prompt=step_prompt(context)
+        )
+        async with session.model_lock():
+            if session.project["revision"] != data.project_revision:
+                raise HTTPException(409, "The project changed. Discard the earlier step image.")
+        return {**result, "step_id": data.step_id, "step_title": context["step_title"],
+                "component_ids": context["component_ids"], "scope": STEP_SCOPE,
+                "input_kind": context["input_kind"], "sources": context["sources"],
+                "instruction_source": {"kind": "current_project_instruction",
+                                       "project_id": project_id,
+                                       "project_revision": data.project_revision,
+                                       "step_id": data.step_id},
+                "reference_scope": (
+                    "Text-only graphic from this revision's authoritative title and actions; "
+                    "no equipment geometry supplied."
+                    if context["input_kind"] == "instruction_checklist" else
+                    "Canonical schematic primitives, including actual holes and orientation "
+                    "markers where present; not detailed source CAD."
+                    if context["input_kind"] == "canonical_primitives" else
+                    "Schematic canonical component envelopes; not detailed source CAD."
+                )}
+    except IllustrationError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from None
 
 
 @app.get("/api/references")

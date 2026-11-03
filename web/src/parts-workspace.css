@@ -69,3 +69,13 @@
   .parts-table tbody th>span { display:none; }
   .parts-table tbody td:nth-child(3),.parts-table tbody td:nth-child(4) { font-size:10px; }
 }
+
+.parts-browse { display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; margin:10px 0; }
+.parts-browse label { display:grid; gap:4px; font-size:.8rem; font-weight:600; color:#294b50; }
+.parts-browse input, .parts-browse button { font:inherit; min-height:38px; padding:5px 9px; border:1px solid #abc6c2; border-radius:6px; color:#244b4d; background:white; }
+.parts-browse nav { display:flex; align-items:center; gap:8px; font-size:.8rem; }
+.parts-browse nav span { font-variant-numeric:tabular-nums; }
+.parts-browse button { cursor:pointer; }
+.parts-browse button:disabled { color:#637776; background:#f4f7f6; cursor:default; }
+.parts-browse input:focus-visible { outline:2px solid #237569; outline-offset:2px; }
+@media(max-width:600px) { .parts-table tbody th>span { display:block; } }

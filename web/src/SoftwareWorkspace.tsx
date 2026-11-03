@@ -29,6 +29,7 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [tab, setTab] = useState<'transfers' | 'code'>('code');
+  const [workspacePanel, setWorkspacePanel] = useState<'recipe' | 'program' | 'preview'>('recipe');
   const [chat, setChat] = useState('');
   const [mode, setMode] = useState<MotionMode>('preparation');
   const [playing, setPlaying] = useState(false);
@@ -221,7 +222,12 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
         </div>
       </div>
 
-      <div className="software-grid">
+      <nav className="software-panel-switch" aria-label="Software workspace panel">
+        <button type="button" aria-pressed={workspacePanel === 'recipe'} onClick={() => setWorkspacePanel('recipe')}>{liquid ? 'Recipe' : 'Program brief'}</button>
+        <button type="button" aria-pressed={workspacePanel === 'program'} onClick={() => setWorkspacePanel('program')}>{liquid ? 'Generated program' : 'Operating sequence'}</button>
+        {liquid && <button type="button" aria-pressed={workspacePanel === 'preview'} onClick={() => setWorkspacePanel('preview')}>3D preview</button>}
+      </nav>
+      <div className={`software-grid software-panel-${workspacePanel}`}>
         <section className="software-editor" aria-labelledby="recipe-title">
           <h2 id="recipe-title">{liquid ? 'Preparation recipe' : 'Operating program'}</h2>
           {liquid ? (

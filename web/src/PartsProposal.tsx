@@ -39,6 +39,8 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setProposal(null);
@@ -76,6 +78,13 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
       <button type="button" onClick={onOpen}>View parts &amp; prices</button>
     </div>
   );
+  const term = search.trim().toLowerCase();
+  const matches = proposal.rows.filter(row => [row.label, row.selected_product_label, row.source_url]
+    .some(value => value?.toLowerCase().includes(term)));
+  const perPage = 3;
+  const lastPage = Math.max(0, Math.ceil(matches.length / perPage) - 1);
+  const currentPage = Math.min(page, lastPage);
+  const start = currentPage * perPage;
   return <div className="parts-proposal">
     <div className="parts-total">
       <div>
@@ -85,6 +94,13 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
       <p>{summary.row_count} items, USD<br />Planning ranges, not a quote.</p>
     </div>
 
+    {(proposal.rows.length > perPage || term) && <div className="parts-browse">
+      <label>Find a part<input type="search" value={search} placeholder="Part, product or supplier" onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>
+      <nav aria-label="Parts pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} aria-label="Previous parts page">Previous</button>
+        <span role="status">{matches.length ? `${start + 1}–${Math.min(start + perPage, matches.length)} of ${matches.length}` : '0 matches'}</span>
+        <button type="button" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)} aria-label="Next parts page">Next</button>
+      </nav>
+    </div>}
     <div className="parts-table-scroll">
       <table className="parts-table">
         <caption>Components, quantities and prices for revision {project.revision}</caption>
@@ -97,7 +113,8 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
           </tr>
         </thead>
         <tbody>
-      {proposal.rows.map(row => {
+      {matches.length === 0 && <tr><td colSpan={4}>No matching parts. <button type="button" onClick={() => { setSearch(''); setPage(0); }}>Clear search</button></td></tr>}
+      {matches.slice(start, start + perPage).map(row => {
         const source = safeUrl(row.source_url);
         const linkLabel = sourceLabels[row.source_kind ?? ''] ?? sourceLabel(row.source_url ?? '');
         const visibleComponents = row.component_ids

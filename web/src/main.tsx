@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import HostedAccess from './HostedAccess';
 import './style.css';
+import './viewport-shell.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Application root is missing');

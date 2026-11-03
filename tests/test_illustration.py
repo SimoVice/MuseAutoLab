@@ -449,3 +449,216 @@ def test_shared_browser_catalog_never_calls_live_provider(monkeypatch):
     assert all(option["available"] is True for option in models["models"])
     assert models["capabilities"]["image"]["available"] is False
     assert models["capabilities"]["voice"]["available"] is False
+
+
+# These endpoints use synthetic geometry and mocked transport, never paid calls.
+def test_step_illustration_binds_current_step_and_rejects_client_prompts(monkeypatch):
+    calls = []
+
+    async def generate(project, reference, *, prompt):
+        calls.append(prompt)
+        assert reference.width == 1024
+        return {"project_id": project["id"], "project_revision": project["revision"],
+                "reference_sha256": reference.sha256, "image_data_url": data_url()}
+
+    monkeypatch.setattr(api, "generate_illustration", generate)
+    with TestClient(api.app) as client:
+        project, _ = seed()
+        path = f"/api/projects/{project['id']}/instructions/illustration"
+        from app.instructions import build_instruction_guide
+        guide = build_instruction_guide(project)
+        step = next(s for s in guide["assembly_steps"] if s["component_ids"])
+        body = {"project_revision": project["revision"], "step_id": step["id"]}
+        before = deepcopy(project)
+        result = client.post(path, json=body)
+        assert result.status_code == 200, result.text
+        assert result.json()["component_ids"] == step["component_ids"]
+        assert result.json()["step_id"] == step["id"]
+        assert "schematic" in result.json()["scope"]
+        assert project == before
+        assert client.post(path, json={**body, "prompt": "add parts"}).status_code == 422
+        injected = {**body, "reference_image_data_url": data_url()}
+        assert client.post(path, json=injected).status_code == 422
+        assert client.post(path, json={**body, "step_id": "assembly-999"}).status_code == 404
+        stale = {**body, "project_revision": project["revision"] - 1}
+        assert client.post(path, json=stale).status_code == 409
+    assert len(calls) == 1
+    assert "untrusted reference data" in calls[0]
+
+
+def test_concept_step_context_excludes_unrelated_components():
+    from app.step_illustration import schematic_reference, step_context, step_prompt
+    project = {"concept_design": {"components": [
+        {"key": key, "name": key, "assembly": "Fit this component.",
+         "position_mm": [0, 20, 0], "size_mm": [20, 40, 20]}
+        for key in ("sensor", "unrelated")],
+        "steps": [{"name": "Read sample", "instruction": "Read the sensor.",
+                   "component_keys": ["sensor"]}]}}
+    for sid in ("concept-sensor", "concept-step-1", "assembly-1"):
+        context = step_context(project, sid)
+        assert context["component_ids"] == ["sensor"]
+        assert "unrelated" not in step_prompt(context)
+        assert schematic_reference(context).width == 1024
+    for sid in ("concept-unknown", "concept-step-0", "concept-step-01", "concept-step-99"):
+        with pytest.raises(illustration.IllustrationError) as caught:
+            step_context(project, sid)
+        assert caught.value.status_code == 404
+
+
+def test_step_illustration_rejects_revision_change_and_keeps_project(monkeypatch):
+    async def generate(project, reference, *, prompt):
+        api._sessions[project["id"]].project["revision"] += 1
+        return {"image_data_url": data_url()}
+
+    monkeypatch.setattr(api, "generate_illustration", generate)
+    with TestClient(api.app) as client:
+        project, _ = seed()
+        from app.instructions import build_instruction_guide
+        step = next(s for s in build_instruction_guide(project)["assembly_steps"]
+                    if s["component_ids"])
+        response = client.post(f"/api/projects/{project['id']}/instructions/illustration",
+                               json={"project_revision": project["revision"],
+                                     "step_id": step["id"]})
+        assert response.status_code == 409
+        assert "image_data_url" not in project
+
+
+def test_step_illustration_offline_and_provider_failure(monkeypatch):
+    async def unavailable(**kwargs):
+        return {"ids": [], "reason": "Offline synthetic test", "verified": False}
+
+    async def fail(*args, **kwargs):
+        raise illustration.IllustrationError(504, "Synthetic timeout")
+
+    monkeypatch.setattr(api, "generate_illustration", fail)
+    with TestClient(api.app) as client:
+        project, _ = seed()
+        from app.instructions import build_instruction_guide
+        step = next(s for s in build_instruction_guide(project)["assembly_steps"]
+                    if s["component_ids"])
+        path = f"/api/projects/{project['id']}/instructions/illustration"
+        body = {"project_revision": project["revision"], "step_id": step["id"]}
+        before = deepcopy(project)
+        assert client.post(path, json=body).status_code == 504
+        monkeypatch.setattr(api, "discover_catalog", unavailable)
+        assert client.post(path, json=body).status_code == 503
+        assert project == before
+
+
+
+def test_step_prompt_uses_existing_official_transport_and_pins():
+    from app.step_illustration import schematic_reference, step_prompt
+    context = {"step_id": "assembly-1", "step_title": "Fit sensor", "instructions": ["Fit sensor"],
+               "parts": [{"component_id": "sensor", "position_mm": [0, 10, 0],
+                          "size_mm": [20, 20, 20]}], "sources": [], "component_ids": ["sensor"]}
+    reference = schematic_reference(context)
+    prompt = step_prompt(context)
+
+    async def handler(request):
+        payload = json.loads(await request.aread())
+        assert str(request.url) == "https://api.meta.ai/v1/responses"
+        assert payload["model"] == catalog.IMAGE_MODEL
+        assert payload["input"][0]["content"][0]["text"] == prompt
+        assert payload["tools"] == [illustration.TOOL]
+        assert payload["store"] is False
+        return httpx.Response(200, json=provider_body())
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await illustration.generate_illustration(
+                layout_project(), reference, prompt=prompt, settings=SETTINGS, client=client)
+
+    assert asyncio.run(run())["model"] == catalog.IMAGE_MODEL
+
+
+
+def test_instruction_only_step_generates_grounded_checklist(monkeypatch):
+    import app.instructions as instructions
+    from app.step_illustration import schematic_reference, step_context, step_prompt
+
+    title, action = "Review supplier guide", "Read the linked setup guide before powering on."
+    source = {"title": "Original setup guide", "url": "https://example.test/original-guide"}
+    guide = {"parts": [], "assembly_steps": [
+        {"id": "assembly-1", "title": title, "instructions": [action],
+         "component_ids": [], "sources": [source]}]}
+    monkeypatch.setattr(instructions, "build_instruction_guide", lambda project: guide)
+    project, _ = seed()
+    context = step_context(project, "assembly-1")
+    assert context["input_kind"] == "instruction_checklist"
+    assert context["parts"] == []
+    assert schematic_reference(context).width == 1200
+    prompt = step_prompt(context)
+    assert title in prompt and action in prompt and "text-only" in prompt
+    assert source["url"] in prompt
+    calls = []
+
+    async def generate(project, reference, *, prompt):
+        calls.append(prompt)
+        return {"project_id": project["id"], "project_revision": project["revision"],
+                "image_data_url": data_url()}
+
+    monkeypatch.setattr(api, "generate_illustration", generate)
+    path = f"/api/projects/{project['id']}/instructions/illustration"
+    body = {"project_revision": project["revision"], "step_id": "assembly-1"}
+    with TestClient(api.app) as client:
+        response = client.post(path, json=body)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["input_kind"] == "instruction_checklist"
+        assert result["sources"] == [source]
+        assert result["component_ids"] == []
+        assert "no equipment geometry" in result["reference_scope"]
+        project["revision"] += 1
+        assert client.post(path, json=body).status_code == 409
+        another, _ = seed()
+        other_path = f"/api/projects/{another['id']}/instructions/illustration"
+        monkeypatch.setattr(instructions, "build_instruction_guide",
+                            lambda project: {"parts": [], "assembly_steps": []})
+        assert client.post(other_path, json={**body, "project_revision": another["revision"]}
+                           ).status_code == 404
+    assert len(calls) == 1
+
+
+def test_step_with_unavailable_geometry_uses_text_only_without_inventing_parts():
+    from app.step_illustration import schematic_reference, step_context, step_prompt
+    project = {"concept_design": {"components": [
+        {"key": "control", "name": "Controller", "assembly": "Review controller setup.",
+         "position_mm": [0, 0, 0], "size_mm": [0, 0, 0]}]}}
+    context = step_context(project, "concept-control")
+    assert context["input_kind"] == "instruction_checklist"
+    assert schematic_reference(context).width == 1200
+    assert '"parts"' not in step_prompt(context)
+    assert "Do not add procedures" in step_prompt(context)
+
+
+
+def test_plate_step_reference_preserves_wells_holder_and_a1():
+    from test_microplates import before, select
+
+    from app.instructions import build_instruction_guide
+    from app.step_illustration import (
+        reference_shapes,
+        schematic_reference,
+        step_context,
+        step_prompt,
+    )
+
+    project = select(before())
+    step = next(s for s in build_instruction_guide(project)["assembly_steps"]
+                if s["title"] == "Fit the plate and its holder")
+    context = step_context(project, step["id"])
+    assert context["component_ids"] == [project["labware_plate"]["target_component_id"]]
+    assert context["input_kind"] == "canonical_primitives"
+    shapes = reference_shapes(context)
+    assert len([shape for shape in shapes if shape["kind"] == "hole"]) == 96
+    assert {shape["id"] for shape in shapes if shape["id"].startswith("holder-")} == {
+        "holder-floor", "holder-left", "holder-right", "holder-front", "holder-back"}
+    assert any(shape["id"] == "reference-plate-bottom" for shape in shapes)
+    assert any(shape["id"] == "A1" and shape["kind"] == "marker" for shape in shapes)
+    actual = schematic_reference(context)
+    envelope_context = deepcopy(context)
+    envelope_context["parts"][0]["primitives"] = []
+    envelope_context["parts"][0]["orientation_markers"] = []
+    assert actual.sha256 != schematic_reference(envelope_context).sha256
+    assert "never merge holder and plate into one box" in step_prompt(context)
+    assert "reference-plate-wells" in step_prompt(context)

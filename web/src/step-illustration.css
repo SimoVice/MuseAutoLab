@@ -1,0 +1,14 @@
+.step-illustration { margin-top: 12px; font-size: 12px; color: #42646d; }
+.step-illustration > small { display: block; margin-top: 6px; }
+.step-illustration > button, .step-illustration dialog button { min-height: 38px; padding: 8px 12px; border: 1px solid #b7d5ce; border-radius: 7px; background: #f3f9f7; color: #1f7671; font: inherit; font-weight: 650; cursor: pointer; }
+.step-illustration button:disabled { opacity: .6; cursor: default; }
+.step-illustration button:focus-visible { outline: 3px solid #318f94; outline-offset: 3px; }
+.step-illustration [role=alert] { color: #92592f; }
+.step-illustration figure { margin: 10px 0; max-width: 440px; }
+.step-illustration .step-image-preview { display: block; padding: 0; border: 1px solid #b7d5ce; background: #f3f9f7; cursor: zoom-in; width: 100%; }
+.step-illustration img { display: block; width: 100%; height: auto; }
+.step-illustration figcaption { margin-top: 6px; line-height: 1.5; }
+.step-illustration dialog { width: min(1000px, 92vw); max-height: 92dvh; overflow: auto; border: 1px solid #b7d5ce; border-radius: 12px; padding: 18px; color: #31565c; }
+.step-illustration dialog::backdrop { background: rgb(15 36 40 / .65); }
+.step-image-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.step-image-dialog-heading h3 { margin: 0; }

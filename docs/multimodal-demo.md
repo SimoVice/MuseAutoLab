@@ -47,6 +47,19 @@ and **two milliliters per tube**. Ambiguous totals, ranges, rates and missing un
 still require clarification. This is a limited supported grammar, not universal
 speech or scientific-language understanding.
 
+## Illustrate an assembly step
+
+Open **Assembly**, choose a step by title and select **Illustrate this step**.
+Muse Image receives the actions for that step and a reference derived from the
+current project revision. For a plate holder, the reference shows the holder,
+the plate and the well layout. For a procedural check without geometry, Muse
+receives the written sequence.
+
+Select the resulting image to enlarge it, review its sources or download the PNG.
+You can return to a recently illustrated step in the same project and revision
+without generating it again. Save the PNG if you want to keep it after signing out.
+Follow the written guide and source drawings when assembling the hardware.
+
 ## Create an optional presentation image
 
 With an accepted design, open **Project details → Project illustration** and
