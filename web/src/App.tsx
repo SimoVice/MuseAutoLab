@@ -1,4 +1,6 @@
 import BenchStationPanel from './BenchStationPanel';
+import ConceptWorkspace from './ConceptWorkspace';
+import ConceptPricing from './ConceptPricing';
 import FunctionalPlan from './FunctionalPlan';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
@@ -28,7 +30,7 @@ import './chat-workspace.css';
 import type { ConversationEntry, PhysicsView, PreparationPlan, ProcurementReport, Project, ProjectBrief, ProjectResponse } from './types';
 
 const WELCOME = 'What would you like to automate in your lab? Describe the task and what makes it difficult.';
-const LIQUID_NOTE = 'Design coverage depends on the operations in your brief. The modular bench station supports weighing, label printing, barcode reading and visual inspection.';
+const LIQUID_NOTE = 'Develop a sequence of operations, or use this brief to design the equipment, model its moving parts and prepare assembly instructions.';
 const LOCAL_PROJECT = 'museautolab.workspace.v1';
 
 type OpenedProject = ProjectResponse & { conversation?: { role: 'user' | 'assistant'; content: string }[] };
@@ -114,6 +116,8 @@ function briefEntries(brief: ProjectBrief | null | undefined): { key: keyof Proj
 function sameDesign(a: Project | null, b: Project): boolean {
   const renderedDesign = (project: Project | null) => project ? {
     available: Boolean(project.engineering_design),
+    custom: project.concept_design,
+    station: project.bench_station,
     components: project.design.components.map(({ label: _label, ...component }) => component),
     foundation: project.design.foundation,
     platform: project.design.platform?.id,
@@ -313,7 +317,8 @@ export default function App() {
   const recordedBrief = briefEntries(project?.brief);
   const hasBrief = recordedBrief.length > 0;
   const hasSelectedFoundation = !hasEngineeringDesign && project?.engineering?.selected_platform_id === 'jubilee';
-  const hasWorkspaceContent = hasBrief || hasEngineeringDesign || hasSelectedFoundation || Boolean(project?.bench_station);
+  const hasGeneralDesign = Boolean(project?.bench_station || project?.concept_design);
+  const hasWorkspaceContent = hasBrief || hasEngineeringDesign || hasSelectedFoundation || hasGeneralDesign;
   const showLiquidParams = supportedLiquid && (Boolean(workflow?.parameters_started) || project?.plan?.status === 'ready');
   const briefHref = project ? `/api/projects/${encodeURIComponent(project.id)}/brief?revision=${encodeURIComponent(String(project.revision))}` : '#';
 
@@ -501,9 +506,9 @@ export default function App() {
     return true;
   }
 
-  async function send(event?: FormEvent) {
+  async function send(event?: FormEvent, fromBrief = false) {
     event?.preventDefault();
-    const message = input.trim();
+    const message = fromBrief ? 'Design a custom laboratory assembly for my recorded brief.' : input.trim();
     if (!project || !message || uiBusy || voiceBusy) return;
     if (message.length > 4000) { setError('The message exceeds 4,000 characters. Shorten it before sending; your draft is kept.'); return; }
     setMobileView('chat');
@@ -518,7 +523,9 @@ export default function App() {
     setInput('');
     setMessages((current) => [...current, { id: Date.now(), role: 'user', text: message }]);
     try {
-      const raw = await request(`/api/projects/${encodeURIComponent(project.id)}/messages`, { message }, controller.signal) as ChatResponse;
+      const root = `/api/projects/${encodeURIComponent(project.id)}`;
+      const raw = await request(root + (fromBrief ? '/concept' : '/messages'),
+        fromBrief ? { project_revision: project.revision } : { message, project_revision: project.revision }, controller.signal) as ChatResponse;
       if (controller.signal.aborted || sessionRef.current !== session) return;
       const runs = Array.isArray(raw.action_runs) ? raw.action_runs : [];
       if (!await presentProject(raw.project, controller.signal, session)) return;
@@ -744,11 +751,14 @@ export default function App() {
               <h1 id="design-title">{headerLabel}</h1>
               {storageNotice && <p className="storage-notice" role="status">{storageNotice}</p>}
             </div>
-            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign || project?.bench_station) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{!isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
+            <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign || hasGeneralDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{!isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
           </div>
 
-          {!project?.bench_station && hasSelectedFoundation && <SelectedPlatformPreview />}
-          {project?.bench_station ? <BenchStationPanel key={`${project.id}:${project.revision}`} project={project} station={project.bench_station} projectId={project.id} revision={project.revision} /> : !hasEngineeringDesign ? (
+          {!hasGeneralDesign && hasSelectedFoundation && <SelectedPlatformPreview />}
+          {project?.concept_design ? (
+            <ConceptWorkspace key={`${project.id}:${project.revision}`} projectId={project.id}
+              revision={project.revision} design={project.concept_design} pricing={<ConceptPricing project={project} />} />
+          ) : project?.bench_station ? <BenchStationPanel key={`${project.id}:${project.revision}`} project={project} station={project.bench_station} projectId={project.id} revision={project.revision} /> : !hasEngineeringDesign ? (
             hasBrief ? (
               <div className="planning-panel" aria-labelledby="design-title">
                 <div className="planning-heading">
@@ -766,6 +776,9 @@ export default function App() {
                 </dl>
                 {!supportedLiquid ? (
                   <><p className="planning-note">{LIQUID_NOTE}</p>
+                    {workflow?.kind === 'general' && (project?.brief?.objective || project?.brief?.process) &&
+                      <button type="button" className="new-project-button" disabled={uiBusy || voiceBusy || Boolean(input.trim())}
+                        onClick={() => void send(undefined, true)}>Design equipment from this brief</button>}
                     {project && workflow?.kind === 'general' && (project.brief?.objective || project.brief?.process) &&
                       <FunctionalPlan key={`${project.id}:${project.revision}`} id={project.id} revision={project.revision} />}</>
                 ) : status === 'infeasible' ? (
@@ -851,10 +864,10 @@ export default function App() {
               </details>
             </>
           )}
-          {!project?.bench_station && !hasEngineeringDesign && project && <CostSummary project={project} report={currentProcurement} />}
-          {!project?.bench_station && !hasEngineeringDesign && preparationPanel}
-          {!project?.bench_station && !hasEngineeringDesign && project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
-          {!project?.bench_station && !hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
+          {!hasGeneralDesign && !hasEngineeringDesign && project && <CostSummary project={project} report={currentProcurement} />}
+          {!hasGeneralDesign && !hasEngineeringDesign && preparationPanel}
+          {!hasGeneralDesign && !hasEngineeringDesign && project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
+          {!hasGeneralDesign && !hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
             <details className="project-details" ref={details}>
               <summary>Project details</summary>
               <DesignSources project={project} showBindings={false} onHighlight={handleVisionSelect} />

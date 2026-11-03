@@ -29,7 +29,7 @@ def test_general_functional_planning_is_visible_without_claiming_machine_design(
     assert 'functional planning' in workflow['capabilities']
     assert workflow['design_available'] is False
     assert 'proposed operations' in workflow['scope']
-    assert 'arbitrary machine CAD, quotes and control are unavailable' in workflow['scope']
+    assert 'downloadable models' in workflow['scope']
 
 
 def test_compiled_bench_is_a_supported_concept_without_enabling_liquid_design():

@@ -44,14 +44,25 @@ engineering design. Supported adapters connect a selected machine foundation,
 components and task to the appropriate geometry, calculations, guides and exports.
 Accepted revisions keep those outputs tied to the same project.
 
-This modular architecture separates the platform's purpose from any single
-laboratory workflow. **Liquid handling is the first deeply implemented use case.**
-A second, bounded adapter develops a **modular bench station** for weighing,
-label printing, barcode reading and visual inspection. It connects an ordered
-schematic layout, sourcing candidates, manual operating guidance and downloadable
-SVG/JSON files to a local operator-assisted record runner. Arbitrary machine CAD
-and hardware control remain outside the implemented scope. New engineering paths
-need their own adapters and checks.
+For a new piece of equipment, the **custom-equipment path** can propose an original
+assembly with named parts, attached subassemblies, dimensions and an ordered
+operating sequence. Its 3D view, component models, parts list, assembly guide and
+local Python controller share the same revision. Geometry is composed from bounded
+boxes, cylinders and spheres; optional translation and rotation illustrate the
+proposed motion. These are custom concept models, with separate equipment
+references and checks. They are not imported manufacturer CAD or fabrication-ready
+designs. [Explore custom equipment and its exact scope](docs/custom-equipment.md).
+
+The controller runs a local logical simulation by default. An optional JSON/HTTP
+gateway can send explicitly mapped commands to a separately implemented device
+integration after commissioning and operator arming. No vendor driver or
+commissioned machine is supplied. Specialized engineering, physical validation
+and supported device integrations still need their own implementation and checks.
+
+Two specialized workflows add detail for particular tasks. **Liquid handling**
+connects the workstation, labware, sourcing and pipetting protocol. The **modular
+bench station** supports weighing, label printing, barcode reading and visual
+inspection. Its local runner guides an operator through the selected sequence.
 
 For a different process, describe what happens in your lab and select **Develop
 functional plan** in the project brief. The resulting specification lists the
@@ -59,7 +70,7 @@ operations, the role of each device, what passes between steps and how to check
 the outcome. You can download it as JSON and take the open questions to an
 instrument or software engineer.
 
-[Try the non-liquid bench station](docs/bench-station.md).
+[Try the non-liquid bench station](docs/bench-station.md) · [Develop custom equipment](docs/custom-equipment.md).
 
 [Platform architecture and scope](docs/platform.md) · [Source-grounding policy](docs/source-grounding.md)
 
@@ -153,6 +164,7 @@ verification. For chat-only use, the CAD/simulation extras are optional.
 ## Go deeper
 
 - [Platform](docs/platform.md) — product workflow, modular architecture and supported scope.
+- [Custom equipment](docs/custom-equipment.md) — proposed assemblies, part files, operating previews and controller integration.
 - [Documentation map](docs/README.md) — walkthroughs and engineering references.
 - [Liquid handling](docs/use-cases/liquid-handling.md) — the first implemented engineering path and its examples.
 - [Development](docs/development.md) — regression checks, browser flows and locked dependency updates.

@@ -1,6 +1,7 @@
 """Canonical cold-transfer guidance and lightweight STEP serialization checks."""
 import json
 from copy import deepcopy
+from html import escape
 
 import pytest
 from build123d import export_step, import_step
@@ -22,10 +23,15 @@ def test_instruction_downloads_include_canonical_hardware_and_separate_manual_ba
     assert step['requires_design']
     assert 'unpriced' in ' '.join(step['instructions'])
     files = build_document_files(project)
+    component_names = {part['id']: part['label'] for part in project['design']['components']}
     for filename in ('assembly-guide.html','assembly-guide.md','assembly.json'):
         text = files[filename].decode('utf-8')
-        assert 'cold-transfer-fridge' in text
-        assert 'cold-transfer-gripper' in text
+        for component in ('cold-transfer-fridge', 'cold-transfer-gripper'):
+            if filename.endswith('.html'):
+                assert escape(component_names[component]) in text
+                assert component not in text
+            else:
+                assert component in text
         assert 'separate' in text
         assert 'manual-access' in text
     assert json.loads(files['assembly.json'])['project_revision'] == project['revision']
@@ -80,9 +86,18 @@ def test_actual_instruction_api_and_downloads_use_same_revision():
     guide = resolve(api.get_instructions(project['id'],project['revision']))
     step = next(s for s in guide['steps'] if s['id']=='cold-transfer-extension')
     assert step['component_ids'] == project['cold_transfer_extension']['component_ids']
+    component_names = {part['id']: part['label'] for part in project['design']['components']}
     for kind in ('html','md','json'):
         response = resolve(api.download_instructions(project['id'],project['revision'],kind))
         assert response.status_code == 200
-        assert b'cold-transfer-shaft' in response.body
-        assert b'cold-transfer-fridge' in response.body
-        assert b'cold-transfer-gripper' in response.body
+        for component in ('cold-transfer-shaft', 'cold-transfer-fridge', 'cold-transfer-gripper'):
+            if kind == 'html':
+                assert escape(component_names[component]).encode() in response.body
+                assert component.encode() not in response.body
+            else:
+                assert component.encode() in response.body
+        if kind == 'json':
+            exported = json.loads(response.body)
+            assert exported['project_revision'] == project['revision']
+            exported_step = next(s for s in exported['steps'] if s['id'] == step['id'])
+            assert exported_step['component_ids'] == step['component_ids']

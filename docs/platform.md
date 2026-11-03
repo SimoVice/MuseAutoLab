@@ -9,8 +9,10 @@ the result useful. The machine follows from those requirements.
 
 A setup may involve motion, sample handling, imaging, fixtures or several of
 these together. That is the product direction. Each workflow needs its own
-engineering support before MuseAutoLab can generate its design and build files.
-Liquid handling is the first use case developed through that engineering path.
+engineering checks. Liquid handling is the first deeply developed example.
+The shared custom-equipment path also creates original proposed assemblies from
+bounded geometry and motion descriptions. It provides an engineering concept
+that can be reviewed and revised, with the limits described below.
 
 ## From requirements to a setup
 
@@ -56,18 +58,20 @@ checks and derives the supported outputs. Source identity and project revisions
 connect those outputs. A rejected design update preserves the accepted project.
 
 This separation allows a new workflow to have its own requirements, geometry and
-checks while retaining the common project experience. Adding engineering support
-still requires implementation: a new prompt alone does not add a machine family.
+checks while retaining the common project experience. A model can propose a new
+custom assembly through the shared concept compiler; it cannot add a new
+geometry primitive, import arbitrary source CAD or implement a device driver
+through a prompt. Those capabilities need implementation and their own checks.
 
 ## Current implementation
 
 | Layer | Available now |
 | --- | --- |
 | Requirements and planning | A general brief can generate a revision-specific functional plan with ordered operations, equipment roles, handoffs, acceptance checks and open questions. The specification is downloadable as JSON. |
-| Engineering | Liquid-preparation designs using Jubilee source CAD with custom modules or a schematic Opentrons OT-2 configuration; a separate bounded non-liquid bench-station adapter. |
+| Engineering | Liquid-preparation designs using Jubilee source CAD with custom modules or a schematic Opentrons OT-2 configuration; a separate bounded non-liquid bench-station adapter; custom assemblies composed from boxes, cylinders and spheres, with proposed attachments and bounded translation/rotation. |
 | Components and cost | Supported US catalog retrieval, source references, selected alternatives and separately labelled planning estimates. Coverage depends on the supported component catalog. |
 | Project continuity | Revisioned designs, portable save/reopen, supported design changes and revision-specific exports. |
-| Software guidance | Equipment-specific setup and protocol-authoring guidance, a standalone logical direct-dilution preview, and a downloadable operator-assisted bench-station record runner with optional printable HTML label output. |
+| Software | Equipment-specific setup and protocol-authoring guidance, a standalone logical direct-dilution preview, an operator-assisted bench-station record runner, and a custom-assembly Python sequence controller with default simulation and an opt-in JSON/HTTP gateway integration. |
 
 The [liquid-handling example](use-cases/liquid-handling.md) shows the engineering
 layer in detail: a workstation adapted to tubes or a microplate, component
@@ -76,13 +80,23 @@ coverage. The [non-liquid bench station](bench-station.md) adds another specific
 path: ordered weighing, printing, barcode reading and visual inspection modules,
 conceptual access envelopes, sourcing references and a local human-checkpoint
 runner. It generates no vendor CAD, automated transport or instrument control.
-Other task families can be discussed and planned; their engineering adapters
-still need implementation.
 
-Current designs are digital proposals. Neither supported platform has a hardware
-control or physics adapter. Physical fit, mounting, calibration and laboratory
-performance require separate work. See the [verification record](verification.md)
-for the checks actually performed.
+The [custom-equipment path](custom-equipment.md) handles other proposed setups
+without selecting a fixed example machine. The model authors named components,
+primitive solids, attachments, operating steps and equipment interfaces. The
+compiler applies dimension, reference, attachment and conservative interference
+checks. The viewer, per-part models, parts list, guide and controller data derive
+from the accepted design revision. Source links identify reviewed candidates;
+the generated solids remain custom geometry.
+
+Current designs are digital proposals. Jubilee and OT-2 have no MuseAutoLab
+hardware-control or physics adapter. Custom assemblies have a real JSON/HTTP
+gateway client, but require a separately implemented, commissioned device
+gateway and explicit action mappings before hardware use. A logical simulation,
+an animated preview, a gateway acknowledgement and a physical experiment provide
+different evidence. Physical fit, mounting, calibration and laboratory performance
+require separate work. See the [verification record](verification.md) for the
+checks actually performed.
 
 ## Extending the platform
 
@@ -99,5 +113,7 @@ Useful starting points in the code:
 - [Source and adapter policy](source-grounding.md).
 - [Development and verification commands](development.md).
 
-This is the extension approach for the codebase; there is no automatic plugin
-installer or arbitrary-machine generator in the current release.
+This is the extension approach for the codebase. The shared concept path can
+generate new proposed arrangements within its geometry and motion vocabulary;
+there is no automatic plugin installer, unrestricted CAD generator or automatic
+hardware commissioning.

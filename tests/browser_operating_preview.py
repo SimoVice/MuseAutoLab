@@ -325,7 +325,14 @@ def run(url):
             )
             assert guide.ok, guide.text()
             guide_html = guide.text()
-            assert "cold-transfer-extension" in guide_html
+            assert "Engineer the dedicated refrigerator and plate-transfer subsystem" in guide_html
+            guide_data = page.request.get(
+                f"{url}api/projects/{cold['id']}/instructions?revision={cold['revision']}"
+            )
+            assert guide_data.ok, guide_data.text()
+            assert "cold-transfer-extension" in {
+                step["id"] for step in guide_data.json()["steps"]
+            }
             (OUTPUT / "combined-assembly-guide.html").write_text(guide_html, encoding="utf-8")
             printable = browser.new_page()
             printable.set_content(guide_html, wait_until="networkidle")

@@ -197,6 +197,8 @@ async def propose_layout(
 async def request_design_proposal(
     instructions: str, schema: dict, schema_name: str, instruction: str, feedback: str,
     *, client: httpx.AsyncClient | None = None, settings: ModelSettings | None = None,
+    max_tokens: int = DESIGN_MAX_COMPLETION_TOKENS,
+    timeout_seconds: float = DESIGN_MODEL_TIMEOUT_S,
 ) -> tuple[dict, dict]:
     """Shared bounded transport for supported declarative design proposals."""
     resolved = settings or ModelSettings.load()
@@ -213,7 +215,7 @@ async def request_design_proposal(
         "model": resolved.model,
         "messages": messages,
         "reasoning_effort": "minimal",
-        "max_completion_tokens": DESIGN_MAX_COMPLETION_TOKENS,
+        "max_completion_tokens": max_tokens,
         "response_format": {
             "type": "json_schema",
             "json_schema": {"name": schema_name, "strict": True, "schema": schema},
@@ -228,13 +230,13 @@ async def request_design_proposal(
 
     try:
         if client is None:
-            timeout = httpx.Timeout(DESIGN_MODEL_TIMEOUT_S, connect=15)
+            timeout = httpx.Timeout(timeout_seconds, connect=15)
             async with httpx.AsyncClient(timeout=timeout) as active:
                 response = await asyncio.wait_for(
-                    send(active), timeout=DESIGN_MODEL_TIMEOUT_S
+                    send(active), timeout=timeout_seconds
                 )
         else:
-            response = await asyncio.wait_for(send(client), timeout=DESIGN_MODEL_TIMEOUT_S)
+            response = await asyncio.wait_for(send(client), timeout=timeout_seconds)
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
         raise ModelClientError(
@@ -269,7 +271,8 @@ async def request_design_proposal(
             raise TypeError("candidate must be a JSON object")
     except (ValueError, TypeError, AttributeError):
         error = ModelClientError(
-            "Meta returned an incomplete or invalid design response. The project was not changed."
+            "Meta returned an incomplete or invalid design response. The project was not changed.",
+            failure_kind="design_format",
         )
         error.usage = _safe_design_usage(body, resolved) if isinstance(body, dict) else {}
         raise error from None

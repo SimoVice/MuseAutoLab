@@ -91,7 +91,12 @@ def describe_workflow(project: dict) -> dict:
     }
     if kind == "general":
         station = project.get("bench_station")
-        if station:
+        if project.get("concept_design"):
+            result.update(label="Custom laboratory equipment", status="supported_concept",
+                          capabilities=["custom geometry", "motion preview", "parts planning",
+                                        "assembly guide", "control software starter"],
+                          scope="Proposed mechanical assembly and software commissioning project.")
+        elif station:
             result.update(
                 label="Human-operated bench station",
                 status="supported_concept",
@@ -104,9 +109,8 @@ def describe_workflow(project: dict) -> dict:
         else:
             result.update(
                 capabilities=["discovery", "brief planning", "functional planning"],
-                scope="The recorded brief can be developed on request into proposed operations, "
-                      "equipment roles, data handoffs and acceptance checks. Specifications "
-                      "require review; arbitrary machine CAD, quotes and control are unavailable.",
+                scope="Develop proposed operations and acceptance checks, or design custom "
+                      "equipment with downloadable models, parts and assembly guidance.",
             )
     return result
 

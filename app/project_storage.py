@@ -91,6 +91,7 @@ class Snapshot(StrictModel):
     engineering: EngineeringState | None = None
     engineering_design: SavedDesign | None
     bench_station: dict[str, JsonValue] | None = None
+    custom_assembly_v1: dict[str, JsonValue] | None = None
     inspection_extension: dict[str, JsonValue] | None = None
     cold_transfer_extension: dict[str, JsonValue] | None = None
     labware_brief: SavedLabwareBrief | None = None
@@ -166,6 +167,8 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         "engineering_design": deepcopy(project.get("engineering_design")),
         **({"bench_station": deepcopy(project["bench_station"]["proposal"])}
            if project.get("bench_station") else {}),
+        **({"custom_assembly_v1": deepcopy(project["concept_design"]["proposal"])}
+           if project.get("concept_design") else {}),
         "platform_id": project.get("design", {}).get("platform", {}).get("id"),
         "engineering": state_for(project),
         "labware_brief": deepcopy(project.get("labware_brief")),
@@ -320,6 +323,17 @@ def restore_snapshot(snapshot: object) -> tuple[dict, list[dict]]:
             raise ValueError("A bench station cannot contain liquid-workflow artifacts.")
         project["bench_station"] = compile_station(
             StationProposal.model_validate(saved.bench_station), workspace_width_mm=width)
+        project["workflow"] = describe_workflow(project)
+    if saved.custom_assembly_v1 is not None:
+        from app.concept_design import compile_concept
+
+        if (inputs.workflow_kind != "general" or saved.revision < 1 or
+                any((saved.bench_station, saved.engineering_design, saved.foundation_id,
+                     saved.platform_id, saved.labware_brief, saved.labware_rack,
+                     saved.labware_plate,
+                     saved.tip_rack, saved.inspection_extension, saved.cold_transfer_extension))):
+            raise ValueError("A custom assembly must belong to its own general project.")
+        project["concept_design"] = compile_concept(saved.custom_assembly_v1, width)
         project["workflow"] = describe_workflow(project)
     if saved.inspection_extension is not None and not upgraded:
         from app.inspection import restore_extension

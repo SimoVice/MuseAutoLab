@@ -1,5 +1,55 @@
 # Delivery verification
 
+## Original equipment from two research briefs, 2026-11-03
+
+Two synthetic briefs went through the ordinary design conversation with Muse
+Spark Contributor. One asked for a sliding optical reader for translucent
+strips on a 550 mm bench. The other asked for a rotating card carrier under a
+fixed camera on a 700 mm bench. Model responses from these runs were also
+replayed to reproduce failures and check corrections without new inference.
+
+- **Optical reader.** Early geometry left the sensor suspended and a later
+  mounting arrangement crossed its path. The fitting pass produced a modeled
+  support. A separate chat revision added an opaque lift-off cover. Its
+  original 15 mm clearance would have placed the walls outside the base.
+  The 12 mm proposal passed the support and travel checks. The accepted
+  revision kept the seven existing components and added one modeled cover.
+  The 280 mm sensor travel extends past the samples. The registered read
+  positions fall at 14.3%, 32.1%, 50%, 67.9% and 85.7% of travel,
+  with an axis intersection checked against each of the five strip features.
+- **Rotary imaging station.** An early design aimed the camera at the hub.
+  Later tests checked the axis against a colored card primitive at a stated
+  pose. Three positive quarter turns now address successive positions.
+  An independent geometry check placed the red, green, blue and yellow card
+  under the camera in order. Only a physical optical setup could establish
+  image quality, focus, lighting and indexing repeatability.
+- **Purchasing.** The rotary station listed 16 proposed parts and supplies.
+  Three US product observations totaled $55.07 on the test date. They covered
+  the motor, controller board and driver. A separate live model call estimated
+  $118–$534 for the remaining 13 lines. The CSV downloaded from the running
+  site kept these estimates separate from the three dated supplier prices.
+  The optical reader's 12 lines had
+  a separate model planning range of $247–$1,032 for the listed items, with
+  zero verified supplier prices in that estimate. No purchase or hardware
+  test took place.
+- **Downloads and operation.** Reopened project files rebuilt the geometry
+  from the saved proposal. Browser checks exercised the 3D controls, actual
+  STEP downloads and narrow-screen layout. STEP reimport checked solid bodies.
+  The Python controller downloaded in the equipment bundle ran a local logical
+  sequence and exchanged commands with a test HTTP gateway. A mismatched
+  acknowledgement triggered a stop attempt.
+- **Liquid handling.** The compiled browser exercised the tube and plate
+  layouts, changed tip rack, preparation instructions, inspection camera
+  and gripper transfer. These UI regressions used synthetic provider
+  responses. All eight full Jubilee CAD tests passed, including independent
+  regeneration and STEP reimport.
+
+The release run passed 1,663 ordinary automated tests, plus the eight full
+Jubilee CAD tests run separately. TypeScript, the production web build and
+Ruff passed. A fresh Chrome profile opened the saved rotary project through
+the running site's file picker and displayed its model and current cached
+budget without another inference request.
+
 ## Cross-workflow check, 2026-11-02
 
 Four Muse Spark 1.3 Contributor responses used 36,534 reported tokens on

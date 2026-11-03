@@ -18,7 +18,8 @@ export default function CostSummary({ project, report }: { project: Project; rep
   const [expiryEpoch, setExpiryEpoch] = useState(0);
   const [estimateContext, setEstimateContext] = useState('');
   const manualRefresh = useRef(false);
-  const hasDesign = Boolean(project.engineering_design || project.bench_station);
+  const listedParts = Boolean(project.bench_station || project.concept_design);
+  const hasDesign = Boolean(project.engineering_design || listedParts);
   // A new supplier report invalidates the previous estimate once; failed calls never loop.
   const reportSignature = report ? JSON.stringify([report.report_id, report.expires_at, report.coverage, report.known_partial_subtotal]) : '';
   const contextKey = `${project.id}:${project.revision}:${reportSignature}`;
@@ -56,7 +57,7 @@ export default function CostSummary({ project, report }: { project: Project; rep
   const summary = current?.summary;
   const verified = report ? (report.coverage.fresh_priced_count && Date.parse(report.expires_at) > Date.now() ? report.known_partial_subtotal : null) : summary?.verified_count ? summary.verified_subtotal_usd : null;
   return <section className="cost-block cost-summary" aria-label="Project cost estimate" aria-busy={loading}>
-    <span>{project.bench_station ? 'Listed equipment & supplies' : 'Project cost'} · USD</span>
+    <span>{listedParts ? 'Listed equipment & supplies' : 'Project cost'} · USD</span>
     <strong>{!hasDesign ? 'Estimate appears with your design' : loading ? 'Estimating project cost…' : !summary ? 'Estimate unavailable' : summary.coverage_complete ? range(summary.project_total_low_usd, summary.project_total_high_usd) : summary.known_plus_estimated_low_usd != null && summary.known_plus_estimated_high_usd != null ? `${range(summary.known_plus_estimated_low_usd, summary.known_plus_estimated_high_usd)} covered items` : 'Partial cost estimate'}</strong>
     {hasDesign && <dl className="cost-breakdown">
       <div><dt>Verified supplier prices</dt><dd>{verified == null ? 'Not checked' : money(verified)}</dd></div>

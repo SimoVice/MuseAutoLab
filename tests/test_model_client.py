@@ -235,6 +235,24 @@ def test_network_failure_is_reported_without_secret():
     assert "test-only-key" not in str(error.value)
 
 
+@pytest.mark.parametrize("constraint,accepted", [
+    ("My bench is 550 mm wide.", True),
+    ("My bench is 550 mm deep.", False),
+    ("Width 450 mm and height 550 mm.", False),
+])
+def test_duplicate_width_citation_can_reuse_explicit_brief_measurement(constraint, accepted):
+    body = valid_response(workspace_width_mm=550, source_workspace_width_mm=None,
+                          brief_constraints=constraint, source_brief_constraints=constraint)
+    def handler(request):
+        return httpx.Response(200, json=body)
+    if accepted:
+        result, _ = run_turn(handler, message=constraint)
+        assert result.workspace_width_mm == 550
+    else:
+        with pytest.raises(ModelClientError):
+            run_turn(handler, message=constraint)
+
+
 @pytest.mark.parametrize(
     ("message", "source", "width"),
     [

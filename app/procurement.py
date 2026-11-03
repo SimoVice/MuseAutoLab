@@ -109,6 +109,27 @@ def project_with_report(project: dict, report: dict | None, estimate: dict | Non
 
 def procurement_groups(project: dict) -> list[dict]:
     """Use the accepted route's selected groups, never the legacy template BOM."""
+    if concept := project.get("concept_design"):
+        from app.concept_design import concept_sources
+
+        groups = []
+        by_url = {p.url: p for p in PRODUCTS.values()}
+        registry = concept_sources()
+        for part in concept["parts"]:
+            key = "concept-" + part["key"]
+            reference = registry.get(part.get("source_id"), {})
+            source = reference.get("purchase_url") or part.get("source_url")
+            option = {"id": key, "label": part["name"], "source_url": source,
+                      "compatibility_note": part.get("role") or
+                      "Review the material, fabrication method and hardware interface."}
+            if source and source in by_url:
+                product = by_url[source]
+                option.update(id=product.option_id, supplier=product.supplier, sku=product.sku)
+            elif source:
+                option["price_kind"] = "configuration_needed"
+            groups.append({"id": key, "quantity": part["quantity"], "component_ids": [part["key"]],
+                           "selected_id": option["id"], "is_candidate": True, "options": [option]})
+        return groups
     station = project.get("bench_station")
     if station:
         groups = []
@@ -150,7 +171,7 @@ def purchase_scope(project: dict, row: dict) -> dict:
             "pack_size", "pack_count", "price_source_url", "component_ids",
             "parent_group_id", "source_bom_url", "source_bom_row", "source_project_revision")
     parts = {part["id"]: part for part in project.get("design", {}).get("components", [])}
-    return {
+    scope = {
         **{key: deepcopy(row.get(key)) for key in keys},
         "geometry": [{key: deepcopy(parts[cid].get(key)) for key in
                       ("id", "size", "geometry", "profile_id", "source", "source_binding",
@@ -165,6 +186,17 @@ def purchase_scope(project: dict, row: dict) -> dict:
             and isinstance(module := project.get(name), dict)
         },
     }
+    if concept := project.get("concept_design"):
+        ids = set(row["component_ids"])
+        scope["geometry"] = [
+            {"key": p["key"], "role": p["role"], "size_mm": p["size_mm"],
+             "solids": [{k: solid[k] for k in ("shape", "size_mm", "center_mm")}
+                        for solid in p["primitives"]]}
+            for p in concept["components"] if p["key"] in ids]
+        scope["listed_parts"] = [
+            {k: p.get(k) for k in ("key", "quantity", "unit", "source_id", "role")}
+            for p in concept["parts"] if p["key"] in ids]
+    return scope
 
 
 def rebind_report(before: dict, after: dict, report: dict | None) -> dict | None:

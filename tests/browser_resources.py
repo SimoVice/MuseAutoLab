@@ -5,6 +5,7 @@ canonical instruction builder, revision changes and browser rendering are real.
 """
 
 import json
+import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -188,6 +189,15 @@ def run(url):
 
         page.route("**/procurement**", catalog)
         page.route("**/instructions**", instructions)
+        page.route("**/cost-estimate*", lambda route: route.fulfill(json={
+            "state": "current", "estimate": {"status": "failed", "rows": [], "exclusions": []},
+        }))
+
+        def verified_price(value):
+            row = page.locator(".cost-block .cost-breakdown > div").filter(
+                has_text="Verified supplier prices")
+            expect(row.locator("dd")).to_have_text(value)
+
         try:
             page.goto(url)
             page.wait_for_load_state("networkidle")
@@ -200,7 +210,8 @@ def run(url):
             harness.develop_layout(page)
             resources = page.locator(".project-resources")
             expect(resources).to_be_visible()
-            expect(page.locator(".cost-block")).to_contain_text("Not refreshed")
+            verified_price("Not checked")
+            expect(page.locator(".cost-block")).to_contain_text("Coverage not established")
             parts_button = resources.get_by_role("button", name="Parts & pricing")
             parts_button.focus()
             page.keyboard.press("Enter")
@@ -214,7 +225,9 @@ def run(url):
             expect(resources).to_contain_text("Quote needed")
             expect(resources).to_contain_text("FIXTURE-001")
             expect(resources).to_contain_text("Sourcing candidate for review")
-            expect(page.locator(".cost-block")).to_contain_text("Complete machine cost unknown")
+            verified_price("$50")
+            expect(page.locator(".cost-block")).to_contain_text(
+                "Complete project cost remains unknown")
             with page.expect_download() as download:
                 page.get_by_role("link", name="Download pricing JSON").click()
             assert download.value.suggested_filename
@@ -230,8 +243,10 @@ def run(url):
             page.get_by_role("button", name="Next step").click()
             expect(resources).to_contain_text("Step 2 of")
             if resources.get_by_role("button", name="Show", exact=False).count():
-                resources.get_by_role("button", name="Show", exact=False).first.click()
-                expect(page.locator(".selection-block")).not_to_contain_text("Select a component")
+                show_part = resources.get_by_role("button", name="Show", exact=False).first
+                label = show_part.inner_text().removeprefix("Show ").removesuffix(" in model")
+                show_part.click()
+                expect(page.locator(".selected-component-note > strong")).to_have_text(label)
             state["bad_report"] = True
             page.get_by_role("button", name="Build instructions").click()
             page.get_by_role("button", name="Build instructions").click()
@@ -244,7 +259,7 @@ def run(url):
                 page.get_by_role("button", name="Save project", exact=True).click()
             page.get_by_label("Open saved project").set_input_files(saved.value.path())
             expect(page.locator(".storage-notice")).to_contain_text("rebuilt")
-            expect(page.locator(".cost-block")).to_contain_text("Not refreshed")
+            verified_price("Not checked")
             page.get_by_role("button", name="Parts & pricing").click()
             expect(resources).to_contain_text("downloads are disabled")
             expect(resources.get_by_role("link", name="Download pricing JSON")).to_have_count(0)
@@ -260,11 +275,13 @@ def run(url):
             page.get_by_role("button", name="Refresh US prices", exact=True).click()
             expect(resources.locator(".pricing-summary")).to_contain_text("$50.00")
             harness.send_chat(page, "Lower the bed by another 30 mm.", "Checking")
-            expect(page.locator(".cost-block")).to_contain_text("Not refreshed")
+            verified_price("Not checked")
             page.get_by_role("button", name="Parts & pricing").click()
             expect(resources).to_contain_text("downloads are disabled")
             expect(resources.get_by_role("link", name="Download pricing JSON")).to_have_count(0)
             page.set_viewport_size({"width": 390, "height": 844})
+            page.get_by_role("navigation", name="Workspace view").get_by_role(
+                "button", name="Design", exact=True).click()
             page.get_by_role("button", name="Build instructions").click()
             expect(resources.locator(".instruction-step")).to_be_visible()
             assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
@@ -279,6 +296,54 @@ def run(url):
             html = Path(guide_download.value.path()).read_text(encoding="utf8")
             current = projects[-1]
             assert current["id"] in html and str(current["revision"]) in html
+            # The visible guide uses human names while JSON keeps canonical IDs.
+            from html.parser import HTMLParser
+
+            class Text(HTMLParser):
+                def __init__(self):
+                    super().__init__()
+                    self.text = []
+
+                def handle_data(self, value):
+                    self.text.append(value)
+
+            guide_response = page.request.get(
+                f"{url}api/projects/{current['id']}/instructions?revision={current['revision']}")
+            assert guide_response.ok, guide_response.text()
+            canonical_guide = guide_response.json()
+            parser = Text()
+            parser.feed(html)
+            visible_export = " ".join(parser.text)
+            human_names = canonical_guide["presentation_names"]
+            codes = [key for key, name in human_names.items()
+                     if ("-" in key or "_" in key) and key != name]
+            def assert_readable(text):
+                for code in codes:
+                    pattern = r"(?<![\w./\\-])" + re.escape(code) + r"(?![\w/\\-]|\.[A-Za-z0-9])"
+                    assert not re.search(pattern, text), (code, text)
+            assert_readable(visible_export)
+            observed_steps = []
+            for index, step in enumerate(canonical_guide["steps"]):
+                page.get_by_label("Go to step").select_option(str(index))
+                card = resources.locator(".instruction-step")
+                detail = card.locator("details")
+                if detail.count():
+                    detail.locator("summary").click()
+                assert_readable(card.inner_text())
+                for part in step["parts"]:
+                    expect(card.get_by_role("button", name=f"Show {part['label']} in model",
+                                            exact=True)).to_be_visible()
+                for source in step["sources"]:
+                    expect(card.get_by_role("link", name=source["title"], exact=True)
+                           ).to_have_attribute("href", source["url"])
+                observed_steps.append(step["title"])
+            (harness.ROOT / ".local/readable-instructions-browser-result.json").write_text(
+                json.dumps({"status": "passed", "revision": current["revision"],
+                            "steps": observed_steps, "raw_codes_hidden": codes,
+                            "source_links_match": True,
+                            "scope": "Compiled Chrome with offline model/price fixtures"},
+                           indent=2),
+                encoding="utf-8")
             stale = page.request.get(
                 f"{url}api/projects/{current['id']}/instructions/download"
                 f"?revision={current['revision'] - 1}&format=html"
@@ -298,7 +363,7 @@ def run(url):
             expect(resources.locator(".pricing-summary")).to_contain_text(
                 "No fresh prices", timeout=5000
             )
-            expect(page.locator(".cost-block")).to_contain_text("No fresh prices")
+            verified_price("Not checked")
             expect(resources.get_by_role("alert")).to_contain_text(
                 "Saved report temporarily unavailable"
             )
@@ -311,7 +376,7 @@ def run(url):
                 resources.get_by_role("button", name="Refresh US prices", exact=True)
             ).to_be_enabled()
             assert len(cache_reads) > reads_before_focus
-            expect(page.locator(".cost-block")).to_contain_text("No fresh prices")
+            verified_price("Not checked")
             state["fail_cache"] = False
             page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
             expect(
@@ -320,6 +385,7 @@ def run(url):
             assert len(refreshes) == 4, (
                 "Expiry, focus and visibility must never trigger supplier refresh"
             )
+            page.set_viewport_size({"width": 1440, "height": 1000})
             harness.send_chat(
                 page, "How do I buy the pieces and assemble this?", "Build instructions"
             )

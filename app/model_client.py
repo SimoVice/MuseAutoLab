@@ -137,8 +137,9 @@ missing question about process/throughput, existing equipment, bench space, budg
 assembly skills/time or priorities. Do not repeat known facts or demand every optional
 field before helping. Propose suitable alternatives with reasons and concrete tradeoffs.
 Explain the buy-assembled route versus building open hardware before choosing a base.
-Never automatically choose Jubilee. No 3D design runs until a platform is explicitly
-selected. 'Prebuilt dock' normally means an assembled automation base; if the context
+Never automatically choose Jubilee. Liquid workstation design requires an explicitly
+selected platform. Custom equipment can be designed directly from its own brief.
+'Prebuilt dock' normally means an assembled automation base; if the context
 could mean a pipette holder instead, ask one short clarifying question.
 Return engineering.requirements only for facts supplied in this message, with literal
 supporting sources; fields: procurement (prebuilt/open_hardware), budget, throughput,
@@ -219,9 +220,12 @@ inspecting tubes, mixing with a stirrer, and mentioning a pipette alone do not e
 workflow. Classify the operation, not merely its objects.
 For non-liquid tasks record available space, temperature and equipment in the generic brief
 fields; keep module-specific quantity and cooling fields null.
-General concept planning may reason about candidate approaches but never claim 3D models, costs,
-simulation results, build files or validated hardware already exist. 3D simulation and build
-packages are only available for the liquid preparation workflow.
+For other laboratory equipment the develop_concept action can author a new assembly from the
+brief. Use it for explicit requests to design, build a digital project or revise a custom machine,
+even when its task is outside the bench station operations. Record general as the workflow and
+ground the brief in the user's own words. Choose parts and design details in the design action;
+do not require the user to name parts or know the design ahead of time. For questions explain or
+clarify. State that a project exists only when the supplied state includes an accepted design.
 For a liquid preparation task with an accepted selected-platform design, once stock, targets,
 final volume and equipment are supplied, invite review and confirmation. If no platform is
 selected, discuss the needs and platform options first. If stock is missing after targets and
@@ -592,7 +596,7 @@ class ChatAction(BaseModel):
                   "show_build_plan", "develop_labware", "remove_labware", "select_labware",
                   "select_tip_rack", "show_tip_rack_options", "add_cold_transfer",
                   "remove_cold_transfer", "discuss_cold_transfer", "clarify_cold_transfer",
-                  "develop_bench_station"]
+                  "develop_bench_station", "develop_concept"]
     operations: list[Literal["weigh", "print_label", "read_barcode", "inspect"]] | None = None
     operation_sources: StationOperationSources | None = None
     cold_transfer: ColdTransferGrounding | None = None
@@ -1117,6 +1121,14 @@ async def generate_turn(
         "engineering": state_for(project),
         "bench_station": _bench_station_facts(project),
     }
+    if concept := project.get("concept_design"):
+        state["custom_assembly"] = {
+            "title": concept["title"], "overview": concept["overview"],
+            "footprint_mm": concept["footprint_mm"], "parts": concept["parts"],
+            "operations": concept["steps"], "software": concept["software"],
+            "open_questions": concept["open_questions"],
+        }
+        state["reviewed_reference_library"]["architecture"] = "Custom concept assembly"
     from app.platform_profiles import platform_profiles
 
     state["reviewed_platforms"] = platform_profiles()
@@ -1146,7 +1158,7 @@ async def generate_turn(
         "assumptions", "provenance",
     )} if rack else None)
     accepted_layout = bool(project.get("engineering_design"))
-    if not accepted_layout and not state["bench_station"]:
+    if not accepted_layout and not state["bench_station"] and not project.get("concept_design"):
         state["reviewed_reference_library"]["geometry_bindings"] = []
         state["reviewed_reference_library"]["architecture"] = (
             "Workflow discovery; no accepted machine design"
@@ -1172,6 +1184,16 @@ async def generate_turn(
                 } if project.get("inspection_extension") else None),
             }
         )
+    if concept := state.get("custom_assembly"):
+        pricing = {}
+        for key in ("procurement_report", "cost_estimate"):
+            record = project.get(key)
+            if record and (record.get("project_id"), record.get("project_revision")) == (
+                    project["id"], project["revision"]):
+                pricing[key] = {field: record.get(field) for field in (
+                    "status", "summary", "expires_at", "coverage", "known_partial_subtotal")}
+        state = {"brief": state["brief"], "workflow": workflow, "custom_assembly": concept,
+                 "pricing": pricing, "market": "US", "currency": "USD"}
     focused_tip_turn = is_tip_only_turn(project, user_message)
     response_model = TipRackTurn if focused_tip_turn else ExtractedTurn
     focused_instructions = (
@@ -1257,6 +1279,17 @@ async def generate_turn(
             # Keeping the existing kind needs no new evidence or state change.
             result.workflow_kind = None
         result.normalize_container_volume_scope(user_message)
+        # Sometimes the same explicit width is cited for the brief but its
+        # duplicate numeric field lacks a citation. Reuse only an unambiguous
+        # literal width statement. verify_sources still checks the conversion.
+        constraints = result.source_brief_constraints
+        if (result.workspace_width_mm is not None and not result.source_workspace_width_mm
+                and constraints and constraints in user_message
+                and len(WIDTH_PATTERN.findall(constraints)) == 1
+                and re.search(r"\b(wide|width|larghezza)\b", constraints, re.I)
+                and not re.search(r"\b(not|no|height|deep|depth|tall|previous|old)\b",
+                                  constraints, re.I)):
+            result.source_workspace_width_mm = constraints
         for key in BRIEF_KEYS:
             value = getattr(result, key)
             source = getattr(result, f"source_{key}")
@@ -1349,7 +1382,12 @@ async def generate_turn(
 
 
 BENCH_STATION_INSTRUCTIONS = """
-General workflows can develop a reusable NON-LIQUID benchtop station concept using
+For a complete custom machine, mechanism or assembly, use develop_concept. For a previously
+generated custom_assembly use develop_concept for requested modifications and answer questions
+from the current assembly. Use only the appropriate engineering action, citing the user's
+literal request. Never add hardware during discovery, a comparison, or a negative request.
+Keep existing liquid machines on their established design route. The following narrower adapter
+supports general workflows that request a human-operated benchtop station using
 develop_bench_station. Supported ordered operations are weigh, print_label,
 read_barcode, inspect. print_label means printing only, with manual application;
 it never implements automatic label application. An explicit request to design,

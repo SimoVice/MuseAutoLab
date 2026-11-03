@@ -93,6 +93,7 @@ app = FastAPI(title="MuseAutoLab", version="0.1.0")
 
 class MessageRequest(BaseModel):
     message: Annotated[str, Field(min_length=1, max_length=4000)]
+    project_revision: int | None = Field(default=None, ge=0)
 
     @field_validator("message")
     @classmethod
@@ -458,7 +459,8 @@ async def refresh_cost_estimate(
         async with session.estimate_lock:
             async with session.model_lock():
                 _check_procurement_revision(session.project, payload.project_revision)
-                if not any(session.project.get(k) for k in ("engineering_design", "bench_station")):
+                if not any(session.project.get(k) for k in (
+                        "engineering_design", "bench_station", "concept_design")):
                     raise HTTPException(
                         status_code=409, detail="Develop a design before estimating its cost."
                     )
@@ -496,7 +498,8 @@ async def refresh_project_procurement(
         async with session.procurement_lock:
             async with session.model_lock():
                 _check_procurement_revision(session.project, payload.project_revision)
-                if not any(session.project.get(k) for k in ("engineering_design", "bench_station")):
+                if not any(session.project.get(k) for k in (
+                        "engineering_design", "bench_station", "concept_design")):
                     raise HTTPException(
                         status_code=409, detail="Develop a machine before refreshing its parts."
                     )
@@ -649,6 +652,8 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
     # Serialize each project's turns: a slow model call cannot overwrite a newer revision.
     async with session.model_lock():
         current = session.project
+        if request.project_revision is not None:
+            _check_procurement_revision(current, request.project_revision)
         from app.cold_transfer import (
             apply_cold_transfer,
             clear_cold_transfer,
@@ -668,6 +673,9 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 )
                 from app.bench_station_chat import clarification_turn
                 turn = clarification_turn(turn, request.message, current)
+                if (current.get("concept_design") or
+                        any(action.kind == "develop_concept" for action in turn.actions)):
+                    return await _custom_assembly_turn(session, turn, request.message, usage)
                 cold_intent = semantic_cold_transfer_intent(turn, request.message, current)
             except ModelClientError as exc:
                 cold_intent = (offline_cold_transfer_intent(request.message)
@@ -989,6 +997,129 @@ async def functional_plan(project_id: str, request: ProcurementRefreshRequest) -
             "model_request": session.model, "brief": deepcopy(brief),
         }
         return deepcopy(session.functional_plan)
+
+
+async def _custom_assembly_turn(session, turn, message, usage):
+    from app.concept_agent import attach_concept, develop_concept
+    from app.concept_design import compile_concept
+
+    previous = session.project
+    design = previous.get("concept_design")
+    actions = {a.kind for a in turn.actions}
+    updated = previous
+    calls = []
+    status = "ready"
+    reply = turn.assistant_message
+    if (previous.get("bench_station") or previous.get("engineering_design") or
+            state_for(previous).get("selected_platform_id") or
+            previous["workflow"]["kind"] == "liquid_preparation"):
+        reply = "Start a new project for a custom assembly so you can keep this workstation."
+    elif turn.workflow_kind == "liquid_preparation" and design:
+        reply = "Start a new project for a liquid-handling workstation to keep this assembly."
+    elif actions & {"develop_concept", "develop_layout"}:
+        patch = {k: v for k, v in turn.patch().items()
+                 if k.startswith("brief_") or k == "workspace_width_mm"}
+        if not (previous["brief"].get("objective") or patch.get("brief_objective") or
+                previous["brief"].get("process") or patch.get("brief_process")):
+            patch["brief_objective"] = message[:1000]
+        candidate = apply_update(previous, {**patch, "workflow_kind": "general"})
+        try:
+            compiled, reply, calls = await develop_concept(
+                candidate, message, history=session.history)
+        except ModelClientError as exc:
+            if exc.failure_kind != "concept_validation":
+                raise
+            compiled, reply = None, str(exc)
+            calls = getattr(exc, "model_calls", [])
+        if compiled is not None:
+            updated = attach_concept(previous, candidate, compiled)
+            status = "accepted"
+        else:
+            status = "needs_input"
+            if not design:
+                updated = candidate
+    elif design and turn.workspace_width_mm is not None:
+        candidate = apply_update(previous, {"workspace_width_mm": turn.workspace_width_mm})
+        compiled = compile_concept(design["proposal"], turn.workspace_width_mm)
+        updated = attach_concept(previous, candidate, compiled)
+        status = "accepted"
+        reply = "The assembly layout and downloads now use the updated bench width."
+    elif design and "show_files" in actions:
+        reply += " Download the complete package in the design workspace to use it offline."
+    if updated is not previous:
+        _accept_project(session, updated)
+    session.history.extend([{"role": "user", "content": message},
+                            {"role": "assistant", "content": reply}])
+    session.history = session.history[-8:]
+    return {"project": deepcopy(updated), "assistant_message": reply, "usage": usage,
+            "recommendations": [], "action_runs": [
+                {"kind": "develop_concept", "status": status, "message": reply,
+                 "model_calls": calls}
+            ]}
+
+
+@app.post("/api/projects/{project_id}/concept")
+async def generate_custom_project(project_id: str, request: ProcurementRefreshRequest) -> dict:
+    from app.concept_agent import attach_concept, develop_concept
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        project = session.project
+        _check_procurement_revision(project, request.project_revision)
+        if project.get("concept_design"):
+            return {"project": deepcopy(project), "assistant_message": "Your assembly is ready."}
+        if (project["workflow"]["kind"] != "general" or project.get("bench_station") or
+                not (project["brief"].get("objective") or project["brief"].get("process"))):
+            raise HTTPException(409, "Describe the custom equipment in a new general brief first.")
+        instruction = "Design a custom laboratory assembly for my recorded brief."
+        try:
+            compiled, reply, calls = await develop_concept(
+                project, instruction, history=session.history)
+        except ModelClientError as exc:
+            raise HTTPException(502, str(exc)) from None
+        if compiled is not None:
+            project = attach_concept(project, deepcopy(project), compiled)
+            _accept_project(session, project)
+        session.history.extend([{"role": "user", "content": instruction},
+                                {"role": "assistant", "content": reply}])
+        session.history = session.history[-8:]
+        return {"project": deepcopy(project), "assistant_message": reply, "model_calls": calls}
+
+
+@app.get("/api/projects/{project_id}/concept/{asset:path}")
+async def download_custom_asset(project_id: str, asset: str, revision: int) -> Response:
+    from starlette.concurrency import run_in_threadpool
+
+    from app.concept_cad import ConceptCADUnavailable
+    from app.concept_files import price_record_for_project, render_asset
+
+    session = session_for(project_id)
+    async with session.model_lock():
+        _check_procurement_revision(session.project, revision)
+        design = session.project.get("concept_design")
+        if design is None:
+            raise HTTPException(404, "Generate a custom assembly first.")
+        price_record = (price_record_for_project(
+            session.project, session.procurement_report, session.cost_estimate)
+            if asset in ('package.zip', 'parts.csv') else None)
+    try:
+        data, mime = await run_in_threadpool(render_asset, design, project_id, revision, asset,
+                                           price_record=price_record)
+    except KeyError:
+        raise HTTPException(404, "This file is unavailable for the current assembly.") from None
+    except ConceptCADUnavailable:
+        raise HTTPException(
+            503, "STEP export requires the optional CAD installation. Install the project's "
+            "CAD dependencies and restart the server."
+        ) from None
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    name = asset.rsplit("/", 1)[-1]
+    disposition = "inline" if asset == "guide.html" else "attachment"
+    return Response(data, media_type=mime, headers={
+        "Content-Disposition": f'{disposition}; filename="{name}"', "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 @app.get("/api/projects/{project_id}/brief")

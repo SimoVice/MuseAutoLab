@@ -498,7 +498,7 @@ async def estimate_project_prices(
         report.update(status="ready" if report["rows"] else "partial", issue=None)
         _summarize(report)
         return report
-    if not (project.get("engineering_design") or project.get("bench_station")):
+    if not any(project.get(k) for k in ("engineering_design", "bench_station", "concept_design")):
         report.update(
             status="failed", issue="Develop a project concept before estimating its parts."
         )

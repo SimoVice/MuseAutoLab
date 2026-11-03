@@ -9,6 +9,7 @@ use the engineering references for the adapters relevant to your project.
 ## Start here
 
 - [Platform](platform.md) — the research-to-design workflow, modular architecture and current scope.
+- [Custom equipment](custom-equipment.md) — design a new assembly, inspect its moving parts, download the models and run its controller preview.
 - [Getting started](getting-started.md) — pinned installation, configuration and local servers. Choose **New project** to describe your task.
 - [Liquid handling](use-cases/liquid-handling.md) — the first deeply implemented engineering path, platform choices and saved examples.
 

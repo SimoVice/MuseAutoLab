@@ -37,17 +37,27 @@ function timeAware(data: ProcurementResponse): ProcurementResponse {
       stale_priced_count: rows.filter((row) => row.last_known_line_total != null).length } } };
 }
 
+function readable(text: string, guide: InstructionGuide): string {
+  const names = guide.presentation_names ?? Object.fromEntries(guide.parts.map(part => [part.component_id, part.label]));
+  const prefix = Object.keys(names).find(key => text.startsWith(`${key}:`));
+  const value = prefix ? names[prefix] + text.slice(prefix.length) : text;
+  const keys = Object.keys(names).filter(key => /[-_]/.test(key)).sort((a, b) => b.length - a.length);
+  if (!keys.length) return value;
+  const escaped = keys.map(key => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return value.replace(new RegExp(`(?<![\\w./\\\\-])(${escaped.join('|')})(?![\\w/\\\\-]|\\.[A-Za-z0-9])`, 'g'), key => names[key]);
+}
+
 function Step({ step, guide, onSelect }: { step: InstructionStep; guide: InstructionGuide; onSelect: Props['onSelect'] }) {
   const status = { ready: 'Review step', reference_only: 'Follow source guide', needs_design: 'Design required' }[step.status];
   return <article className="instruction-step" aria-label={step.title}>
     <div className="resource-heading"><h3>{step.title}</h3><span className={`resource-status ${step.status === 'needs_design' ? 'attention' : ''}`}>{status}</span></div>
     {step.prerequisites.length > 0 && <p className="resource-note">Before this step: {step.prerequisites.map((id) => guide.steps.find((item) => item.id === id)?.title ?? id).join('; ')}.</p>}
     {step.component_ids.length > 0 && <div className="instruction-parts" aria-label="Parts in this step">{step.component_ids.map((id) => <button key={id} type="button" onClick={() => onSelect(id)}>Show {guide.parts.find((part) => part.component_id === id)?.label ?? id} in model</button>)}</div>}
-    <ol className="instruction-actions">{step.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}</ol>
-    {step.engineering_tasks.length > 0 && <div className="instruction-blockers"><h4>Resolve before building</h4>{step.engineering_tasks.map((task) => <div key={task.id}><p>{task.action}</p><ul>{(Array.isArray(task.acceptance_criteria) ? task.acceptance_criteria : [task.acceptance_criteria]).map((criterion, index) => <li key={index}>{criterion}</li>)}</ul></div>)}</div>}
-    {step.checks.length > 0 && <div><h4>Check before continuing</h4><ul>{step.checks.map((check, index) => <li key={index}>{check}</li>)}</ul></div>}
+    <ol className="instruction-actions">{step.instructions.map((instruction, index) => <li key={index}>{readable(instruction, guide)}</li>)}</ol>
+    {step.engineering_tasks.length > 0 && <div className="instruction-blockers"><h4>Resolve before building</h4>{step.engineering_tasks.map((task) => <div key={task.id}><p>{readable(task.action, guide)}</p><ul>{(Array.isArray(task.acceptance_criteria) ? task.acceptance_criteria : [task.acceptance_criteria]).map((criterion, index) => <li key={index}>{readable(criterion, guide)}</li>)}</ul></div>)}</div>}
+    {step.checks.length > 0 && <div><h4>Check before continuing</h4><ul>{step.checks.map((check, index) => <li key={index}>{readable(check, guide)}</li>)}</ul></div>}
     {(step.required_tools.length > 0 || step.required_materials.length > 0 || step.parts.length > 0) && <details className="resource-detail"><summary>Parts, tools and materials</summary>
-      <ul>{step.required_tools.map((tool, index) => <li key={`tool-${index}`}>Tool: {tool.label}</li>)}{step.required_materials.map((material, index) => <li key={`material-${index}`}>Material: {material.label}</li>)}{step.parts.map((part) => <li key={part.component_id}>{part.label} ({part.component_id}) · {part.slot_id ? `slot ${part.slot_id}` : `center ${part.position_mm.join(', ')} mm`} · {part.geometry_basis.replace(/_/g, ' ')}{part.selected_variants.map((variant) => <div key={variant.group_id}>Selected: {variant.label} · procurement group quantity {variant.quantity}{sourceUrl(variant.source_url) && <> · <a href={sourceUrl(variant.source_url)} target="_blank" rel="noopener noreferrer">Component source</a></>}</div>)}</li>)}</ul>
+      <ul>{step.required_tools.map((tool, index) => <li key={`tool-${index}`}>Tool: {tool.label}</li>)}{step.required_materials.map((material, index) => <li key={`material-${index}`}>Material: {material.label}</li>)}{step.parts.map((part) => <li key={part.component_id}>{part.label} · {part.slot_id ? `slot ${part.slot_id}` : `center ${part.position_mm.join(', ')} mm`} · {part.geometry_basis.replace(/_/g, ' ')}{part.selected_variants.map((variant) => <div key={variant.group_id}>Selected: {variant.label} · selected quantity {variant.quantity}{sourceUrl(variant.source_url) && <> · <a href={sourceUrl(variant.source_url)} target="_blank" rel="noopener noreferrer">Component source</a></>}</div>)}</li>)}</ul>
       <p className="resource-note">{guide.coordinate_system}</p>
     </details>}
     {step.sources.length > 0 && <div className="instruction-sources"><h4>Source instructions</h4>{step.sources.map((source) => <div key={source.id}><a href={sourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a><small>{source.scope} · checked {source.checked_on}</small></div>)}</div>}

@@ -41,6 +41,7 @@ class _FakeTurn:
     def __init__(self, assistant_message: str, patch_data: dict) -> None:
         self.assistant_message = assistant_message
         self._patch_data = dict(patch_data)
+        self.workflow_kind = patch_data.get("workflow_kind")
         self.recommendations = []
         self.actions = []
         self.labware = LabwareUpdate()

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from copy import deepcopy
 from pathlib import Path
 from urllib.parse import quote, urlsplit
@@ -127,6 +128,41 @@ def _vector_text(value) -> str:
         return f"{0 if rounded == 0 else rounded:.1f}".rstrip("0").rstrip(".")
 
     return "[" + ", ".join(number(item) for item in value) + "]"
+
+
+def presentation_names(project: dict, steps: list[dict] = ()) -> dict[str, str]:
+    """Map internal identities to labels without changing canonical export data."""
+    names = {part["id"]: part.get("label", part["id"].replace("-", " "))
+             for part in (project.get("design") or {}).get("components", [])}
+    names.update({step["id"]: step["title"] for step in steps})
+    for group in (project.get("sourcing") or {}).get("groups", []):
+        names[group["id"]] = group.get("label", group["id"].replace("-", " "))
+        for option in group.get("options", []):
+            names[option["id"]] = option.get("label", option["id"].replace("-", " "))
+    for ref in project_source_basis(project).get("references", []):
+        names[ref["id"]] = ref["title"]
+    for key in ("labware_plate", "tip_rack"):
+        module = project.get(key) or {}
+        profile = module.get("profile") or {}
+        if module.get("profile_id"):
+            names[module["profile_id"]] = profile.get("display_name", "Selected labware profile")
+    return names
+
+
+def readable_text(text: object, names: dict[str, str]) -> str:
+    """Replace known codes in prose once; preserve dimensions and source addresses."""
+    value = str(text)
+    codes = {key: label for key, label in names.items() if "-" in key or "_" in key}
+    # Plain identities such as "base" are only codes when used as a placement label.
+    for key, label in names.items():
+        if value.startswith(key + ":"):
+            value = label + value[len(key):]
+            break
+    if not codes:
+        return value
+    tokens = "|".join(re.escape(k) for k in sorted(codes, key=len, reverse=True))
+    pattern = r"(?<![\w./\\-])(" + tokens + r")(?![\w/\\-]|\.[A-Za-z0-9])"
+    return re.sub(pattern, lambda match: codes[match.group(0)], value)
 
 
 def build_instruction_guide(project: dict, procurement: dict | None = None) -> dict:
@@ -1076,6 +1112,7 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
     }
     return {
         "schema_version": 1,
+        "presentation_names": presentation_names(project, steps),
         "project_id": project.get("id", "unknown"),
         "project_revision": project.get("revision", 0),
         "revision": project.get("revision", 0),
@@ -1107,11 +1144,13 @@ def build_instruction_guide(project: dict, procurement: dict | None = None) -> d
     }
 
 
-def step_details_html(step: dict) -> str:
+def step_details_html(step: dict, *, names: dict[str, str] | None = None) -> str:
     """Render escaped extra fields shared by immediate and packaged guides."""
 
+    names = names or {}
+
     def esc(value):
-        return html.escape(str(value), quote=True)
+        return html.escape(readable_text(value, names), quote=True)
 
     def attribution(source):
         if source.get("publisher"):
@@ -1125,20 +1164,22 @@ def step_details_html(step: dict) -> str:
             variants = []
             for variant in part["selected_variants"]:
                 label = esc(
-                    f"{variant['group_id']}: {variant['variant_id']} ({variant['label']}); "
-                    f"group quantity {variant['quantity']}"
+                    f"{variant['label']}; purchase group quantity {variant['quantity']}"
                 )
                 url = _safe_url(variant.get("source_url"))
-                variants.append(f'<a href="{esc(url)}">{label}</a>' if url else label)
+                variants.append(
+                    f'<a href="{html.escape(url, quote=True)}">{label}</a>' if url else label)
             selected = "; ".join(variants) or "No specific catalogue variant selected"
             rows.append(
-                f"<li><strong>{esc(part['component_id'])}</strong>: "
-                f"1 geometry instance; {selected}</li>"
+                f"<li><strong>{esc(part['label'])}</strong>: "
+                f"shown once in the model; {selected}</li>"
             )
         sections.append("<h4>Parts and selected variants</h4><ul>" + "".join(rows) + "</ul>")
     if step.get("prerequisites"):
         sections.append(
-            "<h4>Prerequisites</h4><p>" + esc(", ".join(step["prerequisites"])) + "</p>"
+            "<h4>Before this step</h4><p>"
+            + esc("; ".join(names.get(key, key.replace("-", " "))
+                            for key in step["prerequisites"])) + "</p>"
         )
     if step.get("engineering_tasks"):
         sections.append(
@@ -1158,7 +1199,7 @@ def step_details_html(step: dict) -> str:
             sections.append(
                 f"<h4>{title}</h4><ul>"
                 + "".join(
-                    f"<li>{esc(item['label'])} (source: {esc(item['source_id'])})</li>"
+                    f"<li>{esc(item['label'])}</li>"
                     for item in step[key]
                 )
                 + "</ul>"
@@ -1167,7 +1208,8 @@ def step_details_html(step: dict) -> str:
         sections.append(
             "<h4>Primary instructions and references</h4><ul>"
             + "".join(
-                f'<li><a href="{esc(_safe_url(source["url"]))}" rel="noreferrer">'
+                f'<li><a href="{html.escape(_safe_url(source["url"]), quote=True)}" '
+                'rel="noreferrer">'
                 f"{esc(source['title'])}</a>{attribution(source)}"
                 f" — checked {esc(source['checked_on'])}. {esc(source['scope'])}</li>"
                 for source in step["sources"]
@@ -1221,7 +1263,9 @@ def cost_estimate_html(guide: dict) -> str:
             + esc("; ".join(row["assumptions"]) or "No model assumptions; see price status.")
             + "</p>"
             + (
-                "<p>Excluded groups: " + esc(", ".join(row["excluded_group_ids"])) + "</p>"
+                "<p>Excluded items: "
+                + esc(", ".join(guide.get("presentation_names", {}).get(key, key.replace("-", " "))
+                                for key in row["excluded_group_ids"])) + "</p>"
                 if row["excluded_group_ids"]
                 else ""
             )
@@ -1271,15 +1315,17 @@ def software_guidance_html(guide: dict) -> str:
         for source in software["sources"]
     )
     limits = "".join(f"<li>{esc(limit)}</li>" for limit in software["limitations"])
-    configuration = esc(json.dumps(software["protocol_template"], indent=2, sort_keys=True))
+    parameters = "".join(f"<li>{esc(item)}</li>" for item in
+                         software["protocol_template"]["unresolved_parameters"])
     return (
         '<section class="card"><h2>Software &amp; protocols</h2>'
         f"<p>{esc(software['reusable_hardware'])}</p>"
         f"<p>{esc(software['current_preparation'])}</p>{recommendations}"
         f"<h3>Create another pipetting protocol</h3><ol>{steps}</ol>"
         f"<h3>Scope and checks</h3><ul>{limits}</ul><ul>{sources}</ul>"
-        "<details><summary>Current protocol configuration (not executable)</summary>"
-        f'<pre style="white-space:pre-wrap;overflow-wrap:anywhere">{configuration}</pre>'
+        "<details><summary>Parameters to complete before hardware use</summary>"
+        f"<ul>{parameters}</ul><p>The separate protocol template preserves the exact "
+        "machine-readable configuration for this revision (not executable).</p>"
         "</details></section>"
     )
 

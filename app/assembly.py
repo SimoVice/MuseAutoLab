@@ -246,7 +246,7 @@ def _svg_rects(components: list[dict], highlight: set[str]) -> str:
             f'font-size="10" fill="#123331">{number}</text>'
             f'<rect x="530" y="{24 + number * 27}" width="12" height="12" fill="{fill}"/>'
             f'<text x="551" y="{35 + number * 27}" font-size="13" '
-            f'fill="#123331">{number}. {html.escape(cid)}</text>'
+            f'fill="#123331">{number}. {label}</text>'
         )
     parts.extend(markers)
     parts.append("</svg>")
@@ -288,19 +288,22 @@ def _design_provenance_html(project: dict) -> str:
         + model_choices
         + "The application checked and compiled the proposal; these checks do not establish "
         "hardware feasibility. The full accepted proposal and provenance are in "
-        "project.json under engineering_design.</p></div>"
+        "project.json.</p></div>"
     )
 
 
 def _source_basis_html(project: dict) -> str:
+    from app.instructions import presentation_names, readable_text
+
     basis = project.get("design_basis")
     if not basis:
         return ""
     rows = []
+    names = presentation_names(project)
     bindings = "".join(
-        f"<tr><td>{html.escape(item['component_id'])}</td>"
-        f"<td>{html.escape(item['basis'])}</td>"
-        f"<td>{html.escape(item['reference_id'] or 'Custom concept')}</td>"
+        f"<tr><td>{html.escape(names.get(item['component_id'], 'Project component'))}</td>"
+        f"<td>{html.escape(item['basis'].replace('_', ' '))}</td>"
+        f"<td>{html.escape(readable_text(item['reference_id'] or 'Custom concept', names))}</td>"
         f"<td>{html.escape(item['detail'])}</td></tr>"
         for item in basis["bindings"]
     )
@@ -323,12 +326,18 @@ def _source_basis_html(project: dict) -> str:
         "<th>Use</th><th>Scope</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table></div><p>Revision-pinned source records and component bindings are "
-        "in project.json and cad/geometry-report.json under design_basis.</p></section>"
+        "preserved in project.json and cad/geometry-report.json.</p></section>"
     )
 
 
 def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = None) -> bytes:
-    from app.instructions import procurement_html, software_guidance_html, step_details_html
+    from app.instructions import (
+        presentation_names,
+        procurement_html,
+        readable_text,
+        software_guidance_html,
+        step_details_html,
+    )
 
     pid = html.escape(_project_id(project))
     rev = _revision(project)
@@ -359,10 +368,10 @@ def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = N
             "No control driver, dynamics validation or laboratory test is implemented.",
         ]
     comp_rows = []
+    names = presentation_names(project, steps)
     for comp in _components(project):
         comp_rows.append(
-            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
-                html.escape(str(comp.get("id", ""))),
+            "<tr><td>{}</td><td>{}</td><td>{}</td></tr>".format(
                 html.escape(str(comp.get("label", ""))),
                 html.escape(_display_vector(comp.get("position", ""), ", ")),
                 html.escape(_display_vector(comp.get("size", ""), " × ")),
@@ -370,11 +379,14 @@ def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = N
         )
     step_sections = []
     for number, step in enumerate(steps, start=1):
-        comp_list = ", ".join(html.escape(str(c)) for c in step.get("component_ids", [])) or "none"
+        comp_list = ", ".join(html.escape(names.get(c, "Project component"))
+                              for c in step.get("component_ids", [])) or "Revision review"
         instructions = "".join(
-            f"<li>{html.escape(str(t))}</li>" for t in step.get("instructions", [])
+            f"<li>{html.escape(readable_text(t, names))}</li>"
+            for t in step.get("instructions", [])
         )
-        checks = "".join(f"<li>{html.escape(str(t))}</li>" for t in step.get("checks", []))
+        checks = "".join(f"<li>{html.escape(readable_text(t, names))}</li>"
+                         for t in step.get("checks", []))
         gate = str(step.get("status", "needs_design")).replace("_", " ")
         step_sections.append(
             '<section class="step"><h3>{}. {}</h3>'
@@ -387,7 +399,7 @@ def build_guide_html(project: dict, steps: list[dict], *, guide: dict | None = N
                 _step_svg(project, list(step.get("component_ids", []))),
                 instructions,
                 checks,
-            ).replace("</section>", step_details_html(step) + "</section>")
+            ).replace("</section>", step_details_html(step, names=names) + "</section>")
         )
     target_text = html.escape(str(cooling["target_c"]))
     page = """<!DOCTYPE html>
@@ -461,7 +473,7 @@ simplified position guide; mechanical fits, materials and fabrication remain unv
 establish insertion clearance, material mass or collision-safe hardware.</p></div>
 <div class="card"><h2>Components (mm, y up)</h2>
 <div class="table-scroll" role="region" aria-label="Component dimensions" tabindex="0">
-<table><tr><th>id</th><th>label</th><th>position (x, y, z)</th><th>size (x × y × z)</th></tr>
+<table><tr><th>Part</th><th>Position (x, y, z)</th><th>Size (x × y × z)</th></tr>
 ROWS</table></div></div>
 STEPS
 <div class="card"><h2>Open engineering items</h2>

@@ -203,6 +203,7 @@ export type BenchStation = {
 };
 
 export type Project = {
+  concept_design?: import('./ConceptWorkspace').ConceptDesign;
   id: string;
   lineage_id?: string;
   restored_from?: { project_id: string; revision: number; saved_at: string };
@@ -498,6 +499,7 @@ export type InstructionStep = {
   sources: InstructionSource[]; engineering_tasks: { id: string; action: string; acceptance_criteria: string | string[] }[];
 };
 export type InstructionGuide = {
+  presentation_names?: Record<string, string>;
   schema_version: number; project_id: string; project_revision: number; revision: number;
   platform: string; status: 'review_ready' | 'needs_design'; procurement_report_id: string | null;
   parts: InstructionPart[]; steps: InstructionStep[]; sources: InstructionSource[];
