@@ -263,7 +263,8 @@ def test_rack_guide_exports_keep_revision_inputs_and_scope_without_inventing_val
     for name in ("assembly-guide.html", "assembly-guide.md"):
         text = files[name].decode("utf8")
         assert "cad/tube-rack.stl" in text
-        assert "material, printing and rework costs remain unpriced" in text
+        assert "rack fabrication budget" in text
+        assert "Confirm material and print cost with your shop" in text
         assert "No successful print, fit or laboratory operation is recorded" in text
     partial = source_project()
     partial = update_labware_brief(

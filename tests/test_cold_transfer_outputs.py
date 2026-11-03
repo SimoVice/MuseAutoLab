@@ -21,7 +21,9 @@ def test_instruction_downloads_include_canonical_hardware_and_separate_manual_ba
     step = next(s for s in guide['steps'] if s['id']=='cold-transfer-extension')
     assert step['component_ids'] == project['cold_transfer_extension']['component_ids']
     assert step['requires_design']
-    assert 'unpriced' in ' '.join(step['instructions'])
+    guidance = ' '.join(step['instructions'])
+    assert 'Parts & prices lists candidate hardware' in guidance
+    assert 'obtain a supplier quote' in guidance
     files = build_document_files(project)
     component_names = {part['id']: part['label'] for part in project['design']['components']}
     for filename in ('assembly-guide.html','assembly-guide.md','assembly.json'):
