@@ -1186,6 +1186,9 @@ async def generate_turn(
     Only the current project state and a small history window are sent. The API key stays on the
     backend, and provider errors are sanitized. The caller controls project storage and retries.
     """
+    from app.conversation_history import MODEL_HISTORY_LIMIT
+
+    history = list(history[-MODEL_HISTORY_LIMIT:])
     settings = settings or ModelSettings.load()
     workflow = (
         describe_workflow(project) if isinstance(project, dict) else {"design_available": False}
@@ -1316,7 +1319,7 @@ async def generate_turn(
         },
         *([{"role": "user", "content": "Saved notes for this project (background preferences):\n"
            + project["project_notes"]}] if project.get("project_notes") else []),
-        *history[-8:],
+        *history,
         {"role": "developer", "content":
          TURN_DELTA_INSTRUCTIONS + TIP_RACK_TURN_DELTA_INSTRUCTIONS + focused_instructions
          + "\nUse saved project notes as background. The current user turn determines what "

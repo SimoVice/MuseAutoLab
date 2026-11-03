@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from app import project_library
 from app.chat_actions import execute_chat_actions, extension_only_patch
 from app.chat_activity import activity_dependency, install_activity, report_activity
+from app.conversation_history import DISPLAY_HISTORY_LIMIT, MODEL_HISTORY_LIMIT
 from app.design_agent import develop_design
 from app.design_sources import project_source_basis, reference_library, resolve_reference
 from app.domain import apply_update, configure_project, confirm_project, new_project
@@ -833,7 +834,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                 report_activity("interpreting")
                 turn, usage = await generate_turn(
                     project_with_report(current, session.procurement_report, session.cost_estimate),
-                    request.message, list(session.history)
+                    request.message, list(session.history[-MODEL_HISTORY_LIMIT:])
                 )
                 from app.bench_station_chat import clarification_turn
                 turn = clarification_turn(turn, request.message, current)
@@ -893,7 +894,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
                     _accept_project(session, updated, preserve_cold=cold_intent != "remove")
                 session.history.extend([{"role":"user", "content":request.message},
                                         {"role":"assistant", "content":reply}])
-                session.history = session.history[-8:]
+                session.history = session.history[-DISPLAY_HISTORY_LIMIT:]
                 return {"project": deepcopy(updated), "assistant_message": reply,
                         "usage": usage, "recommendations": [],
                         "action_runs": [{"kind": "cold_transfer", "status": status,
@@ -1115,7 +1116,7 @@ async def send_message(project_id: str, request: MessageRequest) -> dict:
         session.history.extend(
             [{"role": "user", "content": request.message}, {"role": "assistant", "content": reply}]
         )
-        session.history = session.history[-8:]
+        session.history = session.history[-DISPLAY_HISTORY_LIMIT:]
         return {"project": deepcopy(updated), "assistant_message": display_reply, "usage": usage,
                 "recommendations": recommendations, "action_runs": action_runs,
                 "assistant_message_origin": (
@@ -1150,7 +1151,7 @@ async def choose_tip_rack(project_id: str, request: TipRackChoiceRequest) -> dic
         _accept_project(session, updated)
         session.history.extend([{"role": "user", "content": literal},
                                 {"role": "assistant", "content": run["message"]}])
-        session.history = session.history[-8:]
+        session.history = session.history[-DISPLAY_HISTORY_LIMIT:]
         return {"project": deepcopy(updated), "assistant_message": run["message"],
                 "action_runs": [run]}
 
@@ -1265,7 +1266,7 @@ async def _custom_assembly_turn(session, turn, message, usage):
         _accept_project(session, updated)
     session.history.extend([{"role": "user", "content": message},
                             {"role": "assistant", "content": reply}])
-    session.history = session.history[-8:]
+    session.history = session.history[-DISPLAY_HISTORY_LIMIT:]
     return {"project": deepcopy(updated), "assistant_message": reply, "usage": usage,
             "recommendations": [], "action_runs": [
                 {"kind": "develop_concept", "status": status, "message": reply,
@@ -1299,7 +1300,7 @@ async def generate_custom_project(project_id: str, request: ProcurementRefreshRe
             _accept_project(session, project)
         session.history.extend([{"role": "user", "content": instruction},
                                 {"role": "assistant", "content": reply}])
-        session.history = session.history[-8:]
+        session.history = session.history[-DISPLAY_HISTORY_LIMIT:]
         return {"project": deepcopy(project), "assistant_message": reply, "model_calls": calls}
 
 

@@ -20,6 +20,9 @@ def choice_clarification(
     turn: ExtractedTurn, message: str, project: dict, history: list[dict] | None = None,
 ) -> str | None:
     """Return an English follow-up for a proposed, ungrounded labware choice."""
+    from app.conversation_history import MODEL_HISTORY_LIMIT
+
+    history = (history or [])[-MODEL_HISTORY_LIMIT:]
     actions = {action.kind for action in turn.actions}
     plate = turn.labware_selection
     if plate.profile_id is not None or "select_labware" in actions:

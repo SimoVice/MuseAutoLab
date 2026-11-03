@@ -11,6 +11,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from app.commercial_design import CommercialProposal, adopt_commercial
+from app.conversation_history import DISPLAY_HISTORY_LIMIT
 from app.design_spec import FoundationLayoutProposal, LayoutProposal, apply_candidate
 from app.domain import apply_update, confirm_project, new_project
 from app.engineering import EngineeringState, state_for
@@ -104,7 +105,7 @@ class Snapshot(StrictModel):
     tip_rack: SavedTipRack | None = None
     tip_rack_request: SavedTipRequest | None = None
     fabrication_capabilities: SavedCapabilities | None = None
-    history: Annotated[list[HistoryEntry], Field(max_length=8)]
+    history: Annotated[list[HistoryEntry], Field(max_length=DISPLAY_HISTORY_LIMIT)]
 
 
 def _reject_constant(value: str):
@@ -198,7 +199,7 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
         ),
         "cold_transfer_extension": ({"compiler": "cold-transfer-v1"}
                                     if project.get("cold_transfer_extension") else None),
-        "history": deepcopy(history[-8:]),
+        "history": deepcopy(history[-DISPLAY_HISTORY_LIMIT:]),
     }
     if payload["compiler_version"] == "4":
         payload.pop("labware_brief")
@@ -211,6 +212,12 @@ def make_snapshot(project: dict, history: list[dict]) -> dict:
     # Validate our own format before returning a file that cannot be reopened.
     Snapshot.model_validate(payload)
     raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")
+    # Keep the longest recent archive that fits alongside all machine inputs.
+    # Discard complete oldest turns, never geometry/parameters, and retain the
+    # existing portable byte limit rather than producing an unreadable file.
+    while len(raw) > MAX_SNAPSHOT_BYTES and payload["history"]:
+        del payload["history"][:2]
+        raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")
     if len(raw) > MAX_SNAPSHOT_BYTES:
         raise ValueError("This project exceeds the 256 KB save limit.")
     return payload
