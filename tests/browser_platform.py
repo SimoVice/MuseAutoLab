@@ -22,7 +22,7 @@ def run_platform(url: str) -> None:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
-        errors, estimate_requests = [], []
+        errors, estimate_requests, pricing_requests = [], [], []
 
         def estimate(route):
             estimate_requests.append(route.request.method)
@@ -34,11 +34,17 @@ def run_platform(url: str) -> None:
             )
 
         page.route("**/cost-estimate*", estimate)
+        page.on("request", lambda request: pricing_requests.append(request.url)
+                if "/parts?" in request.url or "/procurement" in request.url else None)
 
         def no_price_widget():
             design = page.locator("#design-workspace")
             expect(design.get_by_role("region", name="Project cost estimate")).to_have_count(0)
             expect(design.locator(".cost-block,.design-budget-entry,.parts-total")).to_have_count(0)
+
+        def no_pricing_requests():
+            assert not estimate_requests, estimate_requests
+            assert not pricing_requests, pricing_requests
 
         page.on("pageerror", lambda error: errors.append(str(error)))
         try:
@@ -46,7 +52,7 @@ def run_platform(url: str) -> None:
             expect(page.get_by_text("Workspace ready")).to_be_visible()
             expect(page.locator(".workspace-empty")).to_be_visible()
             no_price_widget()
-            assert not estimate_requests, estimate_requests
+            no_pricing_requests()
             body = page.locator("body").inner_text().lower()
             assert "dilution" not in body and "concentration" not in body and "stock" not in body
             harness.send_chat(
@@ -82,7 +88,7 @@ def run_platform(url: str) -> None:
             assert "design" not in data and "sourcing" not in data and "summary" not in data
             assert "engineering_design" not in data
             no_price_widget()
-            assert not estimate_requests, estimate_requests
+            no_pricing_requests()
             project_id, revision = data["project_id"], data["project_revision"]
             rejected = page.request.post(f"{url.rstrip('/')}/api/projects/{project_id}/confirm")
             assert rejected.status == 422
@@ -113,15 +119,14 @@ def run_platform(url: str) -> None:
                 "What volumes will the liquid preparation",
             )
             expect(page.locator(".planning-panel")).to_contain_text("pipette")
-            # Quantities alone still reveal no geometry; Confirm stays disabled.
+            # Quantities alone cannot expose or approve a machine.
             harness.send_chat(page, harness.COMPLETE_TASK_MESSAGE, "Recorded synthetic parameters")
-            page.locator("details.prep-plan > summary").click()
-            expect(page.locator(".summary-card")).to_be_visible()
-            expect(page.locator(".plan-card")).to_contain_text("100 µL")
+            expect(page.locator(".summary-card,.plan-card")).to_have_count(0)
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
             no_price_widget()
-            assert not estimate_requests, estimate_requests
-            expect(page.get_by_role("button", name="Confirm design")).to_be_disabled()
+            no_pricing_requests()
+            approve = page.get_by_role("button", name="Approve design & open software", exact=True)
+            expect(approve).to_have_count(0)
             # Only the explicit model-backed design reveals geometry and starts estimates.
             developed = harness.develop_layout(page)
             expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
@@ -136,29 +141,39 @@ def run_platform(url: str) -> None:
             assert developed["project"]["engineering"]["selected_platform_id"] == "jubilee"
             expect(page.get_by_role("region", name="Jubilee workstation")).to_be_visible()
             expect(page.locator(".conversation-panel .brief-card")).to_have_count(0)
-            details = page.locator("details.project-details")
+            approve.click()
+            software = page.get_by_role("heading", name="Software & protocols", exact=True)
+            expect(software).to_be_visible()
+            nav.get_by_role("button", name="3D design", exact=True).click()
+            page.get_by_role("button", name="Specifications & files", exact=True).click()
+            details = page.locator("details.project-details", has=page.locator(".planning-panel"))
             expect(details).not_to_have_attribute("open", "")
             details.locator("summary").first.click()
             expect(details.locator(".planning-panel")).to_contain_text("pipette")
             page.locator("details.prep-plan > summary").click()
-            page.get_by_role("button", name="Confirm design").click()
+            expect(page.locator(".summary-card")).to_be_visible()
+            expect(page.locator(".plan-card")).to_contain_text("100 µL")
             expect(page.locator(".chat-status")).to_contain_text("Confirmed")
             page.wait_for_load_state("networkidle")
             requests_after_design = len(estimate_requests)
+            pricing_after_design = len(pricing_requests)
             harness.send_chat(
                 page,
                 "Actually, switch this project to inspecting vial labels with a microscope.",
                 "Let's plan the label inspection",
             )
             expect(page.locator(".planning-panel")).to_be_visible()
+            # The chosen source platform can still be inspected without an accepted layout.
+            expect(page.locator(".selected-platform-preview canvas")).to_have_count(1)
             expect(
                 page.locator(
-                    ".viewer-canvas canvas,.summary-card,.plan-card,.camera-card"
+                    ".presentation-stage canvas,.summary-card,.plan-card,.camera-card"
                 )
             ).to_have_count(0)
             expect(page.locator(".chat-status")).to_contain_text("Draft")
             no_price_widget()
             assert len(estimate_requests) == requests_after_design
+            assert len(pricing_requests) == pricing_after_design
             assert not errors, errors
             print(
                 "[browser-platform] General discovery, brief download, "
