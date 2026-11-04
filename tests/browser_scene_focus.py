@@ -11,6 +11,9 @@ def run(url):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.route("**/cost-estimate*", lambda route: route.fulfill(
+            json={"state": "not_estimated", "estimate": None}
+        ))
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         try:
@@ -22,8 +25,7 @@ def run(url):
             )
             harness.send_chat(page, "I have a pipette and microcentrifuge tubes.", "What volumes")
             harness.develop_layout(page)
-            page.locator(".project-details > summary").click()
-            page.get_by_role("button", name="Custom workflow deck on Jubilee platform").click()
+            harness.show_model_component(page, "Custom workflow deck on Jubilee platform")
             view = page.get_by_label("Inspect component view")
             view.select_option("part")
             expect(view).to_have_value("part")
@@ -59,10 +61,10 @@ def run(url):
             harness.send_chat(page, "Lower the bed by another 30 mm.", "Checking")
             expect(view).to_have_value("")
             harness.send_chat(page, "Add an inspection arm and camera now.", "Checking")
-            page.get_by_role("button", name="Upper arm link").click()
+            harness.show_model_component(page, "Upper arm link")
             view.select_option("arm")
             expect(view).to_have_value("arm")
-            page.get_by_role("button", name="Forearm link").click()
+            harness.show_model_component(page, "Forearm link")
             expect(view).to_have_value("")
             expect(page.get_by_role("button", name="Reset view")).to_be_visible()
             assert not errors, errors

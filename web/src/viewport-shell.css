@@ -61,6 +61,7 @@ body { overflow: hidden; }
   scrollbar-gutter: stable;
 }
 .design-content[hidden] { display: none; }
+.design-content-model { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 12px; scrollbar-gutter: auto; }
 .design-content-engineering { overflow: hidden; padding-bottom: 12px; }
 .engineering-design-layout { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
 .engineering-design-layout > .presentation-stage:not(.presentation-stage-expanded) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; position: relative; top: auto; }
@@ -241,4 +242,42 @@ body { overflow: hidden; }
   .viewer-canvas .scene-rack-occupancy, .software-scene .scene-rack-occupancy { top: 0; left: 0; max-width: 100%; padding: 5px 8px; border-radius: 0; font-size: 9px; background: #edf4f1; }
   .viewer-canvas .scene-hint, .viewer-canvas .scene-origin { display: none; }
   .workspace .engineering-design-layout .presentation-stage:not(.presentation-stage-expanded) .viewer-canvas { min-height: 160px; }
+}
+
+/* Engineering uses one full-height scene and an aligned tools row. */
+.workspace .design-content-engineering { overflow: hidden; scrollbar-gutter: auto; padding-bottom: 12px; }
+.workspace .engineering-design-layout { position: relative; height: 100%; min-height: 0; gap: 0; }
+.workspace .engineering-design-layout > .presentation-stage:not(.presentation-stage-expanded) { flex: 1 1 0; min-height: 0; }
+.engineering-design-layout .stage-model-content { position: relative; }
+.engineering-design-layout .presentation-stage:not(.presentation-stage-expanded) .stage-topline > strong { display: none; }
+.engineering-design-layout .stage-topline { justify-content: flex-end; }
+.engineering-design-layout .stage-play-button { color: #fff; background: #226b65; border-color: #226b65; }
+.engineering-design-layout .stage-preview-controls { flex: 0 1 auto; order: 0; margin-left: 0; }
+.engineering-design-layout .stage-motion-disclosure { position: absolute; z-index: 6; top: 8px; left: 12px; max-width: calc(100% - 24px); }
+.engineering-design-layout .stage-motion-disclosure > summary, .engineering-inspector > summary { display: none; }
+.engineering-design-layout .stage-motion-disclosure > .operating-preview { width: min(480px, calc(100vw - 56px)); max-height: min(360px, 65dvh); box-sizing: border-box; border: 1px solid #cbdedb; border-radius: 9px; background: #fff; box-shadow: 0 8px 28px #214a5220; }
+.workspace .engineering-design-layout .engineering-inspector { position: absolute; z-index: 7; top: 8px; right: 12px; border: 0; flex: none; overflow: visible; }
+.workspace .engineering-inspector[open] { display: block; }
+.engineering-inspector > .engineering-inspector-scroll { width: min(560px, calc(100vw - 56px)); max-height: min(520px, 65dvh); overflow: auto; padding: 16px; box-sizing: border-box; border: 1px solid #cbdedb; border-radius: 9px; background: #fff; box-shadow: 0 8px 28px #214a5220; }
+@media (max-width: 1000px) {
+  .workspace .engineering-design-layout > .presentation-stage:not(.presentation-stage-expanded) { flex: 1 1 0; }
+  .workspace .engineering-design-layout .presentation-stage:not(.presentation-stage-expanded) .viewer-canvas { height: auto; min-height: 80px; }
+}
+@media (max-width: 600px) {
+  .engineering-design-layout .presentation-stage .stage-topline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 6px; }
+  .engineering-design-layout .stage-topline > strong { display: none; }
+  .engineering-design-layout .stage-topline .stage-expand-button { width: 100%; min-width: 0; min-height: 38px; padding: 5px 3px; white-space: normal; font-size: 10px; }
+  .engineering-design-layout .stage-topline > .stage-expand-button:last-child svg { display: none; }
+  .engineering-design-layout .stage-preview-controls { display: block; }
+  .engineering-inspector > .engineering-inspector-scroll { max-height: min(380px, 55dvh); }
+  .engineering-design-layout .stage-motion-disclosure > .operating-preview { max-height: 55dvh; }
+}
+.engineering-design-layout .presentation-stage:not(.presentation-stage-expanded) .viewer-bottomline { display: none; }
+.engineering-design-layout .presentation-stage:not(.presentation-stage-expanded) .stage-source-note { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (max-width: 600px) {
+  .workspace .design-panel:has(.design-content-engineering) .design-heading { margin-bottom: 6px; align-items: center; }
+  .workspace .design-panel:has(.design-content-engineering) .design-heading h1 { font-size: 17px; }
+  .workspace .design-panel:has(.design-content-engineering) .revision > span { display: none; }
+  .workspace .design-panel:has(.design-content-engineering) .revision { font-size: 10px; }
+  .workspace .design-content-engineering { padding-bottom: 8px; }
 }

@@ -1,4 +1,3 @@
-import PartsProposal from './PartsProposal';
 import ProjectNotes from './ProjectNotes';
 import SoftwareWorkspace from './SoftwareWorkspace';
 import PoweredByMeta from './PoweredByMeta';
@@ -6,8 +5,8 @@ import ProjectLibrary from './ProjectLibrary';
 import type { LibraryOpen, SavedEntry } from './ProjectLibrary';
 import BenchStationPanel from './BenchStationPanel';
 import ConceptWorkspace from './ConceptWorkspace';
-import ConceptPricing from './ConceptPricing';
 import FunctionalPlan from './FunctionalPlan';
+import { modelComponents } from './modelComponents';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import Scene from './Scene';
@@ -149,12 +148,19 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
     setCostState(state);
     if (state.updated) setCostVersion(value => value + 1);
   }, []);
-  const [resourceNavigation, setResourceNavigation] = useState(0);
-  const [resourcePanel, setResourcePanel] = useState<'parts' | 'instructions'>('parts');
   const resourceAnchor = useRef<HTMLDivElement | null>(null);
-  const openHardware = (panel?: 'parts' | 'instructions') => {
+  const [rackOptionsOpen, setRackOptionsOpen] = useState(false);
+  const rackOptionsButton = useRef<HTMLButtonElement | null>(null);
+  const openHardware = (panel?: 'parts' | 'instructions', showRacks = false) => {
     setSoftwareOpen(false); setPlaying(false); setMobileView('design'); setHardwareDestination(panel ?? 'design');
-    if (panel) { setResourcePanel(panel); setResourceNavigation(value => value + 1); window.setTimeout(() => { resourceAnchor.current?.scrollIntoView({ block: 'start', behavior: 'instant' }); resourceAnchor.current?.focus({ preventScroll: true }); }, 50); }
+    setRackOptionsOpen(showRacks);
+    if (panel) {
+      window.setTimeout(() => {
+        const destination = (showRacks && rackOptionsButton.current) || resourceAnchor.current;
+        destination?.scrollIntoView({ block: 'start', behavior: 'instant' });
+        destination?.focus({ preventScroll: true });
+      }, 50);
+    }
   };
   const [savedTitle, setSavedTitle] = useState('');
   const runtimeKey = `museautolab.hosted.${account}`;
@@ -186,6 +192,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   const [error, setError] = useState<string | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [stagePanel, setStagePanel] = useState<'motion' | 'specifications' | null>(null);
   const [selectedMode, setOperationMode] = useState<MotionMode>('preparation');
   const operationMode = (selectedMode === 'cold-transfer' && !project?.cold_transfer_extension) ||
     (selectedMode === 'inspection' && !project?.inspection_extension) ? 'preparation' : selectedMode;
@@ -315,7 +322,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   }, [messages]);
 
   useEffect(() => {
-    if (selectedId && project && !project.design.components.some((part) => part.id === selectedId)) setSelectedId(null);
+    if (selectedId && project && !modelComponents(project).some((part) => part.id === selectedId)) setSelectedId(null);
   }, [project, selectedId]);
 
   const projectId = project?.id;
@@ -346,6 +353,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   useEffect(() => () => { chatAbort.current?.abort(); }, []);
 
   const handleVisionSelect = useCallback((id: string) => {
+    setStagePanel(null);
     setSelectedId(id);
     setMobileView('design');
     requestAnimationFrame(() => viewer.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }));
@@ -376,7 +384,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
   useEffect(() => {
     if (actionRuns.some((run) => run.status === 'ready' && !['show_build_plan', 'show_tip_rack_options'].includes(run.kind)) && details.current) {
       details.current.open = true;
-      if (designInspector.current) designInspector.current.open = true;
+      setStagePanel('specifications');
     }
   }, [actionRuns]);
   useEffect(() => {
@@ -395,7 +403,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
 
   function previewPlateTransfer() {
     if (!project?.cold_transfer_extension || compileMotionPlan(project, 'cold-transfer').status !== 'ready') return;
-    setMobileView('design'); setSoftwareOpen(false); setSelectedId(null);
+    if (softwareOpen || hardwareDestination !== 'design' || mobileView !== 'design') openHardware();
+    setStagePanel(null); setSelectedId(null);
     setPhysicsActive(false); setPhysicsView(null);
     setColdTransferFocusKey(value => value + 1);
     if (operationMode === 'cold-transfer' && currentMotion) {
@@ -544,7 +553,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
 
   function reviewPreparationPlan() {
     setMobileView('design');
-    if (designInspector.current) designInspector.current.open = true;
+    setStagePanel('specifications');
     requestAnimationFrame(() => {
       if (preparationDetails.current) preparationDetails.current.open = true;
       preparationDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -554,7 +563,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
 
   function showProjectFiles() {
     setMobileView('design');
-    if (designInspector.current) designInspector.current.open = true;
+    setStagePanel('specifications');
     if (details.current) details.current.open = true;
     requestAnimationFrame(() => {
       filesSection.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -818,6 +827,24 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               </details>
   );
 
+  const resources = project && hardwareDestination !== 'design' && (hasEngineeringDesign || hasGeneralDesign) && (
+    <ProjectResources imageCapability={imageCapability} key={`resources:${project.id}:${project.revision}`}
+      project={project} activePanel={hardwareDestination}
+      costVersion={costVersion} costLoading={costState.loading} costIssue={costState.issue}
+      onRefreshEstimate={() => setCostRefreshToken(value => value + 1)} busy={uiBusy}
+      selectedId={selectedId} onSelect={(id) => { openHardware(); handleVisionSelect(id); }}
+      onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport}
+      instructionRequest={actionRuns.find(run => run.kind === 'show_build_plan' && run.status === 'ready')}
+      rackOptions={hasFoundation && project.design.components.some(component => component.id === 'tip-rack') && (
+        <div className="rack-supplier-picker">
+          <button type="button" ref={rackOptionsButton} aria-expanded={rackOptionsOpen} aria-controls="parts-tip-racks"
+            className="new-project-button" onClick={() => setRackOptionsOpen(open => !open)}>Compare tip racks</button>
+          <div id="parts-tip-racks" hidden={!rackOptionsOpen}>{rackOptionsOpen &&
+            <TipRackOptions project={project} busy={uiBusy} onChoose={profile => void chooseTipRack(profile)}
+              onInspect={() => { openHardware(); handleVisionSelect('tip-rack'); }} />}</div>
+        </div>
+      )} />
+  );
   return (
     <StepIllustrationProvider scope={`${runtimeKey}:${project?.id ?? ''}:${project?.revision ?? ''}`}>
     <div className="app-shell">
@@ -856,12 +883,16 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             <div className="revision"><span>Project revision</span><strong>{(hasBrief || hasEngineeringDesign || hasGeneralDesign) && project ? `Revision ${String(project.revision).padStart(2, '0')}` : 'Ready for your brief'}</strong>{project?.design_workflow?.machine_approved && !isConfirmed && plan?.status === 'ready' && <button className="review-plan-shortcut" type="button" onClick={reviewPreparationPlan}>Review preparation plan</button>}{isConfirmed && hasEngineeringDesign && <button className="project-files-shortcut" type="button" onClick={showProjectFiles}>Project files</button>}</div>
           </div>
 
-          <div className={`design-content${hasEngineeringDesign ? ' design-content-engineering' : ''}`} hidden={hardwareDestination !== 'design'} tabIndex={0} aria-label="Design and project details">
+          <div className={`design-content${hasEngineeringDesign ? ' design-content-engineering' : ''}${hasGeneralDesign && hardwareDestination === 'design' ? ' design-content-model' : ''}`}
+            hidden={!hasGeneralDesign && hardwareDestination !== 'design'} tabIndex={0}
+            ref={hasGeneralDesign ? resourceAnchor : undefined} aria-label="Design and project details">
+          {hasGeneralDesign && resources}
           {!hasGeneralDesign && hasSelectedFoundation && <SelectedPlatformPreview />}
           {project?.concept_design ? (
             <ConceptWorkspace imageCapability={imageCapability} key={`${project.id}:${project.revision}`} projectId={project.id}
-              revision={project.revision} design={project.concept_design} pricing={<ConceptPricing project={project} />} />
-          ) : project?.bench_station ? <BenchStationPanel key={`${project.id}:${project.revision}`} project={project} station={project.bench_station} projectId={project.id} revision={project.revision} /> : !hasEngineeringDesign ? (
+              revision={project.revision} design={project.concept_design} panel={hardwareDestination}
+              selectedId={selectedId} onHideSelected={() => setSelectedId(null)} />
+          ) : project?.bench_station ? <BenchStationPanel key={`${project.id}:${project.revision}`} project={project} station={project.bench_station} projectId={project.id} revision={project.revision} panel={hardwareDestination} selectedId={selectedId} /> : !hasEngineeringDesign ? (
             hasBrief ? (
               <div className="planning-panel" aria-labelledby="design-title">
                 <div className="planning-heading">
@@ -901,17 +932,17 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             <div className="engineering-design-layout">
               <PresentationStage viewerRef={viewer} compact={isConfirmed} title={hasFoundation ? 'Jubilee workstation' : hasPlatform ? 'OT-2 setup' : 'Interactive 3D concept'}
                 sourceNote={hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'}
-                actions={project?.cold_transfer_extension && <div className="stage-preview-controls" aria-label="Plate transfer playback">
-                  <button type="button" className="stage-expand-button stage-preview-button"
-                    title={coldPreviewUnavailable ? coldPreviewPlan?.message : undefined}
-                    disabled={uiBusy || coldPreviewUnavailable}
-                    onClick={operationMode === 'cold-transfer' && currentMotion && operationTime < (motionPlan?.duration_s ?? 0) && (playing || operationTime > 0) ? (playing ? handlePause : handlePlay) : previewPlateTransfer}>
-                    {operationMode === 'cold-transfer' && currentMotion ? playing ? 'Pause transfer' : operationTime >= (motionPlan?.duration_s ?? 0) ? 'Replay transfer' : operationTime > 0 ? 'Resume transfer' : 'Preview plate transfer' : 'Preview plate transfer'}
-                  </button>
-                  {operationMode === 'cold-transfer' && currentMotion && operationTime > 0 && operationTime < (motionPlan?.duration_s ?? 0) &&
-                    <button type="button" className="stage-expand-button" disabled={uiBusy} onClick={previewPlateTransfer}>Replay transfer</button>}
-
-                </div>}
+                actions={<>
+                  {motionPlan && !project?.cold_transfer_extension && <button type="button" className="stage-expand-button stage-play-button" disabled={uiBusy || motionPlan.status !== 'ready'} onClick={playing ? handlePause : handlePlay}>{playing ? 'Pause' : 'Play motion'}</button>}
+                  {project?.cold_transfer_extension && <div className="stage-preview-controls" aria-label="Plate transfer playback">
+                    <button type="button" className="stage-expand-button stage-preview-button" title={coldPreviewUnavailable ? coldPreviewPlan?.message : undefined} disabled={uiBusy || coldPreviewUnavailable}
+                      onClick={operationMode === 'cold-transfer' && currentMotion && operationTime < (motionPlan?.duration_s ?? 0) && (playing || operationTime > 0) ? (playing ? handlePause : handlePlay) : previewPlateTransfer}>
+                      {operationMode === 'cold-transfer' && currentMotion ? playing ? 'Pause transfer' : operationTime >= (motionPlan?.duration_s ?? 0) ? 'Replay transfer' : operationTime > 0 ? 'Resume transfer' : 'Preview plate transfer' : 'Preview plate transfer'}
+                    </button>
+                  </div>}
+                  {motionPlan && <button type="button" className="stage-expand-button" aria-controls="stage-motion-panel" aria-expanded={stagePanel === 'motion'} onClick={() => setStagePanel(current => current === 'motion' ? null : 'motion')}>Motion preview</button>}
+                  <button type="button" className="stage-expand-button stage-specifications-button" aria-controls="stage-specifications-panel" aria-expanded={stagePanel === 'specifications'} onClick={() => setStagePanel(current => current === 'specifications' ? null : 'specifications')}>Specifications &amp; files</button>
+                </>}
                 components={project?.design.components ?? []} selectedPart={part} onSelect={setSelectedId}>
                 <div aria-busy={agentPhase === 'pending' || agentPhase === 'updating'} className={`viewer-canvas${isConfirmed ? ' viewer-canvas-compact' : ''}`}>
                   {project ? <Scene coldTransferFocusKey={coldTransferFocusKey} captureRef={sceneCapture} project={project} selectedId={selectedId} onSelect={setSelectedId} inspectionTime={inspectionTime} inspectionPlayback={{ timeRef: operationClock, playing: !uiBusy && Boolean(currentMotion) && operationMode === 'inspection' && playing }} operation={{ playing: !uiBusy && operationMode !== 'inspection' && currentMotion && !physicsView ? playing : false, steps: plan?.steps ?? [], onComplete: handlePreviewComplete, resetKey, timeline: !physicsView ? motionPlan ?? undefined : undefined, time_s: currentMotion ? operationTime : 0, timeRef: operationClock }} physics={physicsView} /> : <div className="scene-fallback">{initializing ? 'Preparing your workspace…' : 'Connect the local server to view your design.'}</div>}
@@ -923,11 +954,11 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
                   <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
                   <div className="viewer-status"><span className={`status-indicator ${status === 'infeasible' ? 'warning' : ''}`} />{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</div>
                 </div>
-              {motionPlan && <OperatingPreview machineApproved={Boolean(project?.design_workflow?.machine_approved)} plan={motionPlan} playing={playing && Boolean(currentMotion)} time={currentMotion ? operationTime : 0} speed={operationSpeed} disabled={uiBusy} hasInspection={Boolean(project?.inspection_extension)} hasColdTransfer={Boolean(project?.cold_transfer_extension)} onMode={(mode) => { handleReset(); setOperationMode(mode); }} onPlay={handlePlay} onPause={handlePause} onReset={handleReset} onSpeed={(speed) => { if ([0.5, 1, 2, 4].includes(speed)) setOperationSpeed(speed); }} onSeek={(time) => { if (!Number.isFinite(time) || !motionPlan) return; time = Math.max(0, Math.min(motionPlan.duration_s, time)); setPlaying(false); operationClock.current = time; setOperationTime(time); setPhysicsView(null); setPhysicsActive(false); if (operationMode === 'inspection') setInspectionTime(time); }} />}
-              </PresentationStage>
-
-              {project && <PartsProposal project={project} refreshKey={String(costVersion)} onSelect={handleVisionSelect} compact onOpen={() => openHardware('parts')} />}
-              <details className="engineering-inspector" ref={designInspector}><summary>Specifications &amp; project files</summary><div className="engineering-inspector-scroll">
+              {motionPlan && <details id="stage-motion-panel" className="stage-motion-disclosure" open={stagePanel === 'motion'}><summary>Motion preview</summary><OperatingPreview machineApproved={Boolean(project?.design_workflow?.machine_approved)} plan={motionPlan} playing={playing && Boolean(currentMotion)} time={currentMotion ? operationTime : 0} speed={operationSpeed} disabled={uiBusy} hasInspection={Boolean(project?.inspection_extension)} hasColdTransfer={Boolean(project?.cold_transfer_extension)} onMode={(mode) => { handleReset(); setOperationMode(mode); }} onPlay={handlePlay} onPause={handlePause} onReset={handleReset} onSpeed={(speed) => { if ([0.5, 1, 2, 4].includes(speed)) setOperationSpeed(speed); }} onSeek={(time) => { if (!Number.isFinite(time) || !motionPlan) return; time = Math.max(0, Math.min(motionPlan.duration_s, time)); setPlaying(false); operationClock.current = time; setOperationTime(time); setPhysicsView(null); setPhysicsActive(false); if (operationMode === 'inspection') setInspectionTime(time); }} /></details>}
+              <details id="stage-specifications-panel" className="engineering-inspector" ref={designInspector} open={stagePanel === 'specifications'}><summary>Specifications &amp; files</summary><div className="engineering-inspector-scroll">
+              <p className="selected-component-note">{hasFoundation ? 'Approximate source CAD preview with custom layout.' : hasPlatform ? 'Schematic setup; not manufacturer CAD.' : 'Custom concept preview.'} Physical fit unverified.</p>
+              <div className="footprint"><span>Workspace footprint</span><strong>{dimensions ? `${formatDimension(dimensions.width_mm)} × ${formatDimension(dimensions.depth_mm)}` : '—'} <small>mm</small></strong></div>
+              <p className="selected-component-note">{status === 'infeasible' ? 'Requested width cannot fit this concept' : status === 'fits' ? 'Within requested width' : 'No width constraint yet'}</p>
               <div className="below-viewer">
 
                 {preparationPanel}
@@ -966,7 +997,6 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
                   </div>
                 )}
                 {project && <DesignSources project={project} showBindings={hasEngineeringDesign} onHighlight={handleVisionSelect} />}
-                {project && <div className="part-list" aria-label="Workstation components"><span>Components</span><div>{project.design.components.map((component) => <button type="button" key={component.id} className={selectedId === component.id ? 'part-chip selected' : 'part-chip'} onClick={() => setSelectedId(component.id)} aria-pressed={selectedId === component.id}>{component.label}</button>)}</div></div>}
                 {showPhotoCheck && project && (
                   <details className="photo-check" open={requestedPhoto || undefined}>
                     <summary>Photo check</summary>
@@ -980,9 +1010,9 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
                 )}
               </details>
               </div></details>
+              </PresentationStage>
             </div>
           )}
-          {!hasGeneralDesign && !hasEngineeringDesign && project && <CostSummary project={project} report={currentProcurement} />}
           {!hasGeneralDesign && !hasEngineeringDesign && preparationPanel}
           {!hasGeneralDesign && !hasEngineeringDesign && project && !project.labware_plate && <LabwareRackPanel brief={project.labware_brief} rack={project.labware_rack} onSelect={handleVisionSelect} targetCount={project.plan?.steps.length ?? 0} />}
           {!hasGeneralDesign && !hasEngineeringDesign && (requestedSources || requestedBuildPlan) && project && (
@@ -999,7 +1029,7 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
             </details>
           )}
           </div>
-          {project && (hasEngineeringDesign || hasGeneralDesign) && hardwareDestination !== 'design' && <div className="project-resource-anchor" ref={resourceAnchor} tabIndex={-1}><ProjectResources imageCapability={imageCapability} key={`${project.id}:${project.revision}`} project={project} activePanel={resourcePanel} navigationKey={resourceNavigation} costVersion={costVersion} costLoading={costState.loading} costIssue={costState.issue} onRefreshEstimate={() => setCostRefreshToken(value => value + 1)} busy={uiBusy} onSelect={(id) => { handleVisionSelect(id); openHardware(); }} onChoose={(groupId, optionId) => void chooseOption(groupId, optionId)} onReport={setProcurementReport} instructionRequest={actionRuns.find(run => run.kind === 'show_build_plan' && run.status === 'ready')} /></div>}
+          {!hasGeneralDesign && resources && <div className="project-resource-anchor" ref={resourceAnchor} tabIndex={-1}>{resources}</div>}
         </section>
 
         <aside id="chat-workspace" className="conversation-panel" aria-labelledby="conversation-title">
@@ -1014,7 +1044,8 @@ export default function App({ hosted = false, account = '', onSignOut = async ()
               {message.role === 'assistant' && <span className="message-avatar"><Icon name="spark" size={13} /></span>}
               <div><span className="message-author">{message.role === 'assistant' ? 'MuseAutoLab' : 'You'}</span><div className="message-bubble">{message.role === 'assistant' ? <AssistantMessage text={message.text} /> : message.text}</div>{message.role === 'assistant' && index === messages.length - 1 && project?.cold_transfer_extension && /preview plate transfer|cold.transfer|refrigerator|fridge/i.test(message.text) && <button type="button" className="stage-expand-button chat-preview-button" title={coldPreviewUnavailable ? coldPreviewPlan?.message : undefined} disabled={uiBusy || coldPreviewUnavailable} onClick={previewPlateTransfer}>Preview plate transfer</button>}{message.references && message.references.length > 0 && <div className="message-references">{message.references.map((ref) => <a key={ref.id} href={ref.url} target="_blank" rel="noopener noreferrer">{ref.title} ↗</a>)}</div>}</div>
             </div>)}
-            {project?.tip_rack_request?.alternatives_requested && hasEngineeringDesign && (!agentPhase || agentPhase === 'ready') && <TipRackOptions project={project} busy={uiBusy} onChoose={(profileId) => void chooseTipRack(profileId)} onInspect={() => handleVisionSelect('tip-rack')} />}
+            {project?.tip_rack_request?.alternatives_requested && hasFoundation && (!agentPhase || agentPhase === 'ready') &&
+              <button type="button" className="stage-expand-button chat-preview-button" onClick={() => openHardware('parts', true)}>Compare tip racks in Parts &amp; prices</button>}
             {agentPhase && <AgentActivity phase={agentPhase} pendingTitle={pendingActivityTitle} activity={requestActivity} />}
             {!agentPhase && costState.loading && <AgentActivity phase="pending" activity={{ title: 'Updating budget', detail: 'Preparing the cost estimate for the current project revision.' }} />}
             <div ref={lastMessage} />

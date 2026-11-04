@@ -101,6 +101,21 @@ def run(url):
         expect(table).to_have_count(0)
         nav.get_by_role("button", name="Parts & prices", exact=True).click()
         expect(table).to_be_visible()
+        component_browser = page.get_by_role("region", name="Browse model components")
+        component = component_browser.get_by_role("combobox", name="Component", exact=True)
+        component.select_option("sample-rack")
+        component_browser.get_by_role("button", name="Show in 3D", exact=True).click()
+        expect(nav.get_by_role("button", name="3D design", exact=True)).to_have_attribute(
+            "aria-current", "page"
+        )
+        expect(page.get_by_label("Inspect component view")).to_be_visible()
+        expect(component_browser).to_have_count(0)
+        page.get_by_role("button", name="Expand 3D view", exact=True).click()
+        expect(page.get_by_label("Component in expanded view")).to_have_value("sample-rack")
+        page.keyboard.press("Escape")
+        nav.get_by_role("button", name="Parts & prices", exact=True).click()
+        expect(page.locator(".parts-total strong")).to_have_text(total)
+        checks.append("select-component-in-parts-and-inspect-same-part-in-3d")
         # Reconcile rendered totals with the actual endpoint, not fixture arithmetic.
         proposal = proposals[-1]
         assert proposal["summary"]["total_low_usd"] == round(

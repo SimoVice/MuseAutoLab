@@ -111,11 +111,28 @@ def run(url):
 
         def canvas(name):
             page.wait_for_timeout(150)
-            value = page.locator("canvas").first.screenshot()
+            # Drawers overlay the scene. Exclude their DOM focus rings so this
+            # comparison observes the same WebGL frame and crop at each pose.
+            value = page.locator("canvas").first.screenshot(
+                style=".stage-motion-disclosure, .engineering-inspector {visibility:hidden !important;}"
+            )
             (OUTPUT / f"{name}.png").write_bytes(value)
             return hashlib.sha256(value).hexdigest()
 
+        def open_motion():
+            design_route = page.get_by_role("button", name="3D design", exact=True)
+            if design_route.get_attribute("aria-current") != "page":
+                design_route.click()
+            if page.viewport_size["width"] <= 1000:
+                page.get_by_role("navigation", name="Workspace view").get_by_role(
+                    "button", name="Design", exact=True
+                ).click()
+            disclosure = page.locator(".stage-motion-disclosure")
+            if disclosure.get_attribute("open") is None:
+                page.get_by_role("button", name="Motion preview", exact=True).click()
+
         def verify_motion(label):
+            open_motion()
             panel = page.get_by_role("region", name="Operating preview", exact=True)
             play = panel.get_by_role("button", name="Play", exact=True)
             pause = panel.get_by_role("button", name="Pause", exact=True)
@@ -197,23 +214,18 @@ def run(url):
                     )
                 )
             assert opened.value.ok, opened.value.text()
+            open_motion()
             expect(page.get_by_role("region", name="Operating preview", exact=True)).to_be_visible()
             expect(page.locator(".scene-loading")).to_have_count(0, timeout=60000)
             page.set_viewport_size({"width": 1440, "height": 900})
             page.wait_for_timeout(300)
             page.evaluate("window.scrollTo(0, 0)")
             layout = page.evaluate("""() => Object.fromEntries(
-                ['.design-budget-entry', '.viewer-shell', '.operating-preview'].map(selector => {
+                ['.viewer-shell', '.viewer-canvas', '.stage-motion-disclosure'].map(selector => {
                   const r = document.querySelector(selector).getBoundingClientRect();
                   return [selector, {top:r.top,bottom:r.bottom,height:r.height}];
                 }))""")
-            layout["cost_without_player_current_styles"] = page.evaluate("""() => {
-                const player = document.querySelector('.operating-preview');
-                const display = player.style.display; player.style.display = 'none';
-                const r = document.querySelector('.design-budget-entry').getBoundingClientRect();
-                const result = {top:r.top,bottom:r.bottom,height:r.height};
-                player.style.display = display; return result;
-            }""")
+            assert page.locator(".design-content .design-budget-entry").count() == 0
             (OUTPUT / "desktop-1440x900-layout.json").write_text(
                 json.dumps(layout, indent=2), encoding="utf-8"
             )
@@ -273,6 +285,7 @@ def run(url):
             send(SWITCH_WITH_VOLUME)
             verify_motion("plate")
             send(ALTERNATIVES)
+            page.get_by_role("button", name="Compare tip racks in Parts & prices", exact=True).click()
             panel = page.get_by_role("region", name="Tip rack alternatives")
             with page.expect_response(
                 lambda response: (
@@ -289,6 +302,7 @@ def run(url):
             with page.expect_response(lambda response: response.url.endswith("/open")) as opened:
                 page.get_by_label("Open saved project").set_input_files(str(saved_path))
             assert opened.value.ok, opened.value.text()
+            open_motion()
             playback_details = page.locator(
                 ".operating-preview details", has=page.locator("#operation-time")
             )
@@ -305,7 +319,7 @@ def run(url):
                 )
                 if mobile:
                     page.get_by_role("button", name="Chat", exact=True).click()
-                    entry = page.locator(".chat-preview-button").last
+                    entry = page.get_by_role("complementary").get_by_role("button", name="Preview plate transfer", exact=True)
                 else:
                     page.evaluate("window.scrollTo(0, 0)")
                     entry = page.locator(".stage-preview-button")
@@ -318,21 +332,24 @@ def run(url):
                 assert box["y"] + box["height"] <= page.viewport_size["height"]
                 entry.focus()
                 page.keyboard.press("Enter")
+                open_motion()
                 controls = page.locator(".stage-preview-controls")
                 pause = controls.get_by_role("button", name="Pause transfer", exact=True)
                 expect(pause).to_be_visible()
                 page.wait_for_timeout(600)
                 pause.click()
                 expect(controls.get_by_role("button", name="Resume transfer")).to_be_visible()
-                expect(controls.locator("button")).to_have_count(2)
+                expect(controls.locator("button")).to_have_count(1)
                 expect(desktop.get_by_label("Operating sequence")).to_have_value("cold-transfer")
                 details = desktop.locator("details", has=page.locator("#operation-time"))
                 if details.get_attribute("open") is None:
                     details.locator(":scope > summary").click()
                 assert float(desktop.get_by_label("Operating timeline").input_value()) > 0
-                controls.get_by_role("button", name="Replay transfer", exact=True).click()
+                desktop.get_by_role("button", name="Reset", exact=True).click()
+                controls.get_by_role("button", name="Preview plate transfer", exact=True).click()
                 page.wait_for_timeout(250)
                 pause.click()
+                open_motion()
                 # Keep the screenshot at the watched 3D stage, not the lower details.
                 page.locator(".viewer-shell").scroll_into_view_if_needed()
                 page.screenshot(path=str(OUTPUT / f"{label}.png"))
@@ -354,7 +371,7 @@ def run(url):
             bounds = cold["cold_transfer_extension"]["assembly_bounds"]
             width = bounds["max_mm"][0] - bounds["min_mm"][0]
             width_label = f"{width:,.1f}".removesuffix(".0")
-            expect(page.locator(".footprint strong")).to_contain_text(f"{width_label} ×")
+            expect(page.locator(".viewer-bottomline .footprint strong")).to_contain_text(f"{width_label} ×")
             expect(desktop.get_by_label("Operating sequence")).to_have_value("cold-transfer")
             details = desktop.locator("details", has=page.locator("#operation-time"))
             if details.get_attribute("open") is None:
@@ -458,6 +475,7 @@ def run(url):
             page.get_by_role("navigation", name="Workspace view").get_by_role(
                 "button", name="Design", exact=True
             ).click()
+            open_motion()
             mobile_panel = page.get_by_role("region", name="Operating preview", exact=True)
             mobile_panel.get_by_role("button", name="Play", exact=True).click()
             page.wait_for_timeout(400)
@@ -491,6 +509,10 @@ def run(url):
                 ),
                 encoding="utf-8",
             )
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
         finally:
             page.screenshot(path=str(OUTPUT / "final.png"), full_page=True)
             (OUTPUT / "final.html").write_text(page.content(), encoding="utf-8")

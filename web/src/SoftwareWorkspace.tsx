@@ -492,6 +492,7 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
           <div className="software-general-program">
             {project.concept_design ? (
               <ConceptWorkspace
+                panel="software"
                 key={key}
                 projectId={project.id}
                 revision={project.revision}
@@ -499,6 +500,7 @@ export default function SoftwareWorkspace({ project, onProject, onConversation }
               />
             ) : project.bench_station ? (
               <BenchStationPanel
+                panel="software"
                 key={key}
                 project={project}
                 station={project.bench_station}

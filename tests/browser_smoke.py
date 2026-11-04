@@ -133,6 +133,16 @@ def run_smoke(web_url: str) -> None:
     run(web_url)
 
 
+def show_model_component(page, label: str) -> None:
+    """Open the model component selected in the canonical parts browser."""
+    page.get_by_role("navigation", name="Project workspace", exact=True).get_by_role(
+        "button", name="Parts & prices", exact=True
+    ).click()
+    parts = page.get_by_role("region", name="Browse model components")
+    parts.get_by_role("combobox", name="Component", exact=True).select_option(label=label)
+    parts.get_by_role("button", name="Show in 3D", exact=True).click()
+
+
 def main() -> int:
     if not STUB_SERVER.exists():
         print(f"[browser-smoke] Missing stub server: {STUB_SERVER}", file=sys.stderr)

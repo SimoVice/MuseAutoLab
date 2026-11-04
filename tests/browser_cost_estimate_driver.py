@@ -87,16 +87,28 @@ def run(url):
                 else None
             ),
         )
-        page.goto(url, wait_until="networkidle")
+        pending_estimate = []
+
+        def hold_first_estimate(route):
+            if route.request.method == "POST" and not pending_estimate:
+                pending_estimate.append(route)
+            else:
+                route.continue_()
+
+        page.route("**/cost-estimate*", hold_first_estimate)
+        page.goto(url, wait_until="domcontentloaded")
         nav = page.get_by_role("navigation", name="Project workspace", exact=True)
         nav.get_by_role("button", name="Parts & prices", exact=True).click()
-        expect(page.locator(".parts-table")).to_contain_text("Model estimate")
-        expect(page.locator(".parts-table tbody")).to_contain_text("$11 to $22")
-        assert len(posts) == 1, posts
+        expect(page.locator(".parts-table")).to_be_visible()
         assert any(
             any(row["price_kind"] == "planning_allowance" for row in proposal["rows"])
             for proposal in proposals
-        ), "Initial planning allowances were not rendered promptly"
+        ), "Parts must remain usable while the first estimate is pending"
+        assert len(pending_estimate) == 1
+        pending_estimate[0].continue_()
+        expect(page.locator(".parts-table")).to_contain_text("Model estimate")
+        expect(page.locator(".parts-table tbody")).to_contain_text("$11 to $22")
+        assert len(posts) == 1, posts
         for destination in ("Assembly", "3D design", "Parts & prices"):
             nav.get_by_role("button", name=destination, exact=True).click()
         expect(page.locator(".parts-table")).to_contain_text("Model estimate")
@@ -110,10 +122,11 @@ def run(url):
         expect(page.locator(".parts-table tbody")).to_contain_text("$33 to $66")
         assert len(posts) == 3
         nav.get_by_role("button", name="3D design", exact=True).click()
-        expect(page.locator(".design-budget-entry")).to_contain_text("$")
+        expect(page.locator(".presentation-stage")).to_be_visible()
+        expect(page.locator(".design-budget-entry")).to_have_count(0)
         assert len(posts) == 3
-        page.screenshot(path=str(OUTPUT / "budget.png"))
         nav.get_by_role("button", name="Parts & prices", exact=True).click()
+        expect(page.locator(".parts-total strong")).to_contain_text("$")
         expect(page.locator(".parts-table tbody")).to_contain_text("$33 to $66")
         assert len(posts) == 3
         page.screenshot(path=str(OUTPUT / "model-prices.png"))
@@ -127,7 +140,7 @@ def run(url):
                         "no-tab-switch-duplicate-post",
                         "failure-keeps-prices",
                         "explicit-retry",
-                        "compact-budget-updated",
+                        "latest-prices-and-total-in-parts-workspace",
                     ],
                 },
                 indent=2,

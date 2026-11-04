@@ -61,9 +61,7 @@ def run(url):
         expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
         expect(page.get_by_label("Describe your workflow or request a change")).to_be_enabled()
         base = opened[-1]
-        expect(
-            page.get_by_role("region", name="Tip rack alternatives").get_by_role("article")
-        ).to_have_count(2)
+        expect(page.get_by_role("region", name="Tip rack alternatives")).to_have_count(0)
         page.evaluate("""() => {
           window.feedbackCanvas = document.querySelector('.viewer-canvas canvas');
           window.observedDesignPhases = [];
@@ -126,11 +124,16 @@ def run(url):
         page.set_viewport_size({"width": 1440, "height": 1000})
 
         # A direct rack choice has a known subject while its request is pending.
-        page.route("**/tip-rack-options", lambda route: pending.append(route))
-        page.get_by_role("region", name="Tip rack alternatives").get_by_role(
+        page.get_by_role("button", name="Compare tip racks in Parts & prices").click()
+        options = page.get_by_role("region", name="Tip rack alternatives")
+        expect(options.get_by_role("article")).to_have_count(2)
+        page.route("**/tip-rack-options", lambda route: (
+            pending.append(route) if route.request.method == "POST" else route.continue_()
+        ))
+        options.get_by_role(
             "button", name="Use this rack", exact=True
         ).first.click()
-        expect(page.locator(".design-activity[data-phase=pending]")).to_contain_text(
+        expect(page.locator(".conversation-scroll [data-phase=pending]")).to_contain_text(
             "Updating tip rack"
         )
         page.screenshot(path=str(OUTPUT / "tip-rack-updating.png"))
@@ -139,6 +142,7 @@ def run(url):
                .get_by_role("alert")).to_contain_text("design kept")
         expect(page.locator(".design-activity")).to_have_count(0)
         expect(composer).to_be_enabled()
+        page.get_by_role("button", name="3D design", exact=True).click()
 
         # A changed canonical component position reports updating only after acceptance.
         changed = deepcopy(base)

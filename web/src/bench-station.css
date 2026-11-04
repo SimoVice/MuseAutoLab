@@ -1,4 +1,14 @@
 .bench-station { margin: 0 0 20px; color: #244446; }
+.bench-panel-design { display:flex; flex-direction:column; flex:1; min-height:0; margin:0; }
+.bench-station-design-stage { display:flex; flex-direction:column; flex:1; min-height:0; }
+.bench-station-design-stage[hidden] { display:none; }
+.bench-panel-software .bench-station-body { grid-template-columns:minmax(0,1fr); }
+.bench-panel-design .bench-station-heading,.bench-panel-design .bench-station-meta { display:none; }
+.bench-panel-design .bench-station-view { flex:1; height:auto; min-height:260px; border-radius:8px; }
+.design-content-model .bench-panel-design .bench-station-view { height:auto; min-height:0; }
+.bench-panel-design .bench-station-disclaimer { font-size:11px; margin:6px 0; }
+.bench-panel-design .bench-station-downloads { padding:6px 0; margin:0; font-size:11px; }
+.bench-panel-parts .bench-station-body,.bench-panel-instructions .bench-station-body { grid-template-columns:minmax(0,1fr); }
 .bench-station-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 12px; }
 .bench-station-heading h2 { margin: 0; font-size: 18px; }
 .bench-station-heading p { margin: 4px 0 0; color: #66817e; font-size: 12px; }

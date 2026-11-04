@@ -2,18 +2,21 @@ import StepIllustration from './StepIllustration';
 import type { ImageCapability } from './ModelSelector';
 import PartsProposal from './PartsProposal';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import ComponentCatalog from './ComponentCatalog';
+import { modelComponents } from './modelComponents';
 import type { InstructionGuide, InstructionStep, ProcurementReport, ProcurementResponse, Project } from './types';
 import './project-resources.css';
 
 type Props = {
+  rackOptions?: ReactNode;
+  selectedId?: string | null;
   imageCapability?: ImageCapability | null;
   project: Project; busy: boolean; onSelect: (id: string) => void;
   onChoose: (groupId: string, optionId: string) => void;
   onReport: (report: ProcurementReport | null) => void;
   instructionRequest?: object | null;
   activePanel?: 'parts' | 'instructions';
-  navigationKey?: number;
   costVersion?: number; costLoading?: boolean; costIssue?: string | null; onRefreshEstimate?: () => void;
 };
 
@@ -97,8 +100,10 @@ function SoftwareGuide({ guide, base, downloadsAvailable }: {
   </div>;
 }
 
-export default function ProjectResources({ imageCapability = null, project, busy, onSelect, onChoose, onReport, instructionRequest, activePanel, navigationKey, costVersion = 0, costLoading = false, costIssue, onRefreshEstimate }: Props) {
-  const [panel, setPanel] = useState<'parts' | 'instructions' | 'software' | null>('parts');
+export default function ProjectResources({ imageCapability = null, project, busy, onSelect, selectedId, rackOptions, onChoose, onReport, instructionRequest, activePanel, costVersion = 0, costLoading = false, costIssue, onRefreshEstimate }: Props) {
+  const [localPanel, setPanel] = useState<'parts' | 'instructions' | 'software' | null>('parts');
+  const panel = activePanel ?? localPanel;
+  const components = modelComponents(project);
   const [procurement, setProcurement] = useState<ProcurementResponse>({ state: 'not_refreshed', report: null });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,8 +156,6 @@ export default function ProjectResources({ imageCapability = null, project, busy
     const timer = window.setTimeout(loadSaved, Math.max(0, delay) + 20);
     return () => window.clearTimeout(timer);
   }, [currentReport, loadSaved]);
-
-  useEffect(() => { if (activePanel) setPanel(activePanel); }, [activePanel, navigationKey]);
 
   useEffect(() => {
     if (!instructionRequest) return;
@@ -214,7 +217,8 @@ export default function ProjectResources({ imageCapability = null, project, busy
         <button type="button" disabled={busy || costLoading} onClick={onRefreshEstimate}>{costLoading ? 'Updating model estimate…' : costIssue ? 'Retry model estimate' : 'Refresh model estimate'}</button>
         {costIssue && <span role="status">{costIssue} Planning allowances remain visible.</span>}
       </div>
-      <PartsProposal project={project} refreshKey={`${reportId ?? ""}:${costVersion}`} onSelect={onSelect} />
+      {rackOptions}
+      <PartsProposal project={project} refreshKey={`${reportId ?? ""}:${costVersion}`} selectedId={selectedId} onSelect={onSelect} />
       <details className="resource-detail"><summary>Supplier reports, pricing refresh details &amp; alternatives</summary>
       {loading && <p role="status">Loading saved catalog report…</p>}
       {refreshing && <p role="status">Retrieving catalog listings. Prices appear after the supplier checks finish.</p>}
@@ -232,14 +236,14 @@ export default function ProjectResources({ imageCapability = null, project, busy
           <div className="procurement-facts"><span>Qty {row.quantity}{row.pack_size ? ` · pack of ${row.pack_size}` : ''}{row.pack_count ? ` · ${row.pack_count} pack${row.pack_count === 1 ? '' : 's'}` : ''}</span><span>SKU {row.sku ?? 'not specified'}</span>{row.freshness === 'fresh' && row.unit_price != null && <span>{money(row.unit_price)} / unit{row.pack_price != null && (row.pack_size ?? 1) > 1 ? ` · ${money(row.pack_price)} / pack` : ''}</span>}<strong>{row.freshness === 'fresh' && row.line_total != null ? `${money(row.line_total)} line total` : row.last_known_price != null ? `${money(row.last_known_price)} last known / unit` : row.unit_price != null ? 'Listed price excluded from subtotal' : 'Cost unknown'}</strong></div>
           {row.variant_title && <p className="resource-note">Variant: {row.variant_title}</p>}
           <p>{row.availability.replace(/([a-z])([A-Z])/g, '$1 $2')}</p>{row.issue && <p className="resource-note">{row.issue}</p>}{row.compatibility_note && <p className="resource-note">{row.compatibility_note}</p>}
-          <div className="resource-links">{sourceUrl(row.price_source_url) && <a href={sourceUrl(row.price_source_url)} target="_blank" rel="noopener noreferrer">Price source</a>}{sourceUrl(row.availability_source_url) && row.availability_source_url !== row.price_source_url && <a href={sourceUrl(row.availability_source_url)} target="_blank" rel="noopener noreferrer">Availability source</a>}{sourceUrl(row.source_bom_url ?? null) && <a href={sourceUrl(row.source_bom_url ?? null)} target="_blank" rel="noopener noreferrer">Upstream BOM{row.source_bom_row ? ` · ${row.source_bom_row}` : ''}</a>}{row.component_ids.filter((id) => project.design.components.some((part) => part.id === id)).map((id) => <button key={id} type="button" onClick={() => onSelect(id)}>Show part in model</button>)}</div>
+          <div className="resource-links">{sourceUrl(row.price_source_url) && <a href={sourceUrl(row.price_source_url)} target="_blank" rel="noopener noreferrer">Price source</a>}{sourceUrl(row.availability_source_url) && row.availability_source_url !== row.price_source_url && <a href={sourceUrl(row.availability_source_url)} target="_blank" rel="noopener noreferrer">Availability source</a>}{sourceUrl(row.source_bom_url ?? null) && <a href={sourceUrl(row.source_bom_url ?? null)} target="_blank" rel="noopener noreferrer">Upstream BOM{row.source_bom_row ? ` · ${row.source_bom_row}` : ''}</a>}{row.component_ids.filter((id) => components.some((part) => part.id === id)).map((id) => <button key={id} type="button" onClick={() => onSelect(id)}>Show part in model</button>)}</div>
           {row.source_project_revision && <p className="resource-note">Source project revision: {row.source_project_revision}</p>}
           <small>Checked {date(row.freshness === 'stale' ? row.last_known_fetched_at : row.fetched_at)}</small>
         </article>)}</div>
         <details className="resource-detail"><summary>What the subtotal excludes</summary><ul>{report.exclusions.map((item, index) => <li key={index}>{item}</li>)}</ul></details>
         {currentReport && downloadsAvailable && <div className="resource-downloads" aria-label="Pricing report downloads">{['csv', 'json'].map((format) => <a key={format} href={`${base}/procurement/download?revision=${revision}&report_id=${encodeURIComponent(currentReport.report_id)}&format=${format}`} download>Download pricing {format.toUpperCase()}</a>)}</div>}
       </>}
-      <details className="resource-detail"><summary>Component alternatives and integration notes</summary><ComponentCatalog sourcing={project.sourcing} busy={busy || refreshing} onChoose={onChoose} onHighlight={onSelect} /></details>
+      {project.engineering_design && <details className="resource-detail"><summary>Component alternatives and integration notes</summary><ComponentCatalog sourcing={project.sourcing} busy={busy || refreshing} onChoose={onChoose} onHighlight={onSelect} /></details>}
       </details>
     </div>}
     {panel === 'instructions' && <div id="build-instructions-panel" className="resource-body" ref={resourceBody} tabIndex={-1}>
@@ -260,7 +264,7 @@ export default function ProjectResources({ imageCapability = null, project, busy
         })()}
 
         <details className="resource-detail"><summary>Technical review, checks &amp; additional downloads</summary>
-        <div className="instruction-navigation"><label htmlFor="instruction-step">Go to step</label><select id="instruction-step" value={stepIndex} onChange={(event) => { const index = Number(event.target.value); setStepIndex(index); const id = guide.steps[index]?.component_ids[0]; if (id && project.design.components.some((part) => part.id === id)) onSelect(id); }}>{guide.steps.map((item, index) => <option key={item.id} value={index}>{index + 1}. {item.title}</option>)}</select></div>
+        <div className="instruction-navigation"><label htmlFor="instruction-step">Go to step</label><select id="instruction-step" value={stepIndex} onChange={(event) => { const index = Number(event.target.value); setStepIndex(index); const id = guide.steps[index]?.component_ids[0]; if (id && components.some((part) => part.id === id)) onSelect(id); }}>{guide.steps.map((item, index) => <option key={item.id} value={index}>{index + 1}. {item.title}</option>)}</select></div>
         {step && <Step step={step} guide={guide} onSelect={onSelect} />}
         <div className="instruction-pagination"><button type="button" disabled={stepIndex === 0} onClick={() => setStepIndex((index) => index - 1)}>Previous step</button><span>Step {guide.steps.length ? stepIndex + 1 : 0} of {guide.steps.length}</span><button type="button" disabled={stepIndex >= guide.steps.length - 1} onClick={() => setStepIndex((index) => index + 1)}>Next step</button></div>
         {downloadsAvailable && <div className="resource-downloads" aria-label="Instruction downloads">{['html', 'md', 'json'].map((format) => <a key={format} href={`${base}/instructions/download?revision=${revision}${guide.procurement_report_id ? `&report_id=${encodeURIComponent(guide.procurement_report_id)}` : ''}&format=${format}`} download>Download guide {format === 'md' ? 'Markdown' : format.toUpperCase()}</a>)}</div>}

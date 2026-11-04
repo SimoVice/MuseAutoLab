@@ -1,4 +1,22 @@
 .concept-workspace { color:#294b4a; margin-bottom:28px; }
+.concept-panel-design { position:relative; display:flex; flex-direction:column; flex:1; min-height:0; margin:0; }
+.concept-design-stage { display:flex; flex-direction:column; flex:1; min-height:0; }
+.concept-design-stage[hidden] { display:none; }
+.concept-panel-software .concept-details { grid-template-columns:minmax(0,1fr); }
+.concept-panel-design .concept-heading,.concept-panel-design .concept-facts,.concept-panel-design .concept-color-note { display:none; }
+.concept-panel-design .concept-view { flex:1; height:auto; min-height:260px; border-radius:8px; }
+.design-content-model .concept-panel-design .concept-view { height:auto; min-height:0; }
+.concept-panel-design .concept-playback>summary { cursor:pointer; font-size:12px; font-weight:650; }
+.concept-panel-design .concept-playback[open] { max-height:38dvh; overflow:auto; }
+.concept-panel-software .concept-playback>summary { cursor:pointer; margin-bottom:12px; }
+.concept-panel-design .concept-playback { flex:none; margin-top:8px; padding:10px 12px; }
+.concept-panel-design .concept-playback-intro p,.concept-panel-design .concept-current small,.concept-panel-design .concept-positions { display:none; }
+.concept-panel-design .concept-current { margin-top:6px; padding-top:6px; }
+.concept-quick-export { align-self:flex-end; margin-top:7px; color:#237469; font-size:12px; }
+.concept-panel-parts .concept-visibility { position:static; max-width:none; margin:16px 0; }
+.concept-panel-parts .concept-visibility summary { margin-left:0; }
+.concept-panel-parts .concept-visibility>div { width:auto; max-height:320px; box-shadow:none; }
+.concept-panel-parts .concept-details,.concept-panel-instructions .concept-details { grid-template-columns:minmax(0,1fr); padding:18px 0; }
 .concept-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:17px; }
 .concept-heading h2 { color:#203f40; font-size:clamp(22px,2.3vw,29px); line-height:1.14; letter-spacing:-.025em; margin:5px 0 8px; }
 .concept-heading > div > p:last-child { max-width:65ch; color:#587571; line-height:1.5; font-size:13px; margin:0; }

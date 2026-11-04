@@ -92,6 +92,7 @@ def run(url):
             plate_geometry = deepcopy(project["labware_plate"]["geometry"])
             assert project["summary"]["stock_concentration"] is None
             assert project["plan"]["steps"] == []
+            page.get_by_role("button", name="Motion preview", exact=True).click()
             preview = page.get_by_role("region", name="Operating preview", exact=True)
             expect(preview).to_contain_text("Example motion")
             expect(preview).to_contain_text("Approve the design to program your own transfers")

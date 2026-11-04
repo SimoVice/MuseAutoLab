@@ -66,8 +66,9 @@ The captures are direct browser screenshots, not generated illustrations.
 ## Compare supplier-specific tip racks
 
 On the accepted Jubilee project, ask **“Compare tip racks from different
-suppliers.”** Review the two named products, then choose one. The alternative
-card explains any required rack movement before acceptance. In the expanded
+suppliers.”** In **Parts & prices → Compare tip racks**, review the two products
+and any required rack movement before choosing one. Under **Explore the components**,
+choose a part and select **Show in 3D** to return to the model. In the expanded
 view, select the tip rack and inspect its real opening pattern; changing product
 preserves the selected-part view and observation direction.
 
@@ -214,7 +215,7 @@ questions before moving to the next step.
    and 4 columns.” Review the layout, costs and source distinctions. Quantities
    for a specific recipe can be entered later.
 4. **Inspect motion before programming.** For a supported Jubilee layout without
-   any recipe quantities, **Operating preview** offers a labelled, local example:
+   any recipe quantities, **Motion preview** offers a labelled, local example:
    1 mg/mL stock, 0.5 mg/mL target and 100 µL final volume, with 50 µL each of
    stock and diluent. It does not become the project recipe or a downloadable
    motion plan. Use **Play**, **Pause** and **Reset** to inspect the sequence.

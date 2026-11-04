@@ -14,6 +14,9 @@ def run(url):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.context.route("**/cost-estimate*", lambda route: route.fulfill(
+            json={"state": "not_estimated", "estimate": None}
+        ))
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.add_init_script("""(() => {
@@ -78,9 +81,10 @@ def run(url):
             reset = Image.open(BytesIO(canvas.screenshot())).convert("RGB")
             difference = ImageStat.Stat(ImageChops.difference(original, reset)).mean
             assert max(difference) < 2, f"Reset did not restore the initial view: {difference}"
-            page.locator(".project-details > summary").click()
-            page.locator(".illustration-panel > summary").click()
             before_capture = Image.open(BytesIO(canvas.screenshot())).convert("RGB")
+            page.get_by_role("button", name="Specifications & files", exact=True).click()
+            page.get_by_text("Project details", exact=True).click()
+            page.locator(".illustration-panel > summary").click()
             page.get_by_role("button", name="Generate with Muse Image").click()
             expect(page.get_by_text("Offline capture test.")).to_be_visible()
             assert len(captured) == 1
@@ -91,7 +95,7 @@ def run(url):
             assert max(ImageStat.Stat(reference).stddev) > 5, "Captured image is blank"
             difference = ImageStat.Stat(ImageChops.difference(reference, before_capture)).mean
             assert max(difference) < 3, f"Capture differs from the visible scene: {difference}"
-            page.get_by_role("button", name="Custom workflow deck on Jubilee platform").click()
+            harness.show_model_component(page, "Custom workflow deck on Jubilee platform")
             view = page.get_by_label("Inspect component view")
             view.select_option("part")
             expect(view).to_have_value("part")
@@ -103,6 +107,9 @@ def run(url):
             assert not errors, errors
 
             failed = browser.new_page(viewport={"width": 1440, "height": 1000})
+            failed.route("**/cost-estimate*", lambda route: route.fulfill(
+                json={"state": "not_estimated", "estimate": None}
+            ))
             failed.route("**/assets/jubilee-*.glb", lambda route: route.abort())
             failed.goto(url)
             expect(failed.get_by_text("Workspace ready")).to_be_visible()

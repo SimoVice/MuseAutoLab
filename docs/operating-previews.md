@@ -23,12 +23,14 @@ be opened with **Open project** to inspect the preview without a model request.
 1. Develop or open a supported design. A Jubilee preparation preview can run
    before a recipe is supplied, using the clearly labelled example described
    below. Generating CAD files is not required.
-2. Select **Play** in **Operating preview**. The status identifies the current
+2. Open **Motion preview** over the 3D canvas, then select **Play** in
+   **Operating preview**. The status identifies the current
    action, destination and intended transfer volume.
 3. Use **Pause** or **Reset**. Expand **Playback details** to scrub the sequence
    or change its speed. The **Sequence** selector appears when the design
    includes a camera inspection or cold-transfer module.
-4. Change the recipe, labware or tip-rack product. The preview stops and rebuilds
+4. Change the recipe, labware or tip-rack product. Tip-rack alternatives and
+   the component menu are in **Parts & prices**. The preview stops and rebuilds
    against the accepted revision, including the selected holes and well addresses.
 5. For an actual ready recipe, download the motion plan from **Playback details**
    to inspect its revision, component/profile bindings, positions and illustrative

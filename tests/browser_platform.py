@@ -8,7 +8,6 @@ appears after an explicit model-backed design via the shared helper.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -36,17 +35,18 @@ def run_platform(url: str) -> None:
 
         page.route("**/cost-estimate*", estimate)
 
-        def placeholder():
-            cost = page.get_by_role("region", name="Project cost estimate")
-            expect(cost).to_contain_text("Estimate appears with your design")
-            assert not re.search(r"\$\s*\d|\d[\d,.]*\s*USD", cost.inner_text())
-            expect(cost.locator(".cost-breakdown,.cost-estimate-details")).to_have_count(0)
+        def no_price_widget():
+            design = page.locator("#design-workspace")
+            expect(design.get_by_role("region", name="Project cost estimate")).to_have_count(0)
+            expect(design.locator(".cost-block,.design-budget-entry,.parts-total")).to_have_count(0)
 
         page.on("pageerror", lambda error: errors.append(str(error)))
         try:
             page.goto(url)
             expect(page.get_by_text("Workspace ready")).to_be_visible()
             expect(page.locator(".workspace-empty")).to_be_visible()
+            no_price_widget()
+            assert not estimate_requests, estimate_requests
             body = page.locator("body").inner_text().lower()
             assert "dilution" not in body and "concentration" not in body and "stock" not in body
             harness.send_chat(
@@ -81,7 +81,7 @@ def run_platform(url: str) -> None:
             assert data["brief"]["equipment"] == "a microscope and two racks"
             assert "design" not in data and "sourcing" not in data and "summary" not in data
             assert "engineering_design" not in data
-            placeholder()
+            no_price_widget()
             assert not estimate_requests, estimate_requests
             project_id, revision = data["project_id"], data["project_revision"]
             rejected = page.request.post(f"{url.rstrip('/')}/api/projects/{project_id}/confirm")
@@ -119,13 +119,19 @@ def run_platform(url: str) -> None:
             expect(page.locator(".summary-card")).to_be_visible()
             expect(page.locator(".plan-card")).to_contain_text("100 µL")
             expect(page.locator(".viewer-canvas canvas")).to_have_count(0)
-            placeholder()
+            no_price_widget()
             assert not estimate_requests, estimate_requests
             expect(page.get_by_role("button", name="Confirm design")).to_be_disabled()
             # Only the explicit model-backed design reveals geometry and starts estimates.
             developed = harness.develop_layout(page)
             expect(page.locator(".viewer-canvas canvas")).to_have_count(1)
-            expect(page.locator(".cost-block")).to_be_visible()
+            no_price_widget()
+            nav = page.get_by_role("navigation", name="Project workspace", exact=True)
+            nav.get_by_role("button", name="Parts & prices", exact=True).click()
+            expect(page.locator(".parts-total strong")).to_contain_text("$")
+            expect(page.locator(".parts-table")).to_be_visible()
+            assert estimate_requests, "An accepted design should start its estimate."
+            nav.get_by_role("button", name="3D design", exact=True).click()
             assert developed["project"]["engineering_design"]
             assert developed["project"]["engineering"]["selected_platform_id"] == "jubilee"
             expect(page.get_by_role("region", name="Jubilee workstation")).to_be_visible()
@@ -151,7 +157,7 @@ def run_platform(url: str) -> None:
                 )
             ).to_have_count(0)
             expect(page.locator(".chat-status")).to_contain_text("Draft")
-            placeholder()
+            no_price_widget()
             assert len(estimate_requests) == requests_after_design
             assert not errors, errors
             print(

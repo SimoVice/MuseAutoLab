@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Project } from './types';
+import { modelComponents } from './modelComponents';
 import './parts-workspace.css';
 
 type Proposal = {
@@ -35,15 +36,17 @@ function sourceLabel(value: string) {
 }
 
 
-export default function PartsProposal({ project, refreshKey, onSelect, compact = false, onOpen }: { compact?: boolean; onOpen?: () => void; project: Project; refreshKey: string; onSelect: (id: string) => void }) {
+export default function PartsProposal({ project, refreshKey, onSelect, selectedId }: { project: Project; refreshKey: string; selectedId?: string | null; onSelect: (id: string) => void }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [componentId, setComponentId] = useState(selectedId ?? '');
   useEffect(() => {
     const controller = new AbortController();
-    setProposal(null);
+    setLoading(true);
     setError('');
     fetch(`/api/projects/${encodeURIComponent(project.id)}/parts?revision=${project.revision}`, { signal: controller.signal })
       .then(async response => {
@@ -63,21 +66,14 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
         if (!controller.signal.aborted) {
           setError(reason instanceof Error ? reason.message : 'The parts list could not be loaded.');
         }
-      });
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [project.id, project.revision, refreshKey, attempt]);
   if (error) return <p role="alert">{error} <button type="button" onClick={() => setAttempt(value => value + 1)}>Reload parts</button></p>;
-  if (!proposal) return <p role="status">Preparing the parts and price breakdown…</p>;
+  if (!proposal || proposal.project_id !== project.id || proposal.project_revision !== project.revision)
+    return <p role="status">Preparing the parts and price breakdown…</p>;
   const summary = proposal.summary;
-  if (compact) return (
-    <div className="design-budget-entry">
-      <span>
-        {summary.unpriced_count ? 'Priced items subtotal' : 'Listed parts estimate'}
-        {' '}<strong>{range(summary.total_low_usd, summary.total_high_usd)}</strong>
-      </span>
-      <button type="button" onClick={onOpen}>View parts &amp; prices</button>
-    </div>
-  );
   const term = search.trim().toLowerCase();
   const matches = proposal.rows.filter(row => [row.label, row.selected_product_label, row.source_url]
     .some(value => value?.toLowerCase().includes(term)));
@@ -85,7 +81,9 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
   const lastPage = Math.max(0, Math.ceil(matches.length / perPage) - 1);
   const currentPage = Math.min(page, lastPage);
   const start = currentPage * perPage;
-  return <div className="parts-proposal">
+  const components = modelComponents(project);
+  const inspected = components.find(component => component.id === componentId) ?? components[0];
+  return <div className="parts-proposal" aria-busy={loading}>
     <div className="parts-total">
       <div>
         <h3>{summary.unpriced_count ? 'Priced items subtotal' : 'Listed parts total'}</h3>
@@ -93,6 +91,18 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
       </div>
       <p>{summary.row_count} items, USD<br />Planning ranges, not a quote.</p>
     </div>
+
+    {components.length > 0 && <section className="parts-component-browser" aria-label="Browse model components">
+      <div><h3>Explore the components</h3><p>Select a component to inspect it in the 3D workspace.</p></div>
+      <div className="parts-component-controls">
+        <label htmlFor="parts-component-select">Component</label>
+        <select id="parts-component-select" value={inspected?.id ?? ''} onChange={event => setComponentId(event.target.value)}>
+          {components.map(component => <option key={component.id} value={component.id}>{component.label}</option>)}
+        </select>
+        <button type="button" onClick={() => { if (inspected) onSelect(inspected.id); }}>Show in 3D</button>
+      </div>
+      {inspected && <small>{inspected.size.map(value => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)).join(' × ')} mm · model dimensions</small>}
+    </section>}
 
     {(proposal.rows.length > perPage || term) && <div className="parts-browse">
       <label>Find a part<input type="search" value={search} placeholder="Part, product or supplier" onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>
@@ -118,8 +128,7 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
         const source = safeUrl(row.source_url);
         const linkLabel = sourceLabels[row.source_kind ?? ''] ?? sourceLabel(row.source_url ?? '');
         const visibleComponents = row.component_ids
-          .filter(id => project.design.components.some(part => part.id === id))
-          .slice(0, 1);
+          .filter(id => components.some(part => part.id === id));
         const priceLabel = row.price_kind === 'verified_supplier'
           ? 'Supplier price'
           : row.price_kind === 'model_estimate' ? 'Model estimate' : row.price_kind === 'included_in_base' ? 'Included in base' : 'Estimate';
@@ -138,7 +147,7 @@ export default function PartsProposal({ project, refreshKey, onSelect, compact =
                 )}
                 {visibleComponents.map(id => (
                   <button type="button" key={id} onClick={() => onSelect(id)}>
-                    Show in 3D
+                    {visibleComponents.length > 1 ? `Show ${components.find(component => component.id === id)?.label ?? id} in 3D` : 'Show in 3D'}
                   </button>
                 ))}
                 {row.fabrication_url?.startsWith('/api/projects/') && (

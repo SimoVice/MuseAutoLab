@@ -37,15 +37,32 @@ def run(url):
             expect(
                 page.get_by_role("button", name="Approve design & open software")
             ).to_be_visible()
-            for width, height in [(1366, 768), (1280, 600), (390, 844), (390, 600)]:
+            for width, height in [
+                (1440, 900), (1280, 720), (1366, 768), (1280, 600), (390, 844), (390, 600),
+            ]:
                 page.set_viewport_size({"width": width, "height": height})
                 for destination in ["3D design", "Parts & prices", "Assembly"]:
                     page.get_by_role("button", name=destination, exact=True).click()
                     if width < 1000:
                         page.get_by_role("button", name="Design", exact=True).click()
                     if destination == "3D design":
+                        stage = page.locator(".presentation-stage")
+                        canvas = stage.locator("canvas")
+                        expect(canvas).to_be_visible()
+                        expect(page.locator(".design-budget-entry:visible")).to_have_count(0)
+                        expect(page.locator(".parts-component-browser:visible")).to_have_count(0)
+                        if width >= 1000 or height >= 700:
+                            design = page.locator("#design-workspace").bounding_box()
+                            model = canvas.bounding_box()
+                            assert design and model
+                            assert model["height"] >= design["height"] / 2, (design, model)
+                        stage.get_by_role("button", name="Rotate left", exact=True).click()
+                        stage.get_by_role("button", name="Reset view", exact=True).click()
+                        motion = stage.get_by_role("button", name="Motion preview", exact=True)
+                        motion.click()
                         page.get_by_role("button", name="Play", exact=True).first.click()
                         page.get_by_role("button", name="Reset", exact=True).first.click()
+                        motion.click()
                     else:
                         page.locator(".project-resource-anchor").evaluate(
                             "element => { element.scrollTop = element.scrollHeight; }"

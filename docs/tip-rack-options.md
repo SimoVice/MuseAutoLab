@@ -1,9 +1,10 @@
 # Supplier-dependent tip racks and a printable holder
 
 On an accepted Jubilee workstation, ask **“Compare tip racks from different
-suppliers.”** The conversation shows two reviewed product references and asks
-whether you have access to a 3D printer. Select a product with **Use this rack** or name
-it in chat. The selected rack changes in the 3D model, parts list, source record,
+suppliers.”** Open **Compare tip racks in Parts & prices** from the conversation,
+or open **Parts & prices → Compare tip racks**. Review the two product references.
+The assistant asks whether you have access to a 3D printer. Select a product with
+**Use this rack** or name it in chat. The selected rack changes in the 3D model, parts list, source record,
 build guide and saved project. This is a bounded product adapter, not automatic
 geometry generation for every supplier catalog.
 

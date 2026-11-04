@@ -14,6 +14,9 @@ def run(url):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(channel="chrome", headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
+        page.route("**/cost-estimate*", lambda route: route.fulfill(
+            json={"state": "not_estimated", "estimate": None}
+        ))
         errors = []
         unmount_warnings = []
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -28,16 +31,18 @@ def run(url):
         try:
             page.goto(url, wait_until="networkidle")
             expect(page.get_by_text("Workspace ready")).to_be_visible()
-            page.get_by_label("Open saved project").set_input_files(
-                str(harness.ROOT / "docs/examples/microplate-project.json")
-            )
-            expect(page.locator(".storage-notice")).to_contain_text("rebuilt")
+            with page.expect_response(lambda response: response.url.endswith("/open")) as opened:
+                page.get_by_label("Open saved project").set_input_files(
+                    str(harness.ROOT / "docs/examples/microplate-project.json")
+                )
+            assert opened.value.ok and opened.value.json()["project"]["labware_plate"]
             expect(page.locator(".scene-rack-occupancy")).to_contain_text("wells occupied")
             composer = page.get_by_label("Describe your workflow or request a change")
             composer.fill(ALTERNATIVES)
             with page.expect_response(lambda response: response.url.endswith("/messages")) as turn:
                 page.get_by_role("button", name="Send message", exact=True).click()
             assert turn.value.ok
+            page.get_by_role("button", name="Compare tip racks in Parts & prices").click()
             panel = page.get_by_role("region", name="Tip rack alternatives")
             with page.expect_response(
                 lambda response: (
@@ -50,6 +55,7 @@ def run(url):
             assert selection.value.ok, selection.value.text()
             project = selection.value.json()["project"]
             assert project["labware_plate"] and project["tip_rack"]
+            panel.get_by_role("button", name="Inspect tip rack").click()
             page.get_by_label("Inspect component view").select_option("part")
             expect(page.locator(".scene-rack-occupancy")).to_have_count(0)
             expect(page.locator(".microplate-axis-label")).to_have_count(0)
@@ -58,7 +64,10 @@ def run(url):
             expect(page.locator(".scene-rack-occupancy")).to_contain_text("wells occupied")
             page.get_by_label("Inspect component view").select_option("work")
             expect(page.locator(".scene-rack-occupancy")).to_contain_text("wells occupied")
-            page.get_by_role("button", name="Show plate in model").click()
+            plate = next(
+                part for part in project["design"]["components"] if part["id"] == "sample-rack"
+            )
+            harness.show_model_component(page, plate["label"])
             expect(page.get_by_label("Inspect component view")).to_have_value("")
             page.get_by_label("Inspect component view").select_option("part")
             expect(page.locator(".scene-rack-occupancy")).to_contain_text("wells occupied")

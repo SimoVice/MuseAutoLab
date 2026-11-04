@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { OrthographicCamera } from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Bounds, OrbitControls, useBounds } from '@react-three/drei';
-import type { BenchStation, BenchStationModule, ProcurementReport, ProcurementResponse, Project } from './types';
-import CostSummary from './CostSummary';
+import type { BenchStation, BenchStationModule, Project } from './types';
 import './bench-station.css';
 
 const colors = { frame: '#c6d2d1', surface: '#eff4f2', dark: '#263d42', accent: '#277b78', metal: '#aebec0' };
@@ -75,7 +74,7 @@ function KeyboardZoom({ zoom }: { zoom: number }) {
   return null;
 }
 
-function StationScene({ station, turn, zoom }: { station: BenchStation; turn: number; zoom: number }) {
+function StationScene({ station, turn, zoom, selectedId }: { selectedId?: string | null; station: BenchStation; turn: number; zoom: number }) {
   const scale = 1 / Math.max(...station.footprint_mm, 1);
   const [width, depth] = station.footprint_mm.map((n) => n * scale);
   const height = Math.max(...station.modules.map((module) => module.position_mm[1] + module.size_mm[1] / 2), 0) * scale;
@@ -90,7 +89,7 @@ function StationScene({ station, turn, zoom }: { station: BenchStation; turn: nu
         <Box size={[width, .025, depth]} position={[width / 2, -.015, depth / 2]} color={colors.frame} metalness={.55} />
         <Box size={[width * .98, .008, depth * .98]} position={[width / 2, .002, depth / 2]} color="#f6f9f7" />
         {station.modules.map((module) => module.functional_surface_mm && <Box key={`surface-${module.id}`} size={[module.functional_surface_mm[2] * scale, .004, module.functional_surface_mm[3] * scale]} position={[(module.functional_surface_mm[0] + module.functional_surface_mm[2] / 2) * scale, .009, (module.functional_surface_mm[1] + module.functional_surface_mm[3] / 2) * scale]} color="#e1eeea" />)}
-        {station.modules.map((module) => <StationModule key={module.id} module={module} scale={scale} />)}
+        {station.modules.map((module) => <group key={module.id}><StationModule module={module} scale={scale} />{selectedId === module.id && <mesh position={module.position_mm.map(value => value * scale) as [number, number, number]}><boxGeometry args={module.size_mm.map(value => value * scale * 1.04) as [number, number, number]} /><meshBasicMaterial color="#db7418" wireframe depthTest={false} /></mesh>}</group>)}
         </group>
       </group>
       <FitOnResize turn={turn} />
@@ -100,59 +99,16 @@ function StationScene({ station, turn, zoom }: { station: BenchStation; turn: nu
   </Canvas>;
 }
 
-function supplierPrice(part: BenchStation['parts'][number], report: ProcurementReport | null) {
-  const id = `bench-${part.operation}-${part.source_url ? 'equipment' : 'supplies'}`;
-  const row = report?.rows.find((item) => item.group_id === id);
-  if (row?.status === 'priced' && row.freshness === 'fresh' && row.line_total != null)
-    return `Verified supplier · $${row.line_total.toFixed(2)} USD`;
-  if (row?.status === 'quote_needed' || (part.source_url && part.operation !== 'inspect'))
-    return 'US supplier quote needed';
-  return 'Supplier price unavailable';
-}
-
-export default function BenchStationPanel({ station, project, projectId, revision }: { station: BenchStation; project: Project; projectId: string; revision: number }) {
+export default function BenchStationPanel({ station, projectId, revision, panel, selectedId = null }: { station: BenchStation; project: Project; projectId: string; revision: number; panel: 'design' | 'parts' | 'instructions' | 'software'; selectedId?: string | null }) {
   const [turn, setTurn] = useState(0);
   const [zoom, setZoom] = useState(0);
   const [viewKey, setViewKey] = useState(0);
-  const [report, setReport] = useState<ProcurementReport | null>(null);
-  const [pricesReady, setPricesReady] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [priceIssue, setPriceIssue] = useState<string | null>(null);
-  const [priceEpoch, setPriceEpoch] = useState(0);
-  const base = `/api/projects/${encodeURIComponent(projectId)}`;
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(`${base}/procurement?revision=${revision}`, { signal: controller.signal })
-      .then(async (response) => { if (!response.ok) throw new Error('Saved prices are unavailable.'); return response.json() as Promise<ProcurementResponse>; })
-      .then((data) => { if (!controller.signal.aborted && data.state === 'current' && data.report?.project_id === projectId && data.report.project_revision === revision) setReport(data.report); })
-      .catch((error: unknown) => { if (!controller.signal.aborted) setPriceIssue(error instanceof Error ? error.message : 'Saved prices are unavailable.'); })
-      .finally(() => { if (!controller.signal.aborted) setPricesReady(true); });
-    return () => controller.abort();
-  }, [base, projectId, revision]);
-  async function refreshPrices() {
-    setRefreshing(true); setPriceIssue(null);
-    try {
-      const response = await fetch(`${base}/procurement/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project_revision: revision }) });
-      if (!response.ok) throw new Error('Supplier prices could not be refreshed.');
-      const data: ProcurementResponse = await response.json();
-      if (data.state !== 'current' || data.report?.project_id !== projectId || data.report.project_revision !== revision) throw new Error('The price report does not match this revision.');
-      setReport(data.report);
-    } catch (error) { setPriceIssue(error instanceof Error ? error.message : 'Supplier prices could not be refreshed.'); }
-    finally { setRefreshing(false); }
-  }
-  useEffect(() => {
-    if (!report) return;
-    const delay = Date.parse(report.expires_at) - Date.now();
-    if (!Number.isFinite(delay) || delay <= 0) return;
-    const timer = window.setTimeout(() => setPriceEpoch((value) => value + 1), Math.min(delay + 20, 2147483647));
-    return () => window.clearTimeout(timer);
-  }, [report, priceEpoch]);
-  const liveReport = report?.project_id === projectId && report.project_revision === revision && Date.parse(report.expires_at) > Date.now() ? report : null;
   const exportBase = `/api/projects/${encodeURIComponent(projectId)}/bench-station`;
-  return <section className="bench-station" aria-label="Modular bench station">
+  return <section className={`bench-station bench-panel-${panel}`} aria-label="Modular bench station">
+    <div className="bench-station-design-stage" hidden={panel !== 'design' && panel !== 'software'}>
     <div className="bench-station-heading"><div><h2>Modular bench station</h2><p>Concept layout · revision {revision}</p></div><span>Schematic</span></div>
     <div className="bench-station-view">
-      <StationScene key={viewKey} station={station} turn={turn} zoom={zoom} />
+      <StationScene key={viewKey} station={station} turn={turn} zoom={zoom} selectedId={selectedId} />
       <div className="bench-station-controls" aria-label="Schematic view controls">
         <button type="button" onClick={() => setTurn((v) => v - 1)} aria-label="Rotate station left">↶</button>
         <button type="button" onClick={() => setTurn((v) => v + 1)} aria-label="Rotate station right">↷</button>
@@ -160,20 +116,22 @@ export default function BenchStationPanel({ station, project, projectId, revisio
         <button type="button" onClick={() => setZoom((v) => v - 1)} aria-label="Zoom out">−</button>
         <button type="button" onClick={() => { setTurn(0); setZoom(0); setViewKey((value) => value + 1); }}>Reset view</button>
       </div>
-      <span className="bench-station-hint">Drag to rotate · Scroll to zoom</span>
+      <span className="bench-station-hint">{station.modules.find(module => module.id === selectedId)?.label ?? 'Drag to rotate · Scroll to zoom'}</span>
     </div>
     <div className="bench-station-meta"><span>Proposed footprint</span><strong>{station.footprint_mm[0]} × {station.footprint_mm[1]} mm</strong></div>
-    {pricesReady && <CostSummary project={project} report={liveReport} />}
     <p className="bench-station-disclaimer">Original schematic, not manufacturer CAD. Shaded areas reserve access around each module. Positions and envelopes are conceptual; fit, safety and performance require verification.</p>
-    <div className="bench-station-body">
-      <div><h3>Work through the station</h3><p>Follow the sequence and complete each human handoff before moving to the next operation.</p><ol>{station.steps.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}</ol></div>
-      <div><h3>Modules and sourcing references</h3><p>References help identify equipment; they are not quotes or verified compatibility. US prices, when available, are shown in USD.</p><button className="bench-station-refresh" type="button" disabled={refreshing || !pricesReady} onClick={() => void refreshPrices()}>{refreshing ? 'Checking supplier catalogs…' : 'Refresh US prices'}</button>{priceIssue && <p role="status">{priceIssue}</p>}<ul className="bench-station-parts">{station.modules.map((module, index) => {
-        const parts = station.parts.filter((item) => item.operation === module.id);
-        return <li key={module.id}><span className="bench-station-number">{index + 1}</span><div><strong>{module.label}</strong><p>{module.role} {module.guidance}</p><ul className="bench-station-references">{parts.map((part, partIndex) => <li key={partIndex}><span>{part.label}</span>{part.source_url && part.source_title && <a href={part.source_url} target="_blank" rel="noopener noreferrer">{part.source_title}</a>}<span className="bench-station-price">{supplierPrice(part, liveReport)}</span></li>)}</ul></div></li>;
-      })}</ul></div>
     </div>
+    {panel !== 'design' && <div className="bench-station-body">
+      {(panel === 'instructions' || panel === 'software') && <div><h3>Work through the station</h3><p>Follow the sequence and complete each human handoff before moving to the next operation.</p><ol>{station.steps.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}</ol></div>}
+      {panel === 'parts' && <div><h3>Modules and sourcing references</h3><p>References help identify equipment; they are not quotes or verified compatibility. US prices, when available, are shown in USD.</p><ul className="bench-station-parts">{station.modules.map((module, index) => {
+        const parts = station.parts.filter((item) => item.operation === module.id);
+        return <li key={module.id}><span className="bench-station-number">{index + 1}</span><div><strong>{module.label}</strong><p>{module.role} {module.guidance}</p><ul className="bench-station-references">{parts.map((part, partIndex) => <li key={partIndex}><span>{part.label}</span>{part.source_url && part.source_title && <a href={part.source_url} target="_blank" rel="noopener noreferrer">{part.source_title}</a>}</li>)}</ul></div></li>;
+      })}</ul></div>}
+    </div>}
+    {(panel === 'instructions' || panel === 'software') && <>
     <div className="bench-station-limits"><h3>Constraints and checks</h3><ul>{station.limitations.map((limit, index) => <li key={`${index}-${limit}`}>{limit}</li>)}</ul></div>
     <p className="bench-station-disclaimer">Download the plan and runner together. Run <code>python run.py --plan plan.json --output record.json</code> to record operator checkpoints. Add <code>--dry-run</code> to preview the sequence. {station.modules.some((module) => module.id === 'print_label') && <>Add <code>--label-output label.html</code> during an assisted run to prepare a printable text label. </>}The operator handles the instruments.</p>
-    <div className="bench-station-downloads"><a href={`${exportBase}/layout.svg?revision=${revision}`} download>Download layout (SVG)</a><a href={`${exportBase}/plan.json?revision=${revision}`} download>Download plan (JSON)</a><a href={`${exportBase}/run.py?revision=${revision}`} download>Download assisted runner (Python)</a></div>
+    </>}
+    {panel !== 'design' && <div className="bench-station-downloads"><a href={`${exportBase}/layout.svg?revision=${revision}`} download>Download layout (SVG)</a><a href={`${exportBase}/plan.json?revision=${revision}`} download>Download plan (JSON)</a><a href={`${exportBase}/run.py?revision=${revision}`} download>Download assisted runner (Python)</a></div>}
   </section>;
 }
