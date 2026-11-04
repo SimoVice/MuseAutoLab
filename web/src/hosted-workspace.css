@@ -1,6 +1,6 @@
 .access-page { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .85fr); background: #fff; color: #18313e; }
 .access-story { padding: clamp(32px, 6vw, 96px); background: #eaf2f6; display: flex; flex-direction: column; justify-content: space-between; gap: 72px; border-right: 1px solid #cbdce5; }
-.access-story .brand { display: inline-flex; width: fit-content; }
+.access-story .brand { display: inline-flex; width: fit-content; font-size: clamp(32px, 4vw, 56px); }
 .access-story h1 { font-size: clamp(36px, 4vw, 64px); line-height: 1.08; letter-spacing: -.04em; font-weight: 550; margin: 0 0 28px; }
 .access-story p { max-width: 440px; font-size: 17px; line-height: 1.65; color: #456171; }
 .access-story .access-footnote { font-size: 13px; margin: 0; }
